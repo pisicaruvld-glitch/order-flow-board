@@ -6,7 +6,8 @@ import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/compo
 import { AreaBadge, StatusBadge } from '@/components/Badges';
 import { PriorityIcon, ChangedBadge } from '@/components/OrderCard';
 import { GanttTimeline } from '@/components/GanttTimeline';
-import { Upload, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, RefreshCw, Search, Filter, GitCompareArrows } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { Upload, ChevronRight, AlertTriangle, CheckCircle2, RefreshCw, Search, GitCompareArrows } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface OrdersPageProps {
@@ -14,6 +15,7 @@ interface OrdersPageProps {
 }
 
 export default function OrdersPage({ config }: OrdersPageProps) {
+  const { toast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [mappings, setMappings] = useState<StatusMapping[]>([]);
   const [loading, setLoading] = useState(false);
@@ -49,21 +51,43 @@ export default function OrdersPage({ config }: OrdersPageProps) {
 
   const handleFile = async (file: File) => {
     if (!file.name.endsWith('.xlsx')) {
-      alert('Please upload an .xlsx file');
+      toast({
+        title: 'Invalid file type',
+        description: 'Please upload an .xlsx file.',
+        variant: 'destructive',
+      });
       return;
     }
     setUploading(true);
     setUploadResult(null);
     setChangeReport([]);
+    setError(null);
     try {
       const result = await uploadOrders(file);
       setUploadResult(result);
-      const changes = await getChangeReport(result.upload_id);
+
+      // Show success toast with row counts
+      toast({
+        title: config.mode === 'DEMO' ? 'Upload successful (DEMO)' : 'Upload successful',
+        description: `${result.rows_loaded} rows loaded${result.rows_failed > 0 ? `, ${result.rows_failed} failed` : ''}.`,
+      });
+
+      // Fetch change report and refresh orders immediately
+      const [changes] = await Promise.all([
+        getChangeReport(result.upload_id),
+        loadOrders(),
+      ]);
       setChangeReport(changes);
       setShowReport(true);
-      await loadOrders();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Upload failed');
+      // Surface the backend error (including response.detail) clearly
+      const msg = e instanceof Error ? e.message : 'Upload failed';
+      setError(msg);
+      toast({
+        title: 'Upload failed',
+        description: msg,
+        variant: 'destructive',
+      });
     } finally {
       setUploading(false);
     }
