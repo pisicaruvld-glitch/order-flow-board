@@ -1,6 +1,7 @@
 import { AppConfig, DEFAULT_CONFIG, DEFAULT_ENDPOINTS } from './types';
 
 const CONFIG_KEY = 'vsro_app_config';
+export const AREA_MODES_KEY = 'vsro_area_modes';
 
 export function loadConfig(): AppConfig {
   try {

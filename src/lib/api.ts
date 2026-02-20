@@ -11,6 +11,12 @@ import {
   Area,
   OrderTimeline,
   OrderTimelineEntry,
+  AreaModes,
+  DEFAULT_AREA_MODES,
+  FlowMoveRequest,
+  FlowMoveResult,
+  FlowError,
+  ErrorCategory,
 } from './types';
 import {
   MOCK_ORDERS,
@@ -22,7 +28,7 @@ import {
   MOCK_UPLOAD_RESULT,
   MOCK_CHANGE_REPORT,
 } from './mockData';
-import { loadConfig } from './appConfig';
+import { loadConfig, AREA_MODES_KEY } from './appConfig';
 
 // ============================================================
 // In-memory mutable state for DEMO mode
@@ -33,6 +39,8 @@ let _issues = [...MOCK_ISSUES];
 let _issueHistory = [...MOCK_ISSUE_HISTORY];
 let _productionStatus = { ...MOCK_PRODUCTION_STATUS };
 let _logisticsStatus = { ...MOCK_LOGISTICS_STATUS };
+// DEMO audit trail for manual moves
+let _moveAuditTrail: Array<{ order_id: string; from: Area; to: Area; justification?: string; moved_at: string; moved_by: string }> = [];
 
 function isDemo() {
   return loadConfig().mode === 'DEMO';
@@ -65,8 +73,23 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     ...options,
   });
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`API Error ${res.status}: ${text}`);
+    let errorMsg = `API Error ${res.status}`;
+    try {
+      const body = await res.json();
+      if (body?.detail) {
+        errorMsg = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail);
+      } else if (body?.message) {
+        errorMsg = body.message;
+      } else {
+        errorMsg = `${errorMsg}: ${JSON.stringify(body)}`;
+      }
+    } catch {
+      try {
+        const text = await res.text();
+        if (text) errorMsg = `${errorMsg}: ${text}`;
+      } catch { /* ignore */ }
+    }
+    throw new Error(errorMsg);
   }
   return res.json();
 }
@@ -85,6 +108,28 @@ export async function checkHealth(): Promise<{ ok: boolean; message: string }> {
   } catch (e: unknown) {
     return { ok: false, message: e instanceof Error ? e.message : 'Connection failed' };
   }
+}
+
+// ============================================================
+// EFFECTIVE STATUS LOGIC
+// Parses "REL PRT PCNF" space-separated status string,
+// picks the most advanced token by sort_order
+// ============================================================
+export function getEffectiveStatus(systemStatus: string, mappings: StatusMapping[]): StatusMapping | undefined {
+  const tokens = systemStatus.trim().split(/\s+/).filter(Boolean);
+  let best: StatusMapping | undefined;
+  for (const token of tokens) {
+    const m = mappings.find(s => s.system_status_value === token && s.is_active);
+    if (m && (!best || m.sort_order > best.sort_order)) {
+      best = m;
+    }
+  }
+  return best;
+}
+
+export function deriveArea(systemStatus: string, mappings: StatusMapping[]): Area {
+  const eff = getEffectiveStatus(systemStatus, mappings);
+  return eff ? eff.mapped_area : 'Orders';
 }
 
 // ============================================================
@@ -144,14 +189,118 @@ export async function updateStatusMappings(mappings: StatusMapping[]): Promise<S
     _statusMappings = mappings;
     // Recompute areas for all orders
     _orders = _orders.map(o => {
-      const m = _statusMappings.find(s => s.system_status_value === o.System_Status && s.is_active);
-      return { ...o, current_area: m ? m.mapped_area : o.current_area };
+      const sapArea = deriveArea(o.System_Status, _statusMappings);
+      const isManual = o.source === 'manual';
+      const discrepancy = isManual && sapArea !== o.current_area;
+      return {
+        ...o,
+        sap_area: sapArea,
+        discrepancy,
+        current_area: isManual ? o.current_area : sapArea,
+      };
     });
     return [..._statusMappings];
   }
   return apiFetch<StatusMapping[]>(ep().statusMappingPath, {
     method: 'PUT',
     body: JSON.stringify(mappings),
+  });
+}
+
+// ============================================================
+// AREA MODES
+// ============================================================
+export async function getAreaModes(): Promise<AreaModes> {
+  if (isDemo()) {
+    try {
+      const raw = localStorage.getItem(AREA_MODES_KEY);
+      if (raw) return { ...DEFAULT_AREA_MODES, ...JSON.parse(raw) };
+    } catch { /* ignore */ }
+    return { ...DEFAULT_AREA_MODES };
+  }
+  try {
+    const result = await apiFetch<{ value: AreaModes }>(ep().areaModesPath);
+    return { ...DEFAULT_AREA_MODES, ...(result.value ?? result) };
+  } catch {
+    // Fallback to localStorage if endpoint missing
+    try {
+      const raw = localStorage.getItem(AREA_MODES_KEY);
+      if (raw) return { ...DEFAULT_AREA_MODES, ...JSON.parse(raw) };
+    } catch { /* ignore */ }
+    return { ...DEFAULT_AREA_MODES };
+  }
+}
+
+export async function saveAreaModes(modes: AreaModes): Promise<{ saved: boolean; local: boolean }> {
+  // Always save locally as cache/fallback
+  localStorage.setItem(AREA_MODES_KEY, JSON.stringify(modes));
+
+  if (isDemo()) {
+    return { saved: true, local: true };
+  }
+
+  try {
+    await apiFetch(ep().areaModesPath, {
+      method: 'PUT',
+      body: JSON.stringify({ key: 'area_modes', value: modes }),
+    });
+    return { saved: true, local: false };
+  } catch {
+    // Backend missing — use local only
+    return { saved: true, local: true };
+  }
+}
+
+// ============================================================
+// MANUAL MOVE (Next Step / Move Back)
+// ============================================================
+export async function moveOrder(req: FlowMoveRequest): Promise<FlowMoveResult> {
+  if (isDemo()) {
+    const idx = _orders.findIndex(o => o.Order === req.order_id);
+    if (idx === -1) throw new Error('Order not found');
+    const prev = _orders[idx];
+    const sapArea = deriveArea(prev.System_Status, _statusMappings);
+    const discrepancy = sapArea !== req.target_area;
+    const result: FlowMoveResult = {
+      order_id: req.order_id,
+      previous_area: prev.current_area,
+      current_area: req.target_area,
+      source: 'manual',
+      moved_at: new Date().toISOString(),
+      moved_by: req.moved_by ?? 'current_user',
+    };
+    _orders = _orders.map((o, i) =>
+      i === idx
+        ? {
+            ...o,
+            current_area: req.target_area,
+            source: 'manual',
+            sap_area: sapArea,
+            discrepancy,
+          }
+        : o
+    );
+    _moveAuditTrail = [
+      ..._moveAuditTrail,
+      {
+        order_id: req.order_id,
+        from: prev.current_area,
+        to: req.target_area,
+        justification: req.justification,
+        moved_at: result.moved_at,
+        moved_by: result.moved_by,
+      },
+    ];
+    return result;
+  }
+
+  const path = resolvePath(ep().moveOrderPath, { order_id: req.order_id });
+  return apiFetch<FlowMoveResult>(path, {
+    method: 'POST',
+    body: JSON.stringify({
+      target_area: req.target_area,
+      justification: req.justification,
+    }),
   });
 }
 
@@ -186,7 +335,6 @@ export async function uploadOrders(_file: File): Promise<UploadResult> {
         errorMsg = body.error;
       }
     } catch {
-      // If response is not JSON, use the text
       try {
         const text = await res.text();
         if (text) errorMsg = text;
@@ -203,6 +351,90 @@ export async function getChangeReport(_uploadId: string): Promise<OrderChange[]>
     return [...MOCK_CHANGE_REPORT];
   }
   return apiFetch<OrderChange[]>(`${ep().uploadOrdersPath}/${_uploadId}/changes`);
+}
+
+// ============================================================
+// FLOW ERRORS (computed client-side from order data)
+// ============================================================
+export async function computeFlowErrors(
+  orders: Order[],
+  mappings: StatusMapping[],
+): Promise<FlowError[]> {
+  const errors: FlowError[] = [];
+
+  for (const o of orders) {
+    const sapArea = o.sap_area ?? deriveArea(o.System_Status, mappings);
+
+    // E1: Manual vs SAP discrepancy
+    if (o.source === 'manual' && sapArea !== o.current_area) {
+      errors.push({
+        order_id: o.Order,
+        Order: o.Order,
+        Material: o.Material,
+        Plant: o.Plant,
+        category: 'E1_DISCREPANCY',
+        description: `Manually placed in ${o.current_area}, but SAP mapping says ${sapArea}`,
+        current_area: o.current_area,
+        sap_area: sapArea,
+        system_status: o.System_Status,
+      });
+    }
+
+    // E4: Invalid dates or quantities
+    const start = o.Start_date_sched;
+    const finish = o.Scheduled_finish_date;
+    if (start && finish && start > finish) {
+      errors.push({
+        order_id: o.Order,
+        Order: o.Order,
+        Material: o.Material,
+        Plant: o.Plant,
+        category: 'E4_INVALID',
+        description: `Finish date (${finish}) is before start date (${start})`,
+        system_status: o.System_Status,
+      });
+    }
+    if (o.Order_quantity <= 0) {
+      errors.push({
+        order_id: o.Order,
+        Order: o.Order,
+        Material: o.Material,
+        Plant: o.Plant,
+        category: 'E4_INVALID',
+        description: `Order quantity is ${o.Order_quantity} (must be > 0)`,
+        system_status: o.System_Status,
+      });
+    }
+    if (o.Delivered_quantity > o.Order_quantity) {
+      errors.push({
+        order_id: o.Order,
+        Order: o.Order,
+        Material: o.Material,
+        Plant: o.Plant,
+        category: 'E4_INVALID',
+        description: `Delivered quantity (${o.Delivered_quantity}) exceeds ordered quantity (${o.Order_quantity})`,
+        system_status: o.System_Status,
+      });
+    }
+  }
+
+  // E2: Status regression — compare has_changes orders where changed_fields contains System_Status
+  // In LIVE mode the backend should provide this; in DEMO we flag orders with changed status
+  for (const o of orders) {
+    if (o.has_changes && o.changed_fields?.includes('System_Status')) {
+      errors.push({
+        order_id: o.Order,
+        Order: o.Order,
+        Material: o.Material,
+        Plant: o.Plant,
+        category: 'E2_REGRESS',
+        description: `System status changed in latest upload — verify progression`,
+        system_status: o.System_Status,
+      });
+    }
+  }
+
+  return errors;
 }
 
 // ============================================================
@@ -409,18 +641,26 @@ export async function updateLogisticsStatus(
 }
 
 // ============================================================
-// DEMO ONLY: Move order between areas
+// DEMO ONLY: Move order between areas (legacy / simple)
 // ============================================================
 export async function demoMoveOrder(orderId: string, targetArea: Area): Promise<Order> {
   const idx = _orders.findIndex(o => o.Order === orderId);
   if (idx === -1) throw new Error('Order not found');
-  const updated = { ..._orders[idx], current_area: targetArea };
+  const prev = _orders[idx];
+  const sapArea = deriveArea(prev.System_Status, _statusMappings);
+  const updated = {
+    ..._orders[idx],
+    current_area: targetArea,
+    source: 'manual' as const,
+    sap_area: sapArea,
+    discrepancy: sapArea !== targetArea,
+  };
   _orders = [..._orders.slice(0, idx), updated, ..._orders.slice(idx + 1)];
   return updated;
 }
 
 // ============================================================
-// Mark Order Ready (Warehouse)
+// Mark Order Ready (Warehouse → Production)
 // ============================================================
 export async function markOrderReady(orderId: string): Promise<Order> {
   if (isDemo()) {
@@ -440,8 +680,8 @@ export function getAreaCounts(orders: Order[], mappings: StatusMapping[]) {
     Logistics: {},
   };
   orders.forEach(o => {
-    const m = mappings.find(s => s.system_status_value === o.System_Status && s.is_active);
-    const label = m ? m.mapped_label : o.System_Status;
+    const eff = getEffectiveStatus(o.System_Status, mappings);
+    const label = eff ? eff.mapped_label : o.System_Status;
     const area = o.current_area;
     result[area][label] = (result[area][label] || 0) + 1;
   });
@@ -459,4 +699,5 @@ export function resetDemoState() {
   _issueHistory = [...MOCK_ISSUE_HISTORY];
   _productionStatus = { ...MOCK_PRODUCTION_STATUS };
   _logisticsStatus = { ...MOCK_LOGISTICS_STATUS };
+  _moveAuditTrail = [];
 }

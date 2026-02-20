@@ -12,6 +12,7 @@ import {
   Server,
   ChevronRight,
   RefreshCw,
+  AlertOctagon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +27,7 @@ const navItems = [
   { path: '/warehouse', label: 'Warehouse', icon: Warehouse },
   { path: '/production', label: 'Production', icon: Factory },
   { path: '/logistics', label: 'Logistics', icon: Truck },
+  { path: '/errors', label: 'Errors', icon: AlertOctagon },
 ];
 
 export function Layout({ children, config }: LayoutProps) {

@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Order, ProductionStatus } from '@/lib/types';
-import { getOrders, getProductionStatus, updateProductionStatus } from '@/lib/api';
+import { Order, ProductionStatus, AreaModes } from '@/lib/types';
+import { getOrders, getProductionStatus, updateProductionStatus, moveOrder, getAreaModes } from '@/lib/api';
 import { AppConfig } from '@/lib/types';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { StatusBadge } from '@/components/Badges';
 import { PriorityIcon, ChangedBadge } from '@/components/OrderCard';
-import { RefreshCw, Play, CheckCircle2, Clock } from 'lucide-react';
+import { MoveOrderDialog, DiscrepancyBadge, SourceBadge } from '@/components/MoveOrderDialog';
+import { RefreshCw, Play, CheckCircle2, Clock, ArrowRight, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ProductionPageProps {
@@ -13,6 +14,7 @@ interface ProductionPageProps {
 }
 
 type ProdStatus = ProductionStatus['status'];
+type MoveDialogState = { orderId: string; isNextStep: boolean; blockedReason?: string } | null;
 
 const statusConfig: Record<ProdStatus, { label: string; color: string; icon: React.ReactNode }> = {
   PENDING: {
@@ -35,17 +37,23 @@ const statusConfig: Record<ProdStatus, { label: string; color: string; icon: Rea
 export default function ProductionPage({ config }: ProductionPageProps) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [statuses, setStatuses] = useState<Record<string, ProductionStatus>>({});
+  const [areaModes, setAreaModes] = useState<AreaModes>({ Warehouse: 'AUTO', Production: 'AUTO', Logistics: 'AUTO' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<ProdStatus | ''>('');
+  const [moveDialog, setMoveDialog] = useState<MoveDialogState>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const productionOrders = await getOrders({ area: 'Production' });
+      const [productionOrders, modes] = await Promise.all([
+        getOrders({ area: 'Production' }),
+        getAreaModes(),
+      ]);
       setOrders(productionOrders);
+      setAreaModes(modes);
       const statusMap: Record<string, ProductionStatus> = {};
       await Promise.all(
         productionOrders.map(async o => {
@@ -74,6 +82,34 @@ export default function ProductionPage({ config }: ProductionPageProps) {
     }
   };
 
+  const openNextStep = (order: Order) => {
+    const prodStatus = statuses[order.Order];
+    const isCompleted = prodStatus?.status === 'COMPLETED';
+    setMoveDialog({
+      orderId: order.Order,
+      isNextStep: true,
+      blockedReason: !isCompleted
+        ? `Cannot move to Logistics: Production status must be COMPLETED (currently: ${prodStatus?.status ?? 'PENDING'}).`
+        : undefined,
+    });
+  };
+
+  const openMoveBack = (order: Order) => {
+    setMoveDialog({ orderId: order.Order, isNextStep: false });
+  };
+
+  const handleMoveConfirm = async (justification?: string) => {
+    if (!moveDialog) return;
+    const target = moveDialog.isNextStep ? 'Logistics' : 'Warehouse';
+    await moveOrder({
+      order_id: moveDialog.orderId,
+      target_area: target,
+      justification,
+    });
+    setOrders(prev => prev.filter(o => o.Order !== moveDialog.orderId));
+    setMoveDialog(null);
+  };
+
   const filteredOrders = orders.filter(o =>
     !filterStatus || statuses[o.Order]?.status === filterStatus
   );
@@ -84,15 +120,27 @@ export default function ProductionPage({ config }: ProductionPageProps) {
     COMPLETED: orders.filter(o => statuses[o.Order]?.status === 'COMPLETED').length,
   };
 
+  const isManualMode = areaModes.Production === 'MANUAL';
+
   return (
     <PageContainer>
       <PageHeader
         title="Production"
         subtitle="Confirm and track production progress"
         actions={
-          <button onClick={load} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-            <RefreshCw size={14} />Refresh
-          </button>
+          <div className="flex items-center gap-3">
+            <span className={cn(
+              'text-xs font-semibold px-2 py-0.5 rounded border',
+              isManualMode
+                ? 'bg-warning/10 text-warning border-warning/30'
+                : 'bg-success/10 text-success border-success/30'
+            )}>
+              {isManualMode ? 'MANUAL mode' : 'AUTO mode'}
+            </span>
+            <button onClick={load} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+              <RefreshCw size={14} />Refresh
+            </button>
+          </div>
         }
       />
 
@@ -134,6 +182,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
               const prodStatus = statuses[order.Order];
               const isUpdating = updating === order.Order;
               const cfg = prodStatus ? statusConfig[prodStatus.status] : statusConfig.PENDING;
+              const isCompleted = prodStatus?.status === 'COMPLETED';
               return (
                 <div
                   key={order.Order}
@@ -146,14 +195,11 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                         <PriorityIcon priority={order.Priority} />
                         <span className="font-mono text-sm font-bold">{order.Order}</span>
                         {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
+                        {order.discrepancy && <DiscrepancyBadge sapArea={order.sap_area} />}
+                        {order.source === 'manual' && <SourceBadge source={order.source} />}
                       </div>
                       <StatusBadge status={order.System_Status} size="sm" />
-                      <span
-                        className={cn(
-                          'inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full',
-                          cfg.color
-                        )}
-                      >
+                      <span className={cn('inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full', cfg.color)}>
                         {cfg.icon}
                         {cfg.label}
                       </span>
@@ -167,14 +213,11 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                       {prodStatus?.updated_by && (
                         <span>by <strong className="text-foreground">{prodStatus.updated_by}</strong></span>
                       )}
-                      {prodStatus?.updated_at && (
-                        <span>{new Date(prodStatus.updated_at).toLocaleDateString()}</span>
-                      )}
                     </div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 shrink-0">
+                  {/* Status Actions */}
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                     {prodStatus?.status !== 'IN_PROGRESS' && prodStatus?.status !== 'COMPLETED' && (
                       <button
                         onClick={() => handleStatusChange(order.Order, 'IN_PROGRESS')}
@@ -202,12 +245,50 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                       </span>
                     )}
                     {isUpdating && <RefreshCw size={14} className="animate-spin text-muted-foreground" />}
+
+                    {/* MANUAL mode flow buttons */}
+                    {isManualMode && (
+                      <>
+                        <button
+                          onClick={() => openMoveBack(order)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 border border-border text-xs text-muted-foreground rounded hover:bg-muted transition-colors"
+                        >
+                          <ArrowLeft size={11} />
+                          Move Back
+                        </button>
+                        <button
+                          onClick={() => openNextStep(order)}
+                          className={cn(
+                            'flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors',
+                            isCompleted
+                              ? 'bg-success/10 text-success hover:bg-success/20'
+                              : 'bg-muted text-muted-foreground cursor-not-allowed'
+                          )}
+                        >
+                          <ArrowRight size={11} />
+                          Next Step
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               );
             })}
           </div>
         </>
+      )}
+
+      {/* Move Dialog */}
+      {moveDialog && (
+        <MoveOrderDialog
+          orderId={moveDialog.orderId}
+          currentArea="Production"
+          targetArea={moveDialog.isNextStep ? 'Logistics' : 'Warehouse'}
+          isNextStep={moveDialog.isNextStep}
+          blockedReason={moveDialog.blockedReason}
+          onConfirm={handleMoveConfirm}
+          onCancel={() => setMoveDialog(null)}
+        />
       )}
     </PageContainer>
   );

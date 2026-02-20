@@ -1,21 +1,29 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Order, Issue, IssueHistoryEntry, StatusMapping, ISSUE_TYPES } from '@/lib/types';
-import { getOrders, getStatusMappings, getIssues, createIssue, patchIssue, getIssueHistory, markOrderReady } from '@/lib/api';
+import { Order, Issue, IssueHistoryEntry, StatusMapping, ISSUE_TYPES, AreaModes } from '@/lib/types';
+import { getOrders, getStatusMappings, getIssues, createIssue, patchIssue, getIssueHistory, markOrderReady, moveOrder, getAreaModes } from '@/lib/api';
 import { AppConfig } from '@/lib/types';
 import { PageContainer, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { StatusBadge, IssueBadge } from '@/components/Badges';
 import { OrderDetailPanel, PriorityIcon, ChangedBadge } from '@/components/OrderCard';
+import { MoveOrderDialog, DiscrepancyBadge, SourceBadge } from '@/components/MoveOrderDialog';
 import { GanttTimeline } from '@/components/GanttTimeline';
-import { Plus, CheckCircle2, AlertTriangle, RefreshCw, History } from 'lucide-react';
+import { Plus, CheckCircle2, AlertTriangle, RefreshCw, History, ArrowRight, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface WarehousePageProps {
   config: AppConfig;
 }
 
+type MoveDialogState = {
+  orderId: string;
+  isNextStep: boolean;
+  blockedReason?: string;
+} | null;
+
 export default function WarehousePage({ config }: WarehousePageProps) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [mappings, setMappings] = useState<StatusMapping[]>([]);
+  const [areaModes, setAreaModes] = useState<AreaModes>({ Warehouse: 'AUTO', Production: 'AUTO', Logistics: 'AUTO' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -27,14 +35,20 @@ export default function WarehousePage({ config }: WarehousePageProps) {
   const [newIssue, setNewIssue] = useState({ pn: '', issue_type: ISSUE_TYPES[0].value, comment: '' });
   const [submitting, setSubmitting] = useState(false);
   const [markingReady, setMarkingReady] = useState(false);
+  const [moveDialog, setMoveDialog] = useState<MoveDialogState>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [o, m] = await Promise.all([getOrders({ area: 'Warehouse' }), getStatusMappings()]);
+      const [o, m, modes] = await Promise.all([
+        getOrders({ area: 'Warehouse' }),
+        getStatusMappings(),
+        getAreaModes(),
+      ]);
       setOrders(o);
       setMappings(m);
+      setAreaModes(modes);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load');
     } finally {
@@ -100,11 +114,42 @@ export default function WarehousePage({ config }: WarehousePageProps) {
     }
   };
 
+  const openNextStep = () => {
+    if (!selectedOrder) return;
+    const openCount = issues.filter(i => i.status === 'OPEN').length;
+    setMoveDialog({
+      orderId: selectedOrder.Order,
+      isNextStep: true,
+      blockedReason: openCount > 0 ? `Cannot move to Production: ${openCount} open issue(s) must be closed first.` : undefined,
+    });
+  };
+
+  const openMoveBack = () => {
+    if (!selectedOrder) return;
+    setMoveDialog({
+      orderId: selectedOrder.Order,
+      isNextStep: false,
+    });
+  };
+
+  const handleMoveConfirm = async (justification?: string) => {
+    if (!moveDialog || !selectedOrder) return;
+    const target = moveDialog.isNextStep ? 'Production' : 'Orders';
+    await moveOrder({
+      order_id: moveDialog.orderId,
+      target_area: target,
+      justification,
+    });
+    setOrders(prev => prev.filter(o => o.Order !== moveDialog.orderId));
+    setSelectedOrder(null);
+    setMoveDialog(null);
+  };
+
   const openIssues = issues.filter(i => i.status === 'OPEN');
   const closedIssues = issues.filter(i => i.status === 'CLOSED');
-  const canMarkReady = openIssues.length === 0 && issues.length >= 0;
+  const canMarkReady = openIssues.length === 0;
+  const isManualMode = areaModes.Warehouse === 'MANUAL';
 
-  // Status group counts
   const groupCounts: Record<string, number> = {};
   orders.forEach(o => {
     const m = mappings.find(s => s.system_status_value === o.System_Status);
@@ -127,6 +172,15 @@ export default function WarehousePage({ config }: WarehousePageProps) {
               <span className="text-muted-foreground ml-1">{label}</span>
             </div>
           ))}
+          {/* Mode badge */}
+          <span className={cn(
+            'text-xs font-semibold px-2 py-0.5 rounded border',
+            isManualMode
+              ? 'bg-warning/10 text-warning border-warning/30'
+              : 'bg-success/10 text-success border-success/30'
+          )}>
+            {isManualMode ? 'MANUAL mode' : 'AUTO mode'}
+          </span>
           <button onClick={load} className="ml-auto flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
             <RefreshCw size={14} />Refresh
           </button>
@@ -151,10 +205,12 @@ export default function WarehousePage({ config }: WarehousePageProps) {
               )}
             >
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <PriorityIcon priority={order.Priority} />
                   <span className="font-mono text-xs font-semibold">{order.Order}</span>
                   {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
+                  {order.discrepancy && <DiscrepancyBadge sapArea={order.sap_area} />}
+                  {order.source === 'manual' && <SourceBadge source={order.source} />}
                 </div>
                 <StatusBadge status={order.System_Status} size="sm" />
               </div>
@@ -295,7 +351,6 @@ export default function WarehousePage({ config }: WarehousePageProps) {
                             </button>
                           </div>
                         </div>
-                        {/* History */}
                         {showHistoryId === issue.id && (
                           <div className="border-t border-border bg-muted px-3 py-2 space-y-1.5 animate-fade-in">
                             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">History</p>
@@ -313,28 +368,58 @@ export default function WarehousePage({ config }: WarehousePageProps) {
                   </div>
                 )}
 
-                {/* Mark Ready */}
-                <div className="mt-4 pt-4 border-t border-border">
+                {/* Actions */}
+                <div className="mt-4 pt-4 border-t border-border space-y-2">
                   {openIssues.length > 0 && (
-                    <div className="flex items-center gap-2 mb-2 text-xs text-warning">
+                    <div className="flex items-center gap-2 text-xs text-warning">
                       <AlertTriangle size={12} />
-                      {openIssues.length} open issue(s) must be closed before marking ready
+                      {openIssues.length} open issue(s) must be closed before moving to Production
                     </div>
                   )}
-                  <button
-                    onClick={handleMarkReady}
-                    disabled={!canMarkReady || markingReady || openIssues.length > 0}
-                    className={cn(
-                      'w-full py-2 rounded-md text-sm font-medium transition-colors',
-                      canMarkReady && openIssues.length === 0
-                        ? 'bg-success text-success-foreground hover:bg-success/90'
-                        : 'bg-muted text-muted-foreground cursor-not-allowed'
-                    )}
-                  >
-                    {markingReady ? 'Marking…' : '✓ Mark Ready → Send to Production'}
-                  </button>
+
+                  {/* AUTO mode: classic Mark Ready */}
+                  {!isManualMode && (
+                    <button
+                      onClick={handleMarkReady}
+                      disabled={!canMarkReady || markingReady || openIssues.length > 0}
+                      className={cn(
+                        'w-full py-2 rounded-md text-sm font-medium transition-colors',
+                        canMarkReady && openIssues.length === 0
+                          ? 'bg-success text-success-foreground hover:bg-success/90'
+                          : 'bg-muted text-muted-foreground cursor-not-allowed'
+                      )}
+                    >
+                      {markingReady ? 'Marking…' : '✓ Mark Ready → Send to Production'}
+                    </button>
+                  )}
+
+                  {/* MANUAL mode: Next Step + Move Back */}
+                  {isManualMode && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={openMoveBack}
+                        className="flex items-center gap-1.5 flex-1 justify-center py-2 border border-border text-xs font-medium rounded-md hover:bg-muted transition-colors text-muted-foreground"
+                      >
+                        <ArrowLeft size={13} />
+                        Move Back to Orders
+                      </button>
+                      <button
+                        onClick={openNextStep}
+                        className={cn(
+                          'flex items-center gap-1.5 flex-1 justify-center py-2 text-xs font-medium rounded-md transition-colors',
+                          openIssues.length > 0
+                            ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                            : 'bg-success text-success-foreground hover:bg-success/90'
+                        )}
+                      >
+                        <ArrowRight size={13} />
+                        Next Step → Production
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
+
               {/* Gantt Timeline */}
               <div className="px-4 pb-4">
                 <GanttTimeline orderId={selectedOrder.Order} />
@@ -343,6 +428,19 @@ export default function WarehousePage({ config }: WarehousePageProps) {
           )}
         </div>
       </div>
+
+      {/* Move Dialog */}
+      {moveDialog && selectedOrder && (
+        <MoveOrderDialog
+          orderId={moveDialog.orderId}
+          currentArea="Warehouse"
+          targetArea={moveDialog.isNextStep ? 'Production' : 'Orders'}
+          isNextStep={moveDialog.isNextStep}
+          blockedReason={moveDialog.blockedReason}
+          onConfirm={handleMoveConfirm}
+          onCancel={() => setMoveDialog(null)}
+        />
+      )}
     </PageContainer>
   );
 }

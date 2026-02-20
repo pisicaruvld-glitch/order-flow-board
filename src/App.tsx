@@ -13,6 +13,7 @@ import WarehousePage from "./pages/Warehouse";
 import ProductionPage from "./pages/Production";
 import LogisticsPage from "./pages/Logistics";
 import AdminPage from "./pages/Admin";
+import ErrorsPage from "./pages/Errors";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => {
               <Route path="/warehouse" element={<WarehousePage config={config} />} />
               <Route path="/production" element={<ProductionPage config={config} />} />
               <Route path="/logistics" element={<LogisticsPage config={config} />} />
+              <Route path="/errors" element={<ErrorsPage config={config} />} />
               <Route path="/admin" element={<AdminPage config={config} onConfigChange={setConfig} />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
