@@ -278,7 +278,7 @@ export default function OrdersPage({ config }: OrdersPageProps) {
                       ✕ Close
                     </button>
                   </div>
-                  <GanttTimeline orderId={selectedOrder.Order} />
+                  <GanttTimeline orderId={selectedOrder.Order} order={selectedOrder} />
                 </div>
               )}
 
