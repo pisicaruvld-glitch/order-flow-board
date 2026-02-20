@@ -164,9 +164,36 @@ export async function uploadOrders(_file: File): Promise<UploadResult> {
     return { ...MOCK_UPLOAD_RESULT };
   }
   const form = new FormData();
+  // Field name MUST be "file" — backend expects multipart/form-data with this key
   form.append('file', _file);
-  const res = await fetch(`${apiBase()}${ep().uploadOrdersPath}`, { method: 'POST', body: form });
-  if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+  const res = await fetch(`${apiBase()}${ep().uploadOrdersPath}`, {
+    method: 'POST',
+    // Do NOT set Content-Type header — browser sets it automatically with boundary
+    body: form,
+  });
+  if (!res.ok) {
+    // Try to extract backend error detail (FastAPI / standard REST)
+    let errorMsg = `Upload failed (HTTP ${res.status})`;
+    try {
+      const body = await res.json();
+      if (body?.detail) {
+        errorMsg = typeof body.detail === 'string'
+          ? body.detail
+          : JSON.stringify(body.detail);
+      } else if (body?.message) {
+        errorMsg = body.message;
+      } else if (body?.error) {
+        errorMsg = body.error;
+      }
+    } catch {
+      // If response is not JSON, use the text
+      try {
+        const text = await res.text();
+        if (text) errorMsg = text;
+      } catch { /* ignore */ }
+    }
+    throw new Error(errorMsg);
+  }
   return res.json();
 }
 
