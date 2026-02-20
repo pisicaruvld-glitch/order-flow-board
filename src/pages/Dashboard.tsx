@@ -5,7 +5,8 @@ import { AppConfig } from '@/lib/types';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { AreaBadge, StatusBadge } from '@/components/Badges';
 import { OrderCard } from '@/components/OrderCard';
-import { Search, Filter, RefreshCw, ChevronRight, ArrowRight } from 'lucide-react';
+import { Search, Filter, RefreshCw, ArrowRight } from 'lucide-react';
+import { DiscrepancyBadge, SourceBadge } from '@/components/MoveOrderDialog';
 import { cn } from '@/lib/utils';
 
 interface DashboardProps {
@@ -211,6 +212,15 @@ function AreaColumn({
             {/* Expanded mini-panel */}
             {expanded?.Order === order.Order && (
               <div className="bg-muted rounded-b-md px-3 py-2 border border-t-0 border-border text-xs animate-fade-in">
+                {(order.discrepancy || order.source === 'manual') && (
+                  <div className="flex items-center gap-2 mb-1.5">
+                    {order.discrepancy && <DiscrepancyBadge sapArea={order.sap_area} />}
+                    {order.source === 'manual' && <SourceBadge source={order.source} />}
+                    {order.discrepancy && order.sap_area && (
+                      <span className="text-[10px] text-muted-foreground">SAP area: {order.sap_area}</span>
+                    )}
+                  </div>
+                )}
                 <div className="flex items-center gap-2 flex-wrap mb-1.5">
                   <span className="text-muted-foreground">Move to:</span>
                   {onMove && allAreas.filter(a => a !== area).map(a => (

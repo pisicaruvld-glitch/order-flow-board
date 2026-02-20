@@ -17,10 +17,15 @@ export interface Order {
   User_Status: string;
   current_area: Area;
   current_label?: string;
-  // New fields
+  // Priority
   Priority?: string;         // "/", "o", "x", or empty
-  has_changes?: boolean;     // true if any tracked field changed vs previous upload
-  changed_fields?: string[]; // e.g. ["Order_quantity", "Start_date_sched"]
+  // Change tracking
+  has_changes?: boolean;
+  changed_fields?: string[];
+  // Manual flow state
+  source?: 'system' | 'manual';  // how current_area was set
+  sap_area?: Area;                // area derived from SAP status mapping
+  discrepancy?: boolean;          // source=manual AND sap_area != current_area
 }
 
 export interface StatusMapping {
@@ -113,6 +118,60 @@ export interface OrderTimeline {
 }
 
 // ============================================================
+// Manual Override / Flow State
+// ============================================================
+export interface FlowMoveRequest {
+  order_id: string;
+  target_area: Area;
+  justification?: string;  // required for move-back
+  moved_by?: string;
+}
+
+export interface FlowMoveResult {
+  order_id: string;
+  previous_area: Area;
+  current_area: Area;
+  source: 'manual';
+  moved_at: string;
+  moved_by: string;
+}
+
+// ============================================================
+// Area Modes
+// ============================================================
+export type AreaMode = 'AUTO' | 'MANUAL';
+
+export interface AreaModes {
+  Warehouse: AreaMode;
+  Production: AreaMode;
+  Logistics: AreaMode;
+}
+
+export const DEFAULT_AREA_MODES: AreaModes = {
+  Warehouse: 'AUTO',
+  Production: 'AUTO',
+  Logistics: 'AUTO',
+};
+
+// ============================================================
+// Error / Discrepancy types (Errors page)
+// ============================================================
+export type ErrorCategory = 'E1_DISCREPANCY' | 'E2_REGRESS' | 'E3_MISSING' | 'E4_INVALID';
+
+export interface FlowError {
+  order_id: string;
+  Order: string;
+  Material: string;
+  Plant: string;
+  category: ErrorCategory;
+  description: string;
+  current_area?: Area;
+  sap_area?: Area;
+  system_status?: string;
+  last_upload_at?: string;
+}
+
+// ============================================================
 // App Config — includes endpoint mapping
 // ============================================================
 export interface EndpointPaths {
@@ -124,6 +183,8 @@ export interface EndpointPaths {
   orderIssuesPath: string;   // /orders/{order_id}/issues
   issuePath: string;         // /issues/{issue_id}
   issueHistoryPath: string;  // /issues/{issue_id}/history
+  moveOrderPath: string;     // /orders/{order_id}/move
+  areaModesPath: string;     // /admin/app-settings/area_modes
 }
 
 export interface AppConfig {
@@ -142,6 +203,8 @@ export const DEFAULT_ENDPOINTS: EndpointPaths = {
   orderIssuesPath: '/orders/{order_id}/issues',
   issuePath: '/issues/{issue_id}',
   issueHistoryPath: '/issues/{issue_id}/history',
+  moveOrderPath: '/orders/{order_id}/move',
+  areaModesPath: '/admin/app-settings/area_modes',
 };
 
 export const DEFAULT_CONFIG: AppConfig = {
@@ -152,6 +215,7 @@ export const DEFAULT_CONFIG: AppConfig = {
 };
 
 export const AREAS: Area[] = ['Orders', 'Warehouse', 'Production', 'Logistics'];
+export const FLOW_AREAS: Area[] = ['Warehouse', 'Production', 'Logistics'];
 
 export const ISSUE_TYPES: { value: IssueType; label: string }[] = [
   { value: 'MISSING_MATERIAL', label: 'Missing Material' },
@@ -161,3 +225,26 @@ export const ISSUE_TYPES: { value: IssueType; label: string }[] = [
   { value: 'DOCUMENTATION_ERROR', label: 'Documentation Error' },
   { value: 'OTHER', label: 'Other' },
 ];
+
+export const ERROR_CATEGORY_META: Record<ErrorCategory, { label: string; color: string; description: string }> = {
+  E1_DISCREPANCY: {
+    label: 'E1 — Manual vs SAP Discrepancy',
+    color: 'text-destructive',
+    description: 'Order manually placed in a different area than SAP status mapping indicates.',
+  },
+  E2_REGRESS: {
+    label: 'E2 — Status Regression',
+    color: 'text-warning',
+    description: 'Effective SAP status moved backwards (lower sort_order) compared to previous upload.',
+  },
+  E3_MISSING: {
+    label: 'E3 — Order Missing',
+    color: 'text-info',
+    description: 'Order was present in the previous upload but absent in the latest upload.',
+  },
+  E4_INVALID: {
+    label: 'E4 — Invalid Data',
+    color: 'text-muted-foreground',
+    description: 'Invalid dates, zero/negative quantities, or delivered > ordered.',
+  },
+};

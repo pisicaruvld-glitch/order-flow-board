@@ -1,31 +1,40 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Order, LogisticsStatus } from '@/lib/types';
-import { getOrders, getLogisticsStatus, updateLogisticsStatus } from '@/lib/api';
+import { Order, LogisticsStatus, AreaModes } from '@/lib/types';
+import { getOrders, getLogisticsStatus, updateLogisticsStatus, moveOrder, getAreaModes } from '@/lib/api';
 import { AppConfig } from '@/lib/types';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { StatusBadge } from '@/components/Badges';
 import { PriorityIcon, ChangedBadge } from '@/components/OrderCard';
-import { RefreshCw, PackageCheck, Truck, Circle, CheckCircle2 } from 'lucide-react';
+import { MoveOrderDialog, DiscrepancyBadge, SourceBadge } from '@/components/MoveOrderDialog';
+import { RefreshCw, PackageCheck, Truck, Circle, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LogisticsPageProps {
   config: AppConfig;
 }
 
+type MoveDialogState = { orderId: string; isNextStep: boolean; blockedReason?: string } | null;
+
 export default function LogisticsPage({ config }: LogisticsPageProps) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [statuses, setStatuses] = useState<Record<string, LogisticsStatus>>({});
+  const [areaModes, setAreaModes] = useState<AreaModes>({ Warehouse: 'AUTO', Production: 'AUTO', Logistics: 'AUTO' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
   const [filterStep, setFilterStep] = useState<'' | 'received' | 'delivered'>('');
+  const [moveDialog, setMoveDialog] = useState<MoveDialogState>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const logisticsOrders = await getOrders({ area: 'Logistics' });
+      const [logisticsOrders, modes] = await Promise.all([
+        getOrders({ area: 'Logistics' }),
+        getAreaModes(),
+      ]);
       setOrders(logisticsOrders);
+      setAreaModes(modes);
       const statusMap: Record<string, LogisticsStatus> = {};
       await Promise.all(
         logisticsOrders.map(async o => {
@@ -71,6 +80,21 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
     }
   };
 
+  const openMoveBack = (order: Order) => {
+    setMoveDialog({ orderId: order.Order, isNextStep: false });
+  };
+
+  const handleMoveConfirm = async (justification?: string) => {
+    if (!moveDialog) return;
+    await moveOrder({
+      order_id: moveDialog.orderId,
+      target_area: 'Production',
+      justification,
+    });
+    setOrders(prev => prev.filter(o => o.Order !== moveDialog.orderId));
+    setMoveDialog(null);
+  };
+
   const filteredOrders = orders.filter(o => {
     const s = statuses[o.Order];
     if (filterStep === 'received') return s?.received_from_production && !s?.delivered;
@@ -84,15 +108,27 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
     delivered: orders.filter(o => statuses[o.Order]?.delivered).length,
   };
 
+  const isManualMode = areaModes.Logistics === 'MANUAL';
+
   return (
     <PageContainer>
       <PageHeader
         title="Logistics"
         subtitle="Track receipt from production and delivery"
         actions={
-          <button onClick={load} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-            <RefreshCw size={14} />Refresh
-          </button>
+          <div className="flex items-center gap-3">
+            <span className={cn(
+              'text-xs font-semibold px-2 py-0.5 rounded border',
+              isManualMode
+                ? 'bg-warning/10 text-warning border-warning/30'
+                : 'bg-success/10 text-success border-success/30'
+            )}>
+              {isManualMode ? 'MANUAL mode' : 'AUTO mode'}
+            </span>
+            <button onClick={load} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+              <RefreshCw size={14} />Refresh
+            </button>
+          </div>
         }
       />
 
@@ -145,6 +181,8 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
                         <PriorityIcon priority={order.Priority} />
                         <span className="font-mono text-sm font-bold">{order.Order}</span>
                         {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
+                        {order.discrepancy && <DiscrepancyBadge sapArea={order.sap_area} />}
+                        {order.source === 'manual' && <SourceBadge source={order.source} />}
                       </div>
                       <StatusBadge status={order.System_Status} size="sm" />
                     </div>
@@ -156,8 +194,8 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
                     </div>
                   </div>
 
-                  {/* Two-step tracker */}
-                  <div className="flex items-center gap-3 shrink-0">
+                  {/* Two-step tracker + actions */}
+                  <div className="flex items-center gap-3 shrink-0 flex-wrap justify-end">
                     <StepIndicator
                       label="Received from Production"
                       done={s.received_from_production}
@@ -171,6 +209,7 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
                       timestamp={s.delivered_at}
                       by={s.delivered_by}
                     />
+
                     {/* Actions */}
                     <div className="flex flex-col gap-1.5 ml-2">
                       {!s.received_from_production && (
@@ -200,6 +239,17 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
                         </span>
                       )}
                       {isUpdating && <RefreshCw size={12} className="animate-spin text-muted-foreground mx-auto" />}
+
+                      {/* MANUAL mode: Move Back */}
+                      {isManualMode && (
+                        <button
+                          onClick={() => openMoveBack(order)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 border border-border text-xs text-muted-foreground rounded hover:bg-muted transition-colors"
+                        >
+                          <ArrowLeft size={11} />
+                          Move Back
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -207,6 +257,19 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
             );
           })}
         </div>
+      )}
+
+      {/* Move Dialog */}
+      {moveDialog && (
+        <MoveOrderDialog
+          orderId={moveDialog.orderId}
+          currentArea="Logistics"
+          targetArea="Production"
+          isNextStep={false}
+          blockedReason={moveDialog.blockedReason}
+          onConfirm={handleMoveConfirm}
+          onCancel={() => setMoveDialog(null)}
+        />
       )}
     </PageContainer>
   );
