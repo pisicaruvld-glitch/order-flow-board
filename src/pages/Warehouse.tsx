@@ -207,17 +207,17 @@ export default function WarehousePage({ config }: WarehousePageProps) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <PriorityIcon priority={order.Priority} />
-                  <span className="font-mono text-xs font-semibold">{order.Order}</span>
+                  <span className="font-mono text-xs font-semibold">{String(order?.Order ?? '')}</span>
                   {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
                   {order.discrepancy && <DiscrepancyBadge sapArea={order.sap_area} />}
                   {order.source === 'manual' && <SourceBadge source={order.source} />}
                 </div>
-                <StatusBadge status={order.System_Status} size="sm" />
+                <StatusBadge status={String(order?.System_Status ?? '')} size="sm" />
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5 truncate">{order.Material_description}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">{String(order?.Material_description ?? '')}</p>
               <div className="flex items-center justify-between mt-1">
-                <span className="text-xs text-muted-foreground">{order.Plant}</span>
-                <span className="text-xs font-medium">{order.Order_quantity} units</span>
+                <span className="text-xs text-muted-foreground">{String(order?.Plant ?? '')}</span>
+                <span className="text-xs font-medium">{Number(order?.Order_quantity ?? 0)} units</span>
               </div>
             </button>
           ))}

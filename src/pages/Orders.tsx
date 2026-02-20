@@ -94,9 +94,12 @@ export default function OrdersPage({ config }: OrdersPageProps) {
   };
 
   const filtered = orders.filter(o => {
-    const q = searchQ.toLowerCase();
-    const matchQ = !q || o.Order.toLowerCase().includes(q) || o.Material.toLowerCase().includes(q) || o.Material_description.toLowerCase().includes(q);
-    const matchPlant = !plantFilter || o.Plant === plantFilter;
+    const q = (searchQ ?? '').toLowerCase();
+    const orderStr = String(o?.Order ?? '');
+    const materialStr = String(o?.Material ?? '');
+    const descStr = String(o?.Material_description ?? '');
+    const matchQ = !q || orderStr.toLowerCase().includes(q) || materialStr.toLowerCase().includes(q) || descStr.toLowerCase().includes(q);
+    const matchPlant = !plantFilter || String(o?.Plant ?? '') === plantFilter;
     const matchArea = !areaFilter || o.current_area === areaFilter;
     const matchChanged = !changedOnly || o.has_changes;
     return matchQ && matchPlant && matchArea && matchChanged;
@@ -304,20 +307,20 @@ export default function OrdersPage({ config }: OrdersPageProps) {
                           <td className="px-3 py-2.5 w-4">
                             {o.has_changes && <ChangedBadge fields={o.changed_fields} />}
                           </td>
-                          <td className="px-3 py-2.5 font-mono text-xs font-semibold">{o.Order}</td>
+                          <td className="px-3 py-2.5 font-mono text-xs font-semibold">{String(o?.Order ?? '')}</td>
                           <td className="px-3 py-2.5">
                             <PriorityIcon priority={o.Priority} />
                           </td>
-                          <td className="px-3 py-2.5 text-xs">{o.Plant}</td>
-                          <td className="px-3 py-2.5 font-mono text-xs">{o.Material}</td>
-                          <td className="px-3 py-2.5 text-xs text-muted-foreground max-w-[200px] truncate" title={o.Material_description}>{o.Material_description}</td>
-                          <td className="px-3 py-2.5"><StatusBadge status={o.System_Status} size="sm" /></td>
+                          <td className="px-3 py-2.5 text-xs">{String(o?.Plant ?? '')}</td>
+                          <td className="px-3 py-2.5 font-mono text-xs">{String(o?.Material ?? '')}</td>
+                          <td className="px-3 py-2.5 text-xs text-muted-foreground max-w-[200px] truncate" title={String(o?.Material_description ?? '')}>{String(o?.Material_description ?? '')}</td>
+                          <td className="px-3 py-2.5"><StatusBadge status={String(o?.System_Status ?? '')} size="sm" /></td>
                           <td className="px-3 py-2.5 text-xs text-muted-foreground">{o.User_Status || '—'}</td>
                           <td className="px-3 py-2.5"><AreaBadge area={o.current_area} size="sm" /></td>
                           <td className="px-3 py-2.5 text-xs">{o.Start_date_sched}</td>
                           <td className="px-3 py-2.5 text-xs">{o.Scheduled_finish_date}</td>
-                          <td className="px-3 py-2.5 text-xs text-right font-medium">{o.Order_quantity.toLocaleString()}</td>
-                          <td className="px-3 py-2.5 text-xs text-right font-medium text-success">{o.Delivered_quantity.toLocaleString()}</td>
+                          <td className="px-3 py-2.5 text-xs text-right font-medium">{(o.Order_quantity ?? 0).toLocaleString()}</td>
+                          <td className="px-3 py-2.5 text-xs text-right font-medium text-success">{(o.Delivered_quantity ?? 0).toLocaleString()}</td>
                         </tr>
                       ))}
                       {filtered.length === 0 && (

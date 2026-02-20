@@ -179,17 +179,17 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
                     <div className="flex items-center gap-3 flex-wrap">
                       <div className="flex items-center gap-1.5">
                         <PriorityIcon priority={order.Priority} />
-                        <span className="font-mono text-sm font-bold">{order.Order}</span>
+                        <span className="font-mono text-sm font-bold">{String(order?.Order ?? '')}</span>
                         {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
                         {order.discrepancy && <DiscrepancyBadge sapArea={order.sap_area} />}
                         {order.source === 'manual' && <SourceBadge source={order.source} />}
                       </div>
-                      <StatusBadge status={order.System_Status} size="sm" />
+                      <StatusBadge status={String(order?.System_Status ?? '')} size="sm" />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1 truncate">{order.Material_description}</p>
+                    <p className="text-xs text-muted-foreground mt-1 truncate">{String(order?.Material_description ?? '')}</p>
                     <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
-                      <span>{order.Plant}</span>
-                      <span>Qty: <strong className="text-foreground">{order.Order_quantity.toLocaleString()}</strong></span>
+                      <span>{String(order?.Plant ?? '')}</span>
+                      <span>Qty: <strong className="text-foreground">{Number(order?.Order_quantity ?? 0).toLocaleString()}</strong></span>
                       <span>Finish: {order.Scheduled_finish_date}</span>
                     </div>
                   </div>
