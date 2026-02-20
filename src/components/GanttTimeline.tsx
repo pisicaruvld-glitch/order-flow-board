@@ -1,12 +1,46 @@
-import { useState, useEffect, useRef } from 'react';
-import { OrderTimeline, OrderTimelineEntry } from '@/lib/types';
+import { useState, useEffect } from 'react';
+import { OrderTimeline, OrderTimelineEntry, Order } from '@/lib/types';
 import { getOrderTimeline } from '@/lib/api';
 import { LoadingSpinner } from './Layout';
-import { GitCompareArrows, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { GitCompareArrows, AlertCircle, ChevronDown, ChevronUp, CalendarX, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface GanttTimelineProps {
-  orderId: string;
+// ============================================================
+// Safe date parsing — accepts "YYYY-MM-DD" or ISO strings
+// Returns null if invalid/empty
+// ============================================================
+function safeDate(value: string | undefined | null): Date | null {
+  if (!value || typeof value !== 'string' || value.trim() === '') return null;
+  const d = new Date(value.trim());
+  return isNaN(d.getTime()) ? null : d;
+}
+
+// Pick start/end from entry using fallback chain
+function resolveEntryDates(entry: OrderTimelineEntry): { start: Date | null; end: Date | null } {
+  const e = entry as unknown as Record<string, unknown>;
+  const start =
+    safeDate(entry.Start_date_sched) ??
+    safeDate(e.Basic_start_date as string | undefined) ??
+    null;
+  const end =
+    safeDate(entry.Scheduled_finish_date) ??
+    safeDate(e.Basic_finish_date as string | undefined) ??
+    null;
+  return { start, end };
+}
+
+// Pick start/end from an Order using fallback chain
+export function resolveOrderDates(order: Order): { start: Date | null; end: Date | null } {
+  const o = order as unknown as Record<string, unknown>;
+  const start =
+    safeDate(order.Start_date_sched) ??
+    safeDate(o.Basic_start_date as string | undefined) ??
+    null;
+  const end =
+    safeDate(order.Scheduled_finish_date) ??
+    safeDate(o.Basic_finish_date as string | undefined) ??
+    null;
+  return { start, end };
 }
 
 // ============================================================
@@ -23,13 +57,13 @@ function Tooltip({ entry }: { entry: OrderTimelineEntry }) {
       )}
       <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-muted-foreground">
         <span>Start:</span>
-        <span className="text-foreground font-medium">{entry.Start_date_sched}</span>
+        <span className="text-foreground font-medium">{entry.Start_date_sched || '—'}</span>
         <span>Finish:</span>
-        <span className="text-foreground font-medium">{entry.Scheduled_finish_date}</span>
+        <span className="text-foreground font-medium">{entry.Scheduled_finish_date || '—'}</span>
         <span>Quantity:</span>
-        <span className="text-foreground font-medium">{entry.Order_quantity.toLocaleString()}</span>
+        <span className="text-foreground font-medium">{Number(entry.Order_quantity ?? 0).toLocaleString()}</span>
         <span>Status:</span>
-        <span className="text-foreground font-mono font-medium">{entry.System_Status}</span>
+        <span className="text-foreground font-mono font-medium">{entry.System_Status || '—'}</span>
       </div>
     </div>
   );
@@ -52,12 +86,47 @@ function GanttBar({
   index: number;
 }) {
   const [showTooltip, setShowTooltip] = useState(false);
-  const total = maxDate.getTime() - minDate.getTime();
-  const start = new Date(entry.Start_date_sched).getTime();
-  const end = new Date(entry.Scheduled_finish_date).getTime();
-  const leftPct = total > 0 ? ((start - minDate.getTime()) / total) * 100 : 0;
-  const widthPct = total > 0 ? ((end - start) / total) * 100 : 10;
 
+  const { start, end } = resolveEntryDates(entry);
+  const total = maxDate.getTime() - minDate.getTime();
+
+  // If dates are invalid, render a placeholder bar
+  if (!start || !end) {
+    return (
+      <div className="flex items-center gap-3 h-8 group">
+        <div className="w-36 shrink-0 text-right">
+          <span className={cn('text-[10px] truncate block', isLatest ? 'text-foreground font-semibold' : 'text-muted-foreground')}>
+            {entry.version_label ?? `Upload ${index + 1}`}
+          </span>
+        </div>
+        <div className="flex-1 flex items-center">
+          <span className="text-[10px] text-muted-foreground italic">No dates available</span>
+        </div>
+      </div>
+    );
+  }
+
+  // If end < start — invalid schedule
+  if (end.getTime() < start.getTime()) {
+    return (
+      <div className="flex items-center gap-3 h-8 group">
+        <div className="w-36 shrink-0 text-right">
+          <span className={cn('text-[10px] truncate block', isLatest ? 'text-foreground font-semibold' : 'text-muted-foreground')}>
+            {entry.version_label ?? `Upload ${index + 1}`}
+          </span>
+        </div>
+        <div className="flex-1 flex items-center gap-1">
+          <AlertCircle size={11} className="text-destructive shrink-0" />
+          <span className="text-[10px] text-destructive">
+            Invalid dates: {entry.Start_date_sched} → {entry.Scheduled_finish_date}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  const leftPct = total > 0 ? ((start.getTime() - minDate.getTime()) / total) * 100 : 0;
+  const widthPct = total > 0 ? ((end.getTime() - start.getTime()) / total) * 100 : 10;
   const versionLabel = entry.version_label ?? `Upload ${index + 1}`;
 
   return (
@@ -77,7 +146,7 @@ function GanttBar({
               ? 'bg-primary opacity-90 hover:opacity-100'
               : 'bg-primary/30 hover:bg-primary/50'
           )}
-          style={{ left: `${leftPct}%`, width: `${Math.max(widthPct, 1)}%` }}
+          style={{ left: `${Math.max(0, leftPct)}%`, width: `${Math.max(widthPct, 1)}%` }}
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
         >
@@ -89,9 +158,75 @@ function GanttBar({
 }
 
 // ============================================================
+// Inline Order Date Display (when no timeline history)
+// ============================================================
+function SingleOrderBar({ order }: { order: Order }) {
+  const { start, end } = resolveOrderDates(order);
+
+  if (!start && !end) {
+    return (
+      <div className="flex items-center gap-2 py-3 text-xs text-muted-foreground">
+        <Calendar size={13} className="shrink-0" />
+        No schedule dates available for this order.
+      </div>
+    );
+  }
+
+  if (start && end && end.getTime() < start.getTime()) {
+    return (
+      <div className="flex items-center gap-2 py-3 text-xs text-destructive">
+        <AlertCircle size={13} className="shrink-0" />
+        Invalid schedule dates — Start: <code>{order.Start_date_sched}</code>, Finish: <code>{order.Scheduled_finish_date}</code>
+      </div>
+    );
+  }
+
+  return (
+    <div className="py-3 space-y-1.5 text-xs">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <Calendar size={13} className="shrink-0 text-primary" />
+        <span>Current schedule</span>
+      </div>
+      <div className="flex items-center gap-4 pl-5">
+        {start && (
+          <span>
+            <span className="text-muted-foreground">Start: </span>
+            <strong className="text-foreground">{order.Start_date_sched}</strong>
+          </span>
+        )}
+        {end && (
+          <span>
+            <span className="text-muted-foreground">Finish: </span>
+            <strong className="text-foreground">{order.Scheduled_finish_date}</strong>
+          </span>
+        )}
+      </div>
+      {/* Mini visual bar */}
+      <div className="pl-5 pr-2 pt-1">
+        <div className="w-full h-4 bg-muted/40 rounded relative overflow-hidden">
+          <div className="absolute inset-0 rounded bg-primary/60" style={{ left: '5%', right: '5%' }} />
+        </div>
+        <div className="flex justify-between text-[9px] text-muted-foreground mt-0.5">
+          <span>{start?.toLocaleDateString()}</span>
+          <span>{end?.toLocaleDateString()}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Props
+// ============================================================
+interface GanttTimelineProps {
+  orderId: string;
+  order?: Order; // optional — used for fallback single-order display
+}
+
+// ============================================================
 // Main Component
 // ============================================================
-export function GanttTimeline({ orderId }: GanttTimelineProps) {
+export function GanttTimeline({ orderId, order }: GanttTimelineProps) {
   const [timeline, setTimeline] = useState<OrderTimeline | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -115,26 +250,64 @@ export function GanttTimeline({ orderId }: GanttTimelineProps) {
   );
 
   if (error) return (
-    <div className="border border-border rounded-lg p-4 mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-      <AlertCircle size={14} className="text-warning shrink-0" />
-      Timeline unavailable: {error}
+    <div className="border border-border rounded-lg p-4 mt-4">
+      <div className="flex items-center gap-2 text-xs text-warning mb-3">
+        <AlertCircle size={14} className="shrink-0" />
+        Timeline history unavailable: {error}
+      </div>
+      {/* Fallback: show order dates directly */}
+      {order && <SingleOrderBar order={order} />}
     </div>
   );
 
-  if (!timeline || timeline.entries.length === 0) return (
-    <div className="border border-border rounded-lg p-4 mt-4 text-xs text-muted-foreground text-center">
-      No timeline data available for this order.
-    </div>
-  );
+  // No timeline history — show order dates as fallback
+  if (!timeline || timeline.entries.length === 0) {
+    return (
+      <div className="border border-border rounded-lg p-4 mt-4">
+        <p className="text-xs text-muted-foreground mb-1 font-medium">No upload history for this order.</p>
+        {order
+          ? <SingleOrderBar order={order} />
+          : (
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <CalendarX size={13} />
+              No schedule dates available for this order.
+            </p>
+          )
+        }
+      </div>
+    );
+  }
 
-  // Compute global date range
-  const allDates = timeline.entries.flatMap(e => [
-    new Date(e.Start_date_sched),
-    new Date(e.Scheduled_finish_date),
-  ]);
+  // Filter entries that have at least one valid date
+  const validEntries = timeline.entries.filter(e => {
+    const { start, end } = resolveEntryDates(e);
+    return start !== null || end !== null;
+  });
+
+  if (validEntries.length === 0) {
+    return (
+      <div className="border border-border rounded-lg p-4 mt-4">
+        <p className="text-xs text-muted-foreground mb-1 font-medium">Timeline data loaded but no valid dates found.</p>
+        {order ? <SingleOrderBar order={order} /> : (
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <CalendarX size={13} />
+            No schedule dates available for this order.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // Compute global date range from valid entries only
+  const allDates: Date[] = [];
+  for (const e of validEntries) {
+    const { start, end } = resolveEntryDates(e);
+    if (start) allDates.push(start);
+    if (end) allDates.push(end);
+  }
+
   const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
   const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())));
-  // Pad by 5%
   const rangeMs = maxDate.getTime() - minDate.getTime();
   const padMs = rangeMs * 0.05 || 86400000;
   const paddedMin = new Date(minDate.getTime() - padMs);

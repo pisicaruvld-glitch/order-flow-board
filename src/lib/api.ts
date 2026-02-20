@@ -485,8 +485,19 @@ export async function getOrderTimeline(orderId: string): Promise<OrderTimeline |
   }
 }
 
-function shiftDate(dateStr: string, days: number): string {
+function shiftDate(dateStr: string | undefined | null, days: number): string {
+  if (!dateStr) {
+    // Fallback to today ± days
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return d.toISOString().split('T')[0];
+  }
   const d = new Date(dateStr);
+  if (isNaN(d.getTime())) {
+    const fallback = new Date();
+    fallback.setDate(fallback.getDate() + days);
+    return fallback.toISOString().split('T')[0];
+  }
   d.setDate(d.getDate() + days);
   return d.toISOString().split('T')[0];
 }
