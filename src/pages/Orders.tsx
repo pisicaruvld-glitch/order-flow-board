@@ -4,7 +4,9 @@ import { getOrders, getStatusMappings, getAreaCounts, getUniquePlants, uploadOrd
 import { AppConfig, OrderChange, UploadResult, AREAS } from '@/lib/types';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { AreaBadge, StatusBadge } from '@/components/Badges';
-import { Upload, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, RefreshCw, Search, Filter } from 'lucide-react';
+import { PriorityIcon, ChangedBadge } from '@/components/OrderCard';
+import { GanttTimeline } from '@/components/GanttTimeline';
+import { Upload, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, RefreshCw, Search, Filter, GitCompareArrows } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface OrdersPageProps {
@@ -20,6 +22,8 @@ export default function OrdersPage({ config }: OrdersPageProps) {
   const [searchQ, setSearchQ] = useState('');
   const [plantFilter, setPlantFilter] = useState('');
   const [areaFilter, setAreaFilter] = useState('');
+  const [changedOnly, setChangedOnly] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
   // Upload state
   const [uploading, setUploading] = useState(false);
@@ -70,11 +74,15 @@ export default function OrdersPage({ config }: OrdersPageProps) {
     const matchQ = !q || o.Order.toLowerCase().includes(q) || o.Material.toLowerCase().includes(q) || o.Material_description.toLowerCase().includes(q);
     const matchPlant = !plantFilter || o.Plant === plantFilter;
     const matchArea = !areaFilter || o.current_area === areaFilter;
-    return matchQ && matchPlant && matchArea;
+    const matchChanged = !changedOnly || o.has_changes;
+    return matchQ && matchPlant && matchArea && matchChanged;
   });
 
   const areaCounts = getAreaCounts(orders, mappings);
   const plants = getUniquePlants(orders);
+  const changedCount = orders.filter(o => o.has_changes).length;
+
+  const selectedOrder = orders.find(o => o.Order === selectedOrderId) ?? null;
 
   return (
     <PageContainer>
@@ -207,6 +215,20 @@ export default function OrdersPage({ config }: OrdersPageProps) {
               <option value="">All Areas</option>
               {AREAS.map(a => <option key={a}>{a}</option>)}
             </select>
+            {changedCount > 0 && (
+              <button
+                onClick={() => setChangedOnly(c => !c)}
+                className={cn(
+                  'flex items-center gap-1.5 text-xs px-2.5 py-2 rounded-md border transition-colors',
+                  changedOnly
+                    ? 'border-warning/60 bg-warning/10 text-warning'
+                    : 'border-border bg-card text-muted-foreground hover:border-warning/40'
+                )}
+              >
+                <GitCompareArrows size={13} />
+                Changed only ({changedCount})
+              </button>
+            )}
             <span className="text-xs text-muted-foreground ml-auto">{filtered.length} orders</span>
           </div>
 
@@ -214,39 +236,74 @@ export default function OrdersPage({ config }: OrdersPageProps) {
           {error && <ErrorMessage message={error} onRetry={loadOrders} />}
 
           {!loading && !error && (
-            <div className="bg-card border border-border rounded-lg overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-muted text-muted-foreground text-xs border-b border-border">
-                      {['Order','Plant','Material','Description','Sys. Status','User Status','Area','Start','Finish','Qty','Del. Qty'].map(h => (
-                        <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
+            <div className="space-y-4">
+              {/* Timeline panel for selected order */}
+              {selectedOrder && (
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-semibold">
+                      Timeline — <span className="font-mono">{selectedOrder.Order}</span>
+                    </span>
+                    <button
+                      onClick={() => setSelectedOrderId(null)}
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      ✕ Close
+                    </button>
+                  </div>
+                  <GanttTimeline orderId={selectedOrder.Order} />
+                </div>
+              )}
+
+              <div className="bg-card border border-border rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-muted text-muted-foreground text-xs border-b border-border">
+                        {['','Order','Priority','Plant','Material','Description','Sys. Status','User Status','Area','Start','Finish','Qty','Del. Qty'].map((h, i) => (
+                          <th key={i} className="text-left px-3 py-2.5 font-medium whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map((o, i) => (
+                        <tr
+                          key={o.Order}
+                          onClick={() => setSelectedOrderId(selectedOrderId === o.Order ? null : o.Order)}
+                          className={cn(
+                            'border-b border-border hover:bg-muted/40 transition-colors cursor-pointer',
+                            i % 2 === 0 && 'bg-background/40',
+                            selectedOrderId === o.Order && 'bg-primary-subtle border-l-2 border-l-primary'
+                          )}
+                        >
+                          {/* Changed indicator */}
+                          <td className="px-3 py-2.5 w-4">
+                            {o.has_changes && <ChangedBadge fields={o.changed_fields} />}
+                          </td>
+                          <td className="px-3 py-2.5 font-mono text-xs font-semibold">{o.Order}</td>
+                          <td className="px-3 py-2.5">
+                            <PriorityIcon priority={o.Priority} />
+                          </td>
+                          <td className="px-3 py-2.5 text-xs">{o.Plant}</td>
+                          <td className="px-3 py-2.5 font-mono text-xs">{o.Material}</td>
+                          <td className="px-3 py-2.5 text-xs text-muted-foreground max-w-[200px] truncate" title={o.Material_description}>{o.Material_description}</td>
+                          <td className="px-3 py-2.5"><StatusBadge status={o.System_Status} size="sm" /></td>
+                          <td className="px-3 py-2.5 text-xs text-muted-foreground">{o.User_Status || '—'}</td>
+                          <td className="px-3 py-2.5"><AreaBadge area={o.current_area} size="sm" /></td>
+                          <td className="px-3 py-2.5 text-xs">{o.Start_date_sched}</td>
+                          <td className="px-3 py-2.5 text-xs">{o.Scheduled_finish_date}</td>
+                          <td className="px-3 py-2.5 text-xs text-right font-medium">{o.Order_quantity.toLocaleString()}</td>
+                          <td className="px-3 py-2.5 text-xs text-right font-medium text-success">{o.Delivered_quantity.toLocaleString()}</td>
+                        </tr>
                       ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((o, i) => (
-                      <tr key={o.Order} className={cn('border-b border-border hover:bg-muted/40 transition-colors', i % 2 === 0 && 'bg-background/40')}>
-                        <td className="px-4 py-2.5 font-mono text-xs font-semibold">{o.Order}</td>
-                        <td className="px-4 py-2.5 text-xs">{o.Plant}</td>
-                        <td className="px-4 py-2.5 font-mono text-xs">{o.Material}</td>
-                        <td className="px-4 py-2.5 text-xs text-muted-foreground max-w-[200px] truncate" title={o.Material_description}>{o.Material_description}</td>
-                        <td className="px-4 py-2.5"><StatusBadge status={o.System_Status} size="sm" /></td>
-                        <td className="px-4 py-2.5 text-xs text-muted-foreground">{o.User_Status || '—'}</td>
-                        <td className="px-4 py-2.5"><AreaBadge area={o.current_area} size="sm" /></td>
-                        <td className="px-4 py-2.5 text-xs">{o.Start_date_sched}</td>
-                        <td className="px-4 py-2.5 text-xs">{o.Scheduled_finish_date}</td>
-                        <td className="px-4 py-2.5 text-xs text-right font-medium">{o.Order_quantity.toLocaleString()}</td>
-                        <td className="px-4 py-2.5 text-xs text-right font-medium text-success">{o.Delivered_quantity.toLocaleString()}</td>
-                      </tr>
-                    ))}
-                    {filtered.length === 0 && (
-                      <tr>
-                        <td colSpan={11} className="text-center py-12 text-muted-foreground text-sm">No orders match your filters</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                      {filtered.length === 0 && (
+                        <tr>
+                          <td colSpan={13} className="text-center py-12 text-muted-foreground text-sm">No orders match your filters</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}

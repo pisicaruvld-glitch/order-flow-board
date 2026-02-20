@@ -2,10 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { Order, Issue, IssueHistoryEntry, StatusMapping, ISSUE_TYPES } from '@/lib/types';
 import { getOrders, getStatusMappings, getIssues, createIssue, patchIssue, getIssueHistory, markOrderReady } from '@/lib/api';
 import { AppConfig } from '@/lib/types';
-import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
-import { AreaBadge, StatusBadge, IssueBadge } from '@/components/Badges';
-import { OrderDetailPanel } from '@/components/OrderCard';
-import { Plus, Clock, CheckCircle2, AlertTriangle, ChevronRight, RefreshCw, History } from 'lucide-react';
+import { PageContainer, LoadingSpinner, ErrorMessage } from '@/components/Layout';
+import { StatusBadge, IssueBadge } from '@/components/Badges';
+import { OrderDetailPanel, PriorityIcon, ChangedBadge } from '@/components/OrderCard';
+import { GanttTimeline } from '@/components/GanttTimeline';
+import { Plus, CheckCircle2, AlertTriangle, RefreshCw, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface WarehousePageProps {
@@ -150,7 +151,11 @@ export default function WarehousePage({ config }: WarehousePageProps) {
               )}
             >
               <div className="flex items-center justify-between">
-                <span className="font-mono text-xs font-semibold">{order.Order}</span>
+                <div className="flex items-center gap-1.5">
+                  <PriorityIcon priority={order.Priority} />
+                  <span className="font-mono text-xs font-semibold">{order.Order}</span>
+                  {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
+                </div>
                 <StatusBadge status={order.System_Status} size="sm" />
               </div>
               <p className="text-xs text-muted-foreground mt-0.5 truncate">{order.Material_description}</p>
@@ -329,6 +334,10 @@ export default function WarehousePage({ config }: WarehousePageProps) {
                     {markingReady ? 'Marking…' : '✓ Mark Ready → Send to Production'}
                   </button>
                 </div>
+              </div>
+              {/* Gantt Timeline */}
+              <div className="px-4 pb-4">
+                <GanttTimeline orderId={selectedOrder.Order} />
               </div>
             </OrderDetailPanel>
           )}

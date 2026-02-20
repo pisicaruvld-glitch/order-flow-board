@@ -9,6 +9,8 @@ import {
   LogisticsStatus,
   IssueType,
   Area,
+  OrderTimeline,
+  OrderTimelineEntry,
 } from './types';
 import {
   MOCK_ORDERS,
@@ -36,8 +38,24 @@ function isDemo() {
   return loadConfig().mode === 'DEMO';
 }
 
+function cfg() {
+  return loadConfig();
+}
+
 function apiBase() {
-  return loadConfig().apiBaseUrl;
+  return cfg().apiBaseUrl;
+}
+
+function ep() {
+  return cfg().endpoints;
+}
+
+/** Replace path template variables like {order_id} */
+function resolvePath(template: string, vars: Record<string, string>): string {
+  return Object.entries(vars).reduce(
+    (path, [k, v]) => path.replace(`{${k}}`, v),
+    template
+  );
 }
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
@@ -53,10 +71,20 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
-function makeDate(offsetDays: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
-  return d.toISOString().split('T')[0];
+// ============================================================
+// HEALTH CHECK
+// ============================================================
+export async function checkHealth(): Promise<{ ok: boolean; message: string }> {
+  try {
+    const url = `${apiBase()}${ep().healthPath}`;
+    const res = await fetch(url, { method: 'GET' });
+    if (res.ok) {
+      return { ok: true, message: `HTTP ${res.status} — Connection successful` };
+    }
+    return { ok: false, message: `HTTP ${res.status} — Server responded with error` };
+  } catch (e: unknown) {
+    return { ok: false, message: e instanceof Error ? e.message : 'Connection failed' };
+  }
 }
 
 // ============================================================
@@ -93,14 +121,14 @@ export async function getOrders(filters: OrderFilters = {}): Promise<Order[]> {
 
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([k, v]) => { if (v) params.set(k, String(v)); });
-  return apiFetch<Order[]>(`/orders?${params.toString()}`);
+  return apiFetch<Order[]>(`${ep().ordersPath}?${params.toString()}`);
 }
 
 export async function getOrder(orderId: string): Promise<Order | undefined> {
   if (isDemo()) {
     return _orders.find(o => o.Order === orderId);
   }
-  return apiFetch<Order>(`/orders/${orderId}`);
+  return apiFetch<Order>(`${ep().ordersPath}/${orderId}`);
 }
 
 // ============================================================
@@ -108,7 +136,7 @@ export async function getOrder(orderId: string): Promise<Order | undefined> {
 // ============================================================
 export async function getStatusMappings(): Promise<StatusMapping[]> {
   if (isDemo()) return [..._statusMappings];
-  return apiFetch<StatusMapping[]>('/admin/status-mapping');
+  return apiFetch<StatusMapping[]>(ep().statusMappingPath);
 }
 
 export async function updateStatusMappings(mappings: StatusMapping[]): Promise<StatusMapping[]> {
@@ -121,7 +149,7 @@ export async function updateStatusMappings(mappings: StatusMapping[]): Promise<S
     });
     return [..._statusMappings];
   }
-  return apiFetch<StatusMapping[]>('/admin/status-mapping', {
+  return apiFetch<StatusMapping[]>(ep().statusMappingPath, {
     method: 'PUT',
     body: JSON.stringify(mappings),
   });
@@ -137,7 +165,7 @@ export async function uploadOrders(_file: File): Promise<UploadResult> {
   }
   const form = new FormData();
   form.append('file', _file);
-  const res = await fetch(`${apiBase()}/uploads/orders`, { method: 'POST', body: form });
+  const res = await fetch(`${apiBase()}${ep().uploadOrdersPath}`, { method: 'POST', body: form });
   if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
   return res.json();
 }
@@ -147,7 +175,61 @@ export async function getChangeReport(_uploadId: string): Promise<OrderChange[]>
     await new Promise(r => setTimeout(r, 500));
     return [...MOCK_CHANGE_REPORT];
   }
-  return apiFetch<OrderChange[]>(`/uploads/${_uploadId}/changes`);
+  return apiFetch<OrderChange[]>(`${ep().uploadOrdersPath}/${_uploadId}/changes`);
+}
+
+// ============================================================
+// TIMELINE API
+// ============================================================
+export async function getOrderTimeline(orderId: string): Promise<OrderTimeline | null> {
+  if (isDemo()) {
+    // Generate a synthetic timeline from mock order data
+    const order = _orders.find(o => o.Order === orderId);
+    if (!order) return null;
+    const entries: OrderTimelineEntry[] = [
+      {
+        upload_id: 'UPL-20240101-001',
+        uploaded_at: new Date(Date.now() - 14 * 86400000).toISOString(),
+        version_label: 'Upload 1 — Initial',
+        Start_date_sched: shiftDate(order.Start_date_sched, -5),
+        Scheduled_finish_date: shiftDate(order.Scheduled_finish_date, -3),
+        Order_quantity: Math.round(order.Order_quantity * 0.9),
+        System_Status: 'CRTD',
+      },
+      {
+        upload_id: 'UPL-20240108-001',
+        uploaded_at: new Date(Date.now() - 7 * 86400000).toISOString(),
+        version_label: 'Upload 2 — Revised',
+        Start_date_sched: shiftDate(order.Start_date_sched, -2),
+        Scheduled_finish_date: order.Scheduled_finish_date,
+        Order_quantity: order.Order_quantity,
+        System_Status: order.System_Status,
+      },
+      {
+        upload_id: 'UPL-20240115-001',
+        uploaded_at: new Date().toISOString(),
+        version_label: 'Upload 3 — Latest',
+        Start_date_sched: order.Start_date_sched,
+        Scheduled_finish_date: order.Scheduled_finish_date,
+        Order_quantity: order.Order_quantity,
+        System_Status: order.System_Status,
+      },
+    ];
+    return { order_id: orderId, entries };
+  }
+
+  try {
+    const path = resolvePath(ep().orderTimelinePath, { order_id: orderId });
+    return await apiFetch<OrderTimeline>(path);
+  } catch {
+    return null;
+  }
+}
+
+function shiftDate(dateStr: string, days: number): string {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
 }
 
 // ============================================================
@@ -155,7 +237,8 @@ export async function getChangeReport(_uploadId: string): Promise<OrderChange[]>
 // ============================================================
 export async function getIssues(orderId: string): Promise<Issue[]> {
   if (isDemo()) return _issues.filter(i => i.order_id === orderId);
-  return apiFetch<Issue[]>(`/orders/${orderId}/issues`);
+  const path = resolvePath(ep().orderIssuesPath, { order_id: orderId });
+  return apiFetch<Issue[]>(path);
 }
 
 export async function createIssue(
@@ -188,7 +271,8 @@ export async function createIssue(
     ];
     return newIssue;
   }
-  return apiFetch<Issue>(`/orders/${orderId}/issues`, {
+  const path = resolvePath(ep().orderIssuesPath, { order_id: orderId });
+  return apiFetch<Issue>(path, {
     method: 'POST',
     body: JSON.stringify(data),
   });
@@ -224,7 +308,8 @@ export async function patchIssue(
     ];
     return updated;
   }
-  return apiFetch<Issue>(`/issues/${issueId}`, {
+  const path = resolvePath(ep().issuePath, { issue_id: issueId });
+  return apiFetch<Issue>(path, {
     method: 'PATCH',
     body: JSON.stringify(data),
   });
@@ -232,7 +317,8 @@ export async function patchIssue(
 
 export async function getIssueHistory(issueId: string): Promise<IssueHistoryEntry[]> {
   if (isDemo()) return _issueHistory.filter(h => h.issue_id === issueId);
-  return apiFetch<IssueHistoryEntry[]>(`/issues/${issueId}/history`);
+  const path = resolvePath(ep().issueHistoryPath, { issue_id: issueId });
+  return apiFetch<IssueHistoryEntry[]>(path);
 }
 
 // ============================================================
@@ -240,7 +326,7 @@ export async function getIssueHistory(issueId: string): Promise<IssueHistoryEntr
 // ============================================================
 export async function getProductionStatus(orderId: string): Promise<ProductionStatus | undefined> {
   if (isDemo()) return _productionStatus[orderId];
-  return apiFetch<ProductionStatus>(`/orders/${orderId}/production-status`);
+  return apiFetch<ProductionStatus>(`${ep().ordersPath}/${orderId}/production-status`);
 }
 
 export async function updateProductionStatus(
@@ -257,7 +343,7 @@ export async function updateProductionStatus(
     _productionStatus = { ..._productionStatus, [orderId]: updated };
     return updated;
   }
-  return apiFetch<ProductionStatus>(`/orders/${orderId}/production-status`, {
+  return apiFetch<ProductionStatus>(`${ep().ordersPath}/${orderId}/production-status`, {
     method: 'PUT',
     body: JSON.stringify({ status }),
   });
@@ -268,7 +354,7 @@ export async function updateProductionStatus(
 // ============================================================
 export async function getLogisticsStatus(orderId: string): Promise<LogisticsStatus | undefined> {
   if (isDemo()) return _logisticsStatus[orderId];
-  return apiFetch<LogisticsStatus>(`/orders/${orderId}/logistics-status`);
+  return apiFetch<LogisticsStatus>(`${ep().ordersPath}/${orderId}/logistics-status`);
 }
 
 export async function updateLogisticsStatus(
@@ -289,7 +375,7 @@ export async function updateLogisticsStatus(
     _logisticsStatus = { ..._logisticsStatus, [orderId]: updated };
     return updated;
   }
-  return apiFetch<LogisticsStatus>(`/orders/${orderId}/logistics-status`, {
+  return apiFetch<LogisticsStatus>(`${ep().ordersPath}/${orderId}/logistics-status`, {
     method: 'PUT',
     body: JSON.stringify(data),
   });
@@ -313,7 +399,7 @@ export async function markOrderReady(orderId: string): Promise<Order> {
   if (isDemo()) {
     return demoMoveOrder(orderId, 'Production');
   }
-  return apiFetch<Order>(`/orders/${orderId}/mark-ready`, { method: 'POST' });
+  return apiFetch<Order>(`${ep().ordersPath}/${orderId}/mark-ready`, { method: 'POST' });
 }
 
 // ============================================================

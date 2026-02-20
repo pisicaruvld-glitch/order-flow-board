@@ -4,6 +4,7 @@ import { getOrders, getProductionStatus, updateProductionStatus } from '@/lib/ap
 import { AppConfig } from '@/lib/types';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { StatusBadge } from '@/components/Badges';
+import { PriorityIcon, ChangedBadge } from '@/components/OrderCard';
 import { RefreshCw, Play, CheckCircle2, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -141,7 +142,11 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                   {/* Order Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 flex-wrap">
-                      <span className="font-mono text-sm font-bold">{order.Order}</span>
+                      <div className="flex items-center gap-1.5">
+                        <PriorityIcon priority={order.Priority} />
+                        <span className="font-mono text-sm font-bold">{order.Order}</span>
+                        {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
+                      </div>
                       <StatusBadge status={order.System_Status} size="sm" />
                       <span
                         className={cn(
