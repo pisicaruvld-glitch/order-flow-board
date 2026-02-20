@@ -4,6 +4,7 @@ import { getOrders, getLogisticsStatus, updateLogisticsStatus } from '@/lib/api'
 import { AppConfig } from '@/lib/types';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { StatusBadge } from '@/components/Badges';
+import { PriorityIcon, ChangedBadge } from '@/components/OrderCard';
 import { RefreshCw, PackageCheck, Truck, Circle, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -140,7 +141,11 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
                   {/* Order Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 flex-wrap">
-                      <span className="font-mono text-sm font-bold">{order.Order}</span>
+                      <div className="flex items-center gap-1.5">
+                        <PriorityIcon priority={order.Priority} />
+                        <span className="font-mono text-sm font-bold">{order.Order}</span>
+                        {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
+                      </div>
                       <StatusBadge status={order.System_Status} size="sm" />
                     </div>
                     <p className="text-xs text-muted-foreground mt-1 truncate">{order.Material_description}</p>

@@ -74,6 +74,7 @@ const statusPool: string[] = [
 ];
 
 const userStatuses = ['', 'PRIORITY', 'ON-HOLD', 'RUSH', 'NORMAL', 'REVIEW'];
+const priorityPool: Array<string | undefined> = ['/', 'o', 'x', '', undefined, '/', 'o', 'x', ''];
 
 const rawOrders: Omit<Order, 'current_area'>[] = Array.from({ length: 50 }, (_, i) => {
   const idx = i % statusPool.length;
@@ -87,6 +88,12 @@ const rawOrders: Omit<Order, 'current_area'>[] = Array.from({ length: 50 }, (_, 
     ? Math.round(qty * Math.random() * 0.6)
     : 0;
 
+  // Mark ~20% of orders as changed
+  const has_changes = i % 5 === 0;
+  const changed_fields = has_changes
+    ? (['Order_quantity', 'Start_date_sched', 'Scheduled_finish_date'] as const).filter((_, fi) => fi <= i % 3)
+    : undefined;
+
   return {
     Order: `ORD-${String(100100 + i).padStart(6, '0')}`,
     Plant: plants[i % plants.length],
@@ -98,6 +105,9 @@ const rawOrders: Omit<Order, 'current_area'>[] = Array.from({ length: 50 }, (_, 
     Delivered_quantity: delivered,
     System_Status: systemStatus,
     User_Status: userStatuses[i % userStatuses.length],
+    Priority: priorityPool[i % priorityPool.length],
+    has_changes,
+    changed_fields: changed_fields as string[] | undefined,
   };
 });
 

@@ -16,6 +16,11 @@ export interface Order {
   System_Status: string;
   User_Status: string;
   current_area: Area;
+  current_label?: string;
+  // New fields
+  Priority?: string;         // "/", "o", "x", or empty
+  has_changes?: boolean;     // true if any tracked field changed vs previous upload
+  changed_fields?: string[]; // e.g. ["Order_quantity", "Start_date_sched"]
 }
 
 export interface StatusMapping {
@@ -89,16 +94,61 @@ export interface LogisticsStatus {
   delivered_by?: string;
 }
 
+// ============================================================
+// Timeline / Gantt
+// ============================================================
+export interface OrderTimelineEntry {
+  upload_id?: string;
+  uploaded_at?: string;
+  version_label?: string;
+  Start_date_sched: string;
+  Scheduled_finish_date: string;
+  Order_quantity: number;
+  System_Status: string;
+}
+
+export interface OrderTimeline {
+  order_id: string;
+  entries: OrderTimelineEntry[];
+}
+
+// ============================================================
+// App Config — includes endpoint mapping
+// ============================================================
+export interface EndpointPaths {
+  healthPath: string;
+  ordersPath: string;
+  uploadOrdersPath: string;
+  statusMappingPath: string;
+  orderTimelinePath: string;
+  orderIssuesPath: string;   // /orders/{order_id}/issues
+  issuePath: string;         // /issues/{issue_id}
+  issueHistoryPath: string;  // /issues/{issue_id}/history
+}
+
 export interface AppConfig {
   mode: 'DEMO' | 'LIVE';
   apiBaseUrl: string;
   userRole: 'admin' | 'user';
+  endpoints: EndpointPaths;
 }
+
+export const DEFAULT_ENDPOINTS: EndpointPaths = {
+  healthPath: '/health',
+  ordersPath: '/orders',
+  uploadOrdersPath: '/uploads/orders',
+  statusMappingPath: '/admin/status-mapping',
+  orderTimelinePath: '/orders/{order_id}/timeline',
+  orderIssuesPath: '/orders/{order_id}/issues',
+  issuePath: '/issues/{issue_id}',
+  issueHistoryPath: '/issues/{issue_id}/history',
+};
 
 export const DEFAULT_CONFIG: AppConfig = {
   mode: 'DEMO',
   apiBaseUrl: 'http://localhost:8000/api',
   userRole: 'admin',
+  endpoints: { ...DEFAULT_ENDPOINTS },
 };
 
 export const AREAS: Area[] = ['Orders', 'Warehouse', 'Production', 'Logistics'];
