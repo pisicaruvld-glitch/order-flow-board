@@ -69,6 +69,27 @@ export function OrderCard({ order, compact = false, onClick, selected }: OrderCa
         </div>
       </div>
 
+      {compact && (
+        <div className="mt-1 min-w-0">
+          {order.Material || order.Material_description ? (
+            <>
+              {order.Material && (
+                <p className="font-mono text-[10px] text-muted-foreground leading-tight truncate">
+                  {order.Material}
+                </p>
+              )}
+              {order.Material_description && (
+                <p className="text-[10px] text-muted-foreground leading-tight truncate" title={order.Material_description}>
+                  {order.Material_description}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="text-[10px] text-muted-foreground leading-tight">Material: N/A</p>
+          )}
+        </div>
+      )}
+
       {!compact && (
         <>
           <div className="mt-1.5">
