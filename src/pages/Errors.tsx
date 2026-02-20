@@ -54,8 +54,12 @@ export default function ErrorsPage({ config }: ErrorsPageProps) {
 
   const filtered = errors.filter(e => {
     const matchCat = !categoryFilter || e.category === categoryFilter;
-    const q = searchQ.toLowerCase();
-    const matchQ = !q || e.Order.toLowerCase().includes(q) || e.Material.toLowerCase().includes(q) || e.Plant.toLowerCase().includes(q) || e.description.toLowerCase().includes(q);
+    const q = (searchQ ?? '').toLowerCase();
+    const matchQ = !q
+      || String(e?.Order ?? '').toLowerCase().includes(q)
+      || String(e?.Material ?? '').toLowerCase().includes(q)
+      || String(e?.Plant ?? '').toLowerCase().includes(q)
+      || String(e?.description ?? '').toLowerCase().includes(q);
     return matchCat && matchQ;
   });
 
@@ -194,9 +198,9 @@ export default function ErrorsPage({ config }: ErrorsPageProps) {
                               <span className="font-mono">{e.category.replace('_', ' ')}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-3 font-mono text-xs font-semibold">{e.Order}</td>
-                          <td className="px-4 py-3 font-mono text-xs">{e.Material}</td>
-                          <td className="px-4 py-3 text-xs">{e.Plant}</td>
+                          <td className="px-4 py-3 font-mono text-xs font-semibold">{String(e?.Order ?? '')}</td>
+                           <td className="px-4 py-3 font-mono text-xs">{String(e?.Material ?? '')}</td>
+                           <td className="px-4 py-3 text-xs">{String(e?.Plant ?? '')}</td>
                           <td className="px-4 py-3">
                             {e.current_area ? <AreaBadge area={e.current_area} size="sm" /> : <span className="text-muted-foreground text-xs">—</span>}
                           </td>
