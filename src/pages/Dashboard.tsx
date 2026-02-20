@@ -54,9 +54,20 @@ export default function Dashboard({ config }: DashboardProps) {
   useEffect(() => { load(); }, [load]);
 
   const filtered = orders.filter(o => {
-    const q = searchQ.toLowerCase();
-    const matchQ = !q || o.Order.toLowerCase().includes(q) || o.Material.toLowerCase().includes(q) || o.Material_description.toLowerCase().includes(q);
-    const matchPlant = !plantFilter || o.Plant === plantFilter;
+    const q = (searchQ ?? '').toLowerCase();
+  
+    const orderStr = String(o?.Order ?? '');
+    const materialStr = String(o?.Material ?? '');
+    const descStr = String(o?.Material_description ?? '');
+  
+    const matchQ =
+      !q ||
+      orderStr.toLowerCase().includes(q) ||
+      materialStr.toLowerCase().includes(q) ||
+      descStr.toLowerCase().includes(q);
+  
+    const matchPlant = !plantFilter || String(o?.Plant ?? '') === plantFilter;
+  
     return matchQ && matchPlant;
   });
 
