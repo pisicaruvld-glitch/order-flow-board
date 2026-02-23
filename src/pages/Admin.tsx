@@ -59,7 +59,10 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
     setLoading(true);
     setError(null);
     try {
-      const [m, modes] = await Promise.all([getStatusMappings(), getAreaModes()]);
+      const [m, modes] = await Promise.all([
+        getStatusMappings().then(d => Array.isArray(d) ? d : []),
+        getAreaModes().catch(() => ({ ...DEFAULT_AREA_MODES })),
+      ]);
       // Normalize legacy area values and mark dirty rows
       const normalized = m.map(row => {
         const norm = normalizeMappedArea(row.mapped_area);
@@ -91,9 +94,12 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
         ...m,
         mapped_area: normalizeMappedArea(m.mapped_area) as Area,
       }));
-      const updated = await updateStatusMappings(sanitized);
-      // Re-normalize what comes back
-      const normalized = updated.map(row => {
+      // PUT may return { ok: true } instead of an array — don't call .map() on it
+      await updateStatusMappings(sanitized);
+      // Re-fetch the authoritative list from the backend
+      const fresh = await getStatusMappings();
+      const freshArray = Array.isArray(fresh) ? fresh : [];
+      const normalized = freshArray.map(row => {
         const norm = normalizeMappedArea(row.mapped_area);
         return norm !== row.mapped_area ? { ...row, mapped_area: norm as Area } : row;
       });
