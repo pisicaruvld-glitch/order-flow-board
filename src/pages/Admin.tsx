@@ -1,5 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { StatusMapping, Area, AREAS, AppConfig as AppConfigType, DEFAULT_ENDPOINTS, EndpointPaths, AreaModes, DEFAULT_AREA_MODES, FLOW_AREAS } from '@/lib/types';
+
+/** Allowed board areas for the Status → Area mapping dropdown */
+const MAPPING_AREAS = ['Planning', 'Warehouse', 'Production', 'Logistics'] as const;
+type MappingArea = (typeof MAPPING_AREAS)[number];
+
+/** Migrate legacy area values to current board areas */
+function normalizeMappedArea(area: string): MappingArea {
+  const MIGRATION: Record<string, MappingArea> = {
+    'Orders': 'Planning',
+    'Deliveries': 'Logistics',
+  };
+  if (MIGRATION[area]) return MIGRATION[area];
+  if ((MAPPING_AREAS as readonly string[]).includes(area)) return area as MappingArea;
+  return 'Planning'; // fallback
+}
 import { getStatusMappings, updateStatusMappings, checkHealth, getEffectiveStatus, getAreaModes, saveAreaModes } from '@/lib/api';
 import { loadConfig, updateConfig } from '@/lib/appConfig';
 import { AppConfig } from '@/lib/types';
@@ -45,7 +60,12 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
     setError(null);
     try {
       const [m, modes] = await Promise.all([getStatusMappings(), getAreaModes()]);
-      setMappings(m);
+      // Normalize legacy area values and mark dirty rows
+      const normalized = m.map(row => {
+        const norm = normalizeMappedArea(row.mapped_area);
+        return norm !== row.mapped_area ? { ...row, mapped_area: norm as Area } : row;
+      });
+      setMappings(normalized);
       setAreaModes(modes);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load mappings');
@@ -64,8 +84,18 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
   const handleSaveMappings = async () => {
     setSaving(true);
     try {
-      const updated = await updateStatusMappings(mappings);
-      setMappings(updated);
+      // Ensure all mapped_area values are valid before saving
+      const sanitized = mappings.map(m => ({
+        ...m,
+        mapped_area: normalizeMappedArea(m.mapped_area) as Area,
+      }));
+      const updated = await updateStatusMappings(sanitized);
+      // Re-normalize what comes back
+      const normalized = updated.map(row => {
+        const norm = normalizeMappedArea(row.mapped_area);
+        return norm !== row.mapped_area ? { ...row, mapped_area: norm as Area } : row;
+      });
+      setMappings(normalized);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e: unknown) {
@@ -121,7 +151,7 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
     if (eff) {
       setPreviewResult({ effectiveStatus: eff.system_status_value, area: eff.mapped_area, label: eff.mapped_label });
     } else {
-      setPreviewResult({ effectiveStatus: '(no match)', area: 'Orders', label: 'Unmapped → defaults to Orders' });
+      setPreviewResult({ effectiveStatus: '(no match)', area: 'Planning' as Area, label: 'Unmapped → defaults to Planning' });
     }
   };
 
@@ -423,16 +453,21 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
                 <tbody>
                   {mappings.map(m => (
                     <tr key={m.id} className={cn('border-b border-border hover:bg-muted/40', !m.is_active && 'opacity-50')}>
+                      {!m.is_active && (
+                        <td colSpan={0} className="hidden">
+                          {/* Hidden hint rendered inline below */}
+                        </td>
+                      )}
                       <td className="px-4 py-2.5">
                         <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{m.system_status_value}</code>
                       </td>
                       <td className="px-4 py-2.5">
                         <select
-                          value={m.mapped_area}
+                          value={normalizeMappedArea(m.mapped_area)}
                           onChange={e => handleMappingChange(m.id, 'mapped_area', e.target.value as Area)}
                           className="text-xs border border-border rounded px-2 py-1 bg-card focus:outline-none focus:ring-1 focus:ring-ring"
                         >
-                          {AREAS.map(a => <option key={a} value={a}>{a}</option>)}
+                          {MAPPING_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
                         </select>
                       </td>
                       <td className="px-4 py-2.5">
@@ -451,20 +486,25 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
                         />
                       </td>
                       <td className="px-4 py-2.5">
-                        <button
-                          onClick={() => handleMappingChange(m.id, 'is_active', !m.is_active)}
-                          className={cn(
-                            'w-9 h-5 rounded-full transition-colors relative',
-                            m.is_active ? 'bg-success' : 'bg-border'
-                          )}
-                        >
-                          <span
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleMappingChange(m.id, 'is_active', !m.is_active)}
                             className={cn(
-                              'absolute top-0.5 w-4 h-4 bg-card rounded-full shadow transition-all',
-                              m.is_active ? 'left-4' : 'left-0.5'
+                              'w-9 h-5 rounded-full transition-colors relative',
+                              m.is_active ? 'bg-success' : 'bg-border'
                             )}
-                          />
-                        </button>
+                          >
+                            <span
+                              className={cn(
+                                'absolute top-0.5 w-4 h-4 bg-card rounded-full shadow transition-all',
+                                m.is_active ? 'left-4' : 'left-0.5'
+                              )}
+                            />
+                          </button>
+                          {!m.is_active && (
+                            <span className="text-[10px] text-muted-foreground italic">Hidden</span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
