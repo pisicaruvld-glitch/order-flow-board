@@ -30,6 +30,7 @@ export interface Order {
 
 export interface StatusMapping {
   id: string;
+  row_key?: string;
   system_status_value: string;
   mapped_area: Area;
   mapped_label: string;
