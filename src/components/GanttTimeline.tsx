@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { OrderTimeline, OrderTimelineEntry, Order } from '@/lib/types';
 import { getOrderTimeline } from '@/lib/api';
 import { LoadingSpinner } from './Layout';
-import { GitCompareArrows, AlertCircle, ChevronDown, ChevronUp, CalendarX, Calendar } from 'lucide-react';
+import { GitCompareArrows, AlertCircle, ChevronDown, ChevronUp, CalendarX, Calendar, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ============================================================
@@ -41,6 +41,54 @@ export function resolveOrderDates(order: Order): { start: Date | null; end: Date
     safeDate(o.Basic_finish_date as string | undefined) ??
     null;
   return { start, end };
+}
+
+// ============================================================
+// Diff detection between consecutive snapshots
+// ============================================================
+const TRACKED_FIELDS = ['Start_date_sched', 'Scheduled_finish_date', 'Order_quantity'] as const;
+
+interface FieldDiff {
+  field: string;
+  before: string;
+  after: string;
+}
+
+function computeDiffs(older: OrderTimelineEntry, newer: OrderTimelineEntry): FieldDiff[] {
+  const diffs: FieldDiff[] = [];
+  for (const f of TRACKED_FIELDS) {
+    const bVal = String((older as unknown as Record<string, unknown>)[f] ?? '');
+    const aVal = String((newer as unknown as Record<string, unknown>)[f] ?? '');
+    if (bVal !== aVal) {
+      diffs.push({ field: f, before: bVal, after: aVal });
+    }
+  }
+  return diffs;
+}
+
+function ChangeEventLine({ diffs, newerLabel }: { diffs: FieldDiff[]; newerLabel: string }) {
+  if (diffs.length === 0) return null;
+  return (
+    <div className="flex items-start gap-3 py-1.5">
+      <div className="w-36 shrink-0" />
+      <div className="flex-1 border-l-2 border-warning/60 pl-3 py-1 bg-warning/5 rounded-r-md">
+        <p className="text-[10px] font-semibold text-warning mb-1 flex items-center gap-1">
+          <GitCompareArrows size={10} />
+          Change detected — {newerLabel}
+        </p>
+        <div className="space-y-0.5">
+          {diffs.map(d => (
+            <div key={d.field} className="flex items-center gap-1.5 text-[10px]">
+              <span className="text-muted-foreground">{d.field.replace(/_/g, ' ')}:</span>
+              <span className="text-destructive line-through">{d.before || '—'}</span>
+              <ArrowRight size={8} className="text-muted-foreground shrink-0" />
+              <span className="text-success font-medium">{d.after || '—'}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ============================================================
@@ -340,16 +388,25 @@ export function GanttTimeline({ orderId, order }: GanttTimelineProps) {
             </div>
           </div>
 
-          {timeline.entries.map((entry, i) => (
-            <GanttBar
-              key={i}
-              entry={entry}
-              minDate={paddedMin}
-              maxDate={paddedMax}
-              isLatest={i === latestIdx}
-              index={i}
-            />
-          ))}
+          {timeline.entries.map((entry, i) => {
+            // Compute diffs between this entry and the previous one
+            const diffs = i > 0 ? computeDiffs(timeline.entries[i - 1], entry) : [];
+            const entryLabel = entry.version_label ?? `Upload ${i + 1}`;
+            return (
+              <div key={i}>
+                {diffs.length > 0 && (
+                  <ChangeEventLine diffs={diffs} newerLabel={entryLabel} />
+                )}
+                <GanttBar
+                  entry={entry}
+                  minDate={paddedMin}
+                  maxDate={paddedMax}
+                  isLatest={i === latestIdx}
+                  index={i}
+                />
+              </div>
+            );
+          })}
 
           <p className="text-[10px] text-muted-foreground mt-2 pl-[156px]">
             Hover over bars to see version details · Latest version highlighted

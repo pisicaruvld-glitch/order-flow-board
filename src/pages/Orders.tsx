@@ -190,14 +190,17 @@ export default function OrdersPage({ config }: OrdersPageProps) {
                 <AreaBadge area={area} size="sm" />
                 <span className="text-xl font-bold">{orders.filter(o => o.current_area === area).length}</span>
               </div>
-              <div className="space-y-0.5">
-                {Object.entries(areaCounts[area] || {}).map(([label, count]) => (
-                  <div key={label} className="flex justify-between text-xs text-muted-foreground">
-                    <span className="truncate">{label}</span>
-                    <span className="font-medium text-foreground ml-2">{count}</span>
-                  </div>
-                ))}
-              </div>
+              {/* Hide status breakdown for Orders card — keep only for other areas */}
+              {area !== 'Orders' && (
+                <div className="space-y-0.5">
+                  {Object.entries(areaCounts[area] || {}).map(([label, count]) => (
+                    <div key={label} className="flex justify-between text-xs text-muted-foreground">
+                      <span className="truncate">{label}</span>
+                      <span className="font-medium text-foreground ml-2">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -303,9 +306,21 @@ export default function OrdersPage({ config }: OrdersPageProps) {
                             selectedOrderId === o.Order && 'bg-primary-subtle border-l-2 border-l-primary'
                           )}
                         >
-                          {/* Changed indicator */}
+                          {/* Changed indicator — clickable to open timeline */}
                           <td className="px-3 py-2.5 w-4">
-                            {o.has_changes && <ChangedBadge fields={o.changed_fields} />}
+                            {o.has_changes && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedOrderId(selectedOrderId === o.Order ? null : o.Order);
+                                }}
+                                className="cursor-pointer"
+                                title={`Changed: ${(o.changed_fields ?? []).map(f => f.replace(/_/g, ' ')).join(', ')}`}
+                              >
+                                <ChangedBadge fields={o.changed_fields} />
+                              </button>
+                            )}
                           </td>
                           <td className="px-3 py-2.5 font-mono text-xs font-semibold">{String(o?.Order ?? '')}</td>
                           <td className="px-3 py-2.5">
