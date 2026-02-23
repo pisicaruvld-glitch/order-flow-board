@@ -76,8 +76,10 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
 
   useEffect(() => { loadMappings(); }, [loadMappings]);
 
-  const handleMappingChange = (id: string, field: keyof StatusMapping, value: string | boolean | number) => {
-    setMappings(prev => prev.map(m => m.id === id ? { ...m, [field]: value } : m));
+  const handleMappingChange = (rowKey: string, field: keyof StatusMapping, value: string | boolean | number) => {
+    setMappings(prev => prev.map(m =>
+      (m.row_key ?? m.id) === rowKey ? { ...m, [field]: value } : m
+    ));
     setSaved(false);
   };
 
@@ -451,20 +453,17 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {mappings.map(m => (
-                    <tr key={m.id} className={cn('border-b border-border hover:bg-muted/40', !m.is_active && 'opacity-50')}>
-                      {!m.is_active && (
-                        <td colSpan={0} className="hidden">
-                          {/* Hidden hint rendered inline below */}
-                        </td>
-                      )}
+                  {mappings.map(m => {
+                    const rowKey = m.row_key ?? m.id;
+                    return (
+                    <tr key={rowKey} className={cn('border-b border-border hover:bg-muted/40', !m.is_active && 'opacity-50')}>
                       <td className="px-4 py-2.5">
                         <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{m.system_status_value}</code>
                       </td>
                       <td className="px-4 py-2.5">
                         <select
                           value={normalizeMappedArea(m.mapped_area)}
-                          onChange={e => handleMappingChange(m.id, 'mapped_area', e.target.value as Area)}
+                          onChange={e => handleMappingChange(rowKey, 'mapped_area', e.target.value as Area)}
                           className="text-xs border border-border rounded px-2 py-1 bg-card focus:outline-none focus:ring-1 focus:ring-ring"
                         >
                           {MAPPING_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
@@ -473,7 +472,7 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
                       <td className="px-4 py-2.5">
                         <input
                           value={m.mapped_label}
-                          onChange={e => handleMappingChange(m.id, 'mapped_label', e.target.value)}
+                          onChange={e => handleMappingChange(rowKey, 'mapped_label', e.target.value)}
                           className="text-xs border border-border rounded px-2 py-1 bg-card focus:outline-none focus:ring-1 focus:ring-ring w-44"
                         />
                       </td>
@@ -481,14 +480,14 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
                         <input
                           type="number"
                           value={m.sort_order}
-                          onChange={e => handleMappingChange(m.id, 'sort_order', Number(e.target.value))}
+                          onChange={e => handleMappingChange(rowKey, 'sort_order', Number(e.target.value))}
                           className="text-xs border border-border rounded px-2 py-1 bg-card focus:outline-none focus:ring-1 focus:ring-ring w-16 text-center"
                         />
                       </td>
                       <td className="px-4 py-2.5">
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => handleMappingChange(m.id, 'is_active', !m.is_active)}
+                            onClick={() => handleMappingChange(rowKey, 'is_active', !m.is_active)}
                             className={cn(
                               'w-9 h-5 rounded-full transition-colors relative',
                               m.is_active ? 'bg-success' : 'bg-border'
@@ -507,7 +506,8 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
