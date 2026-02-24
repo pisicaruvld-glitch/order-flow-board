@@ -26,6 +26,7 @@ export interface Order {
   source?: 'system' | 'manual';  // how current_area was set
   sap_area?: Area;                // area derived from SAP status mapping
   discrepancy?: boolean;          // source=manual AND sap_area != current_area
+  product_type?: 'FG' | 'SFG';   // FG = finite, SFG = semifinite
 }
 
 export interface StatusMapping {
