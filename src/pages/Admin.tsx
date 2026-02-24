@@ -187,6 +187,14 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
       <PageHeader
         title="Admin Settings"
         subtitle="Manage connection mode, API endpoints, area modes, and status mappings"
+        actions={
+          <a
+            href="/admin/product-type-rules"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary text-secondary-foreground text-xs font-medium rounded border border-border hover:border-primary/50 transition-colors"
+          >
+            Product Type Rules →
+          </a>
+        }
       />
 
       {/* Connection Settings */}

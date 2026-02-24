@@ -215,6 +215,38 @@ export async function applyStatusMappings(): Promise<{ ok: boolean }> {
 }
 
 // ============================================================
+// PRODUCT TYPE RULES
+// ============================================================
+export interface ProductTypeRule {
+  id: number | null;
+  rule_type: 'PREFIX' | 'EXACT';
+  rule_value: string;
+  product_type: 'FG' | 'SFG';
+  priority: number;
+  is_active: 0 | 1;
+  note?: string | null;
+  updated_at?: string | null;
+}
+
+let _productTypeRules: ProductTypeRule[] = [];
+
+export async function getProductTypeRules(): Promise<ProductTypeRule[]> {
+  if (isDemo()) return [..._productTypeRules];
+  return apiFetch<ProductTypeRule[]>('/admin/product-type-rules');
+}
+
+export async function saveProductTypeRules(rules: ProductTypeRule[]): Promise<unknown> {
+  if (isDemo()) {
+    _productTypeRules = rules;
+    return { ok: true };
+  }
+  return apiFetch<unknown>('/admin/product-type-rules', {
+    method: 'PUT',
+    body: JSON.stringify(rules),
+  });
+}
+
+// ============================================================
 // AREA MODES
 // ============================================================
 export async function getAreaModes(): Promise<AreaModes> {
