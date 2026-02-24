@@ -135,7 +135,7 @@ export function getEffectiveStatus(systemStatus: string, mappings: StatusMapping
 
 export function deriveArea(systemStatus: string, mappings: StatusMapping[]): Area {
   const eff = getEffectiveStatus(systemStatus, mappings);
-  return eff ? eff.mapped_area : "Planning";
+  return eff ? eff.mapped_area : "Orders";
 }
 
 // ============================================================
