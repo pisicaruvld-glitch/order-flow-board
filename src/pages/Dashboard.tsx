@@ -209,54 +209,153 @@ function AreaColumn({
         {orders.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-6">No orders</p>
         )}
-        {orders.map(order => (
-          <div key={order.Order}>
-            <OrderCard
-              order={order}
-              compact
-              selected={expanded?.Order === order.Order}
-              onClick={() => {
-                setExpanded(expanded?.Order === order.Order ? null : order);
-                onSelect(order);
-              }}
+        {area === 'Production' ? (
+          <>
+            <SubLane
+              label="Semifinite"
+              orders={orders.filter(o => o.product_type === 'SFG')}
+              expanded={expanded}
+              setExpanded={setExpanded}
+              onSelect={onSelect}
+              onMove={onMove}
+              movingOrder={movingOrder}
+              area={area}
+              allAreas={allAreas}
             />
-            {/* Expanded mini-panel */}
-            {expanded?.Order === order.Order && (
-              <div className="bg-muted rounded-b-md px-3 py-2 border border-t-0 border-border text-xs animate-fade-in">
-                {(order.discrepancy || order.source === 'manual') && (
-                  <div className="flex items-center gap-2 mb-1.5">
-                    {order.discrepancy && <DiscrepancyBadge sapArea={order.sap_area} />}
-                    {order.source === 'manual' && <SourceBadge source={order.source} />}
-                    {order.discrepancy && order.sap_area && (
-                      <span className="text-[10px] text-muted-foreground">SAP area: {order.sap_area}</span>
-                    )}
-                  </div>
-                )}
-                <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                  <span className="text-muted-foreground">Move to:</span>
-                  {onMove && allAreas.filter(a => a !== area).map(a => (
-                    <button
-                      key={a}
-                      onClick={() => onMove(order.Order, a)}
-                      disabled={movingOrder === order.Order}
-                      className="flex items-center gap-1 text-[10px] bg-card border border-border rounded px-2 py-0.5 hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
-                    >
-                      <ArrowRight size={10} />
-                      {a}
-                    </button>
-                  ))}
-                </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-muted-foreground">
-                  <span>Plant: <strong className="text-foreground">{order.Plant}</strong></span>
-                  <span>Qty: <strong className="text-foreground">{order.Order_quantity}</strong></span>
-                  <span>Start: <strong className="text-foreground">{order.Start_date_sched}</strong></span>
-                  <span>Finish: <strong className="text-foreground">{order.Scheduled_finish_date}</strong></span>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
+            <div className="border-t border-border my-1" />
+            <SubLane
+              label="Finite"
+              orders={orders.filter(o => o.product_type !== 'SFG')}
+              expanded={expanded}
+              setExpanded={setExpanded}
+              onSelect={onSelect}
+              onMove={onMove}
+              movingOrder={movingOrder}
+              area={area}
+              allAreas={allAreas}
+            />
+          </>
+        ) : (
+          orders.map(order => (
+            <OrderCardRow
+              key={order.Order}
+              order={order}
+              expanded={expanded}
+              setExpanded={setExpanded}
+              onSelect={onSelect}
+              onMove={onMove}
+              movingOrder={movingOrder}
+              area={area}
+              allAreas={allAreas}
+            />
+          ))
+        )}
       </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Shared card row with expand panel
+// ============================================================
+interface OrderCardRowProps {
+  order: Order;
+  expanded: Order | null;
+  setExpanded: (o: Order | null) => void;
+  onSelect: (o: Order) => void;
+  onMove?: (orderId: string, area: Area) => void;
+  movingOrder: string | null;
+  area: Area;
+  allAreas: Area[];
+}
+
+function OrderCardRow({ order, expanded, setExpanded, onSelect, onMove, movingOrder, area, allAreas }: OrderCardRowProps) {
+  return (
+    <div key={order.Order}>
+      <OrderCard
+        order={order}
+        compact
+        selected={expanded?.Order === order.Order}
+        onClick={() => {
+          setExpanded(expanded?.Order === order.Order ? null : order);
+          onSelect(order);
+        }}
+      />
+      {expanded?.Order === order.Order && (
+        <div className="bg-muted rounded-b-md px-3 py-2 border border-t-0 border-border text-xs animate-fade-in">
+          {(order.discrepancy || order.source === 'manual') && (
+            <div className="flex items-center gap-2 mb-1.5">
+              {order.discrepancy && <DiscrepancyBadge sapArea={order.sap_area} />}
+              {order.source === 'manual' && <SourceBadge source={order.source} />}
+              {order.discrepancy && order.sap_area && (
+                <span className="text-[10px] text-muted-foreground">SAP area: {order.sap_area}</span>
+              )}
+            </div>
+          )}
+          <div className="flex items-center gap-2 flex-wrap mb-1.5">
+            <span className="text-muted-foreground">Move to:</span>
+            {onMove && allAreas.filter(a => a !== area).map(a => (
+              <button
+                key={a}
+                onClick={() => onMove(order.Order, a)}
+                disabled={movingOrder === order.Order}
+                className="flex items-center gap-1 text-[10px] bg-card border border-border rounded px-2 py-0.5 hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
+              >
+                <ArrowRight size={10} />
+                {a}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-muted-foreground">
+            <span>Plant: <strong className="text-foreground">{order.Plant}</strong></span>
+            <span>Qty: <strong className="text-foreground">{order.Order_quantity}</strong></span>
+            <span>Start: <strong className="text-foreground">{order.Start_date_sched}</strong></span>
+            <span>Finish: <strong className="text-foreground">{order.Scheduled_finish_date}</strong></span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// Sub-lane for Production split
+// ============================================================
+interface SubLaneProps {
+  label: string;
+  orders: Order[];
+  expanded: Order | null;
+  setExpanded: (o: Order | null) => void;
+  onSelect: (o: Order) => void;
+  onMove?: (orderId: string, area: Area) => void;
+  movingOrder: string | null;
+  area: Area;
+  allAreas: Area[];
+}
+
+function SubLane({ label, orders, expanded, setExpanded, onSelect, onMove, movingOrder, area, allAreas }: SubLaneProps) {
+  return (
+    <div>
+      <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide px-1 py-1">{label}</h3>
+      {orders.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-3">No orders</p>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          {orders.map(order => (
+            <OrderCardRow
+              key={order.Order}
+              order={order}
+              expanded={expanded}
+              setExpanded={setExpanded}
+              onSelect={onSelect}
+              onMove={onMove}
+              movingOrder={movingOrder}
+              area={area}
+              allAreas={allAreas}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
