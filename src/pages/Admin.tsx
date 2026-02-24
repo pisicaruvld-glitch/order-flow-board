@@ -1,21 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
 import { StatusMapping, Area, AREAS, AppConfig as AppConfigType, DEFAULT_ENDPOINTS, EndpointPaths, AreaModes, DEFAULT_AREA_MODES, FLOW_AREAS } from '@/lib/types';
 
-/** Allowed board areas for the Status → Area mapping dropdown */
-const MAPPING_AREAS = ['Planning', 'Warehouse', 'Production', 'Logistics'] as const;
+/** Allowed board areas for the Status → Area mapping dropdown (aligned with backend) */
+const MAPPING_AREAS = ['Orders', 'Warehouse', 'Production', 'Logistics'] as const;
 type MappingArea = (typeof MAPPING_AREAS)[number];
 
-/** Migrate legacy area values to current board areas */
+/** Normalize legacy area values */
 function normalizeMappedArea(area: string): MappingArea {
   const MIGRATION: Record<string, MappingArea> = {
-    'Orders': 'Planning',
+    'Planning': 'Orders',
     'Deliveries': 'Logistics',
   };
   if (MIGRATION[area]) return MIGRATION[area];
   if ((MAPPING_AREAS as readonly string[]).includes(area)) return area as MappingArea;
-  return 'Planning'; // fallback
+  return 'Orders'; // fallback
 }
-import { getStatusMappings, updateStatusMappings, checkHealth, getEffectiveStatus, getAreaModes, saveAreaModes } from '@/lib/api';
+import { getStatusMappings, updateStatusMappings, applyStatusMappings, checkHealth, getEffectiveStatus, getAreaModes, saveAreaModes } from '@/lib/api';
 import { loadConfig, updateConfig } from '@/lib/appConfig';
 import { AppConfig } from '@/lib/types';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
@@ -88,15 +88,23 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
 
   const handleSaveMappings = async () => {
     setSaving(true);
+    setError(null);
     try {
       // Ensure all mapped_area values are valid before saving
       const sanitized = mappings.map(m => ({
         ...m,
         mapped_area: normalizeMappedArea(m.mapped_area) as Area,
       }));
-      // PUT may return { ok: true } instead of an array — don't call .map() on it
+      // 1) Save mappings
       await updateStatusMappings(sanitized);
-      // Re-fetch the authoritative list from the backend
+      // 2) Apply (recompute order areas)
+      try {
+        await applyStatusMappings();
+      } catch (applyErr: unknown) {
+        const applyMsg = applyErr instanceof Error ? applyErr.message : 'Apply failed';
+        setError(`Mappings saved, but apply failed: ${applyMsg}`);
+      }
+      // 3) Re-fetch the authoritative list from the backend
       const fresh = await getStatusMappings();
       const freshArray = Array.isArray(fresh) ? fresh : [];
       const normalized = freshArray.map(row => {
@@ -105,7 +113,7 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
       });
       setMappings(normalized);
       setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      setTimeout(() => setSaved(false), 3000);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to save');
     } finally {
@@ -159,7 +167,7 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
     if (eff) {
       setPreviewResult({ effectiveStatus: eff.system_status_value, area: eff.mapped_area, label: eff.mapped_label });
     } else {
-      setPreviewResult({ effectiveStatus: '(no match)', area: 'Planning' as Area, label: 'Unmapped → defaults to Planning' });
+      setPreviewResult({ effectiveStatus: '(no match)', area: 'Orders' as Area, label: 'Unmapped → defaults to Orders' });
     }
   };
 
@@ -437,7 +445,7 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
               className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs rounded hover:bg-primary-light disabled:opacity-50 transition-colors"
             >
               <Save size={12} />
-              {saving ? 'Saving…' : saved ? '✓ Saved!' : 'Save Changes'}
+              {saving ? 'Saving & Applying…' : saved ? '✓ Saved & Applied!' : 'Save & Apply'}
             </button>
           </div>
         </div>
