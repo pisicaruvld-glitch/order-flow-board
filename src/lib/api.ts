@@ -17,7 +17,7 @@ import {
   FlowMoveResult,
   FlowError,
   ErrorCategory,
-} from './types';
+} from "./types";
 import {
   MOCK_ORDERS,
   MOCK_STATUS_MAPPINGS,
@@ -27,8 +27,8 @@ import {
   MOCK_LOGISTICS_STATUS,
   MOCK_UPLOAD_RESULT,
   MOCK_CHANGE_REPORT,
-} from './mockData';
-import { loadConfig, AREA_MODES_KEY } from './appConfig';
+} from "./mockData";
+import { loadConfig, AREA_MODES_KEY } from "./appConfig";
 
 // ============================================================
 // In-memory mutable state for DEMO mode
@@ -40,10 +40,17 @@ let _issueHistory = [...MOCK_ISSUE_HISTORY];
 let _productionStatus = { ...MOCK_PRODUCTION_STATUS };
 let _logisticsStatus = { ...MOCK_LOGISTICS_STATUS };
 // DEMO audit trail for manual moves
-let _moveAuditTrail: Array<{ order_id: string; from: Area; to: Area; justification?: string; moved_at: string; moved_by: string }> = [];
+let _moveAuditTrail: Array<{
+  order_id: string;
+  from: Area;
+  to: Area;
+  justification?: string;
+  moved_at: string;
+  moved_by: string;
+}> = [];
 
 function isDemo() {
-  return loadConfig().mode === 'DEMO';
+  return loadConfig().mode === "DEMO";
 }
 
 function cfg() {
@@ -60,16 +67,13 @@ function ep() {
 
 /** Replace path template variables like {order_id} */
 function resolvePath(template: string, vars: Record<string, string>): string {
-  return Object.entries(vars).reduce(
-    (path, [k, v]) => path.replace(`{${k}}`, v),
-    template
-  );
+  return Object.entries(vars).reduce((path, [k, v]) => path.replace(`{${k}}`, v), template);
 }
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${apiBase()}${path}`;
   const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { "Content-Type": "application/json" },
     ...options,
   });
   if (!res.ok) {
@@ -77,7 +81,7 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     try {
       const body = await res.json();
       if (body?.detail) {
-        errorMsg = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail);
+        errorMsg = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
       } else if (body?.message) {
         errorMsg = body.message;
       } else {
@@ -87,7 +91,9 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
       try {
         const text = await res.text();
         if (text) errorMsg = `${errorMsg}: ${text}`;
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
     throw new Error(errorMsg);
   }
@@ -100,13 +106,13 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 export async function checkHealth(): Promise<{ ok: boolean; message: string }> {
   try {
     const url = `${apiBase()}${ep().healthPath}`;
-    const res = await fetch(url, { method: 'GET' });
+    const res = await fetch(url, { method: "GET" });
     if (res.ok) {
       return { ok: true, message: `HTTP ${res.status} — Connection successful` };
     }
     return { ok: false, message: `HTTP ${res.status} — Server responded with error` };
   } catch (e: unknown) {
-    return { ok: false, message: e instanceof Error ? e.message : 'Connection failed' };
+    return { ok: false, message: e instanceof Error ? e.message : "Connection failed" };
   }
 }
 
@@ -119,7 +125,7 @@ export function getEffectiveStatus(systemStatus: string, mappings: StatusMapping
   const tokens = systemStatus.trim().split(/\s+/).filter(Boolean);
   let best: StatusMapping | undefined;
   for (const token of tokens) {
-    const m = mappings.find(s => s.system_status_value === token && s.is_active);
+    const m = mappings.find((s) => s.system_status_value === token && s.is_active);
     if (m && (!best || m.sort_order > best.sort_order)) {
       best = m;
     }
@@ -129,7 +135,7 @@ export function getEffectiveStatus(systemStatus: string, mappings: StatusMapping
 
 export function deriveArea(systemStatus: string, mappings: StatusMapping[]): Area {
   const eff = getEffectiveStatus(systemStatus, mappings);
-  return eff ? eff.mapped_area : 'Orders';
+  return eff ? eff.mapped_area : "Planning";
 }
 
 // ============================================================
@@ -147,31 +153,33 @@ export interface OrderFilters {
 export async function getOrders(filters: OrderFilters = {}): Promise<Order[]> {
   if (isDemo()) {
     let orders = [..._orders];
-    if (filters.area) orders = orders.filter(o => o.current_area === filters.area);
-    if (filters.status) orders = orders.filter(o => o.System_Status === filters.status);
-    if (filters.plant) orders = orders.filter(o => o.Plant === filters.plant);
+    if (filters.area) orders = orders.filter((o) => o.current_area === filters.area);
+    if (filters.status) orders = orders.filter((o) => o.System_Status === filters.status);
+    if (filters.plant) orders = orders.filter((o) => o.Plant === filters.plant);
     if (filters.q) {
       const q = filters.q.toLowerCase();
       orders = orders.filter(
-        o =>
+        (o) =>
           o.Order.toLowerCase().includes(q) ||
           o.Material.toLowerCase().includes(q) ||
-          o.Material_description.toLowerCase().includes(q)
+          o.Material_description.toLowerCase().includes(q),
       );
     }
-    if (filters.date_from) orders = orders.filter(o => o.Start_date_sched >= filters.date_from!);
-    if (filters.date_to) orders = orders.filter(o => o.Scheduled_finish_date <= filters.date_to!);
+    if (filters.date_from) orders = orders.filter((o) => o.Start_date_sched >= filters.date_from!);
+    if (filters.date_to) orders = orders.filter((o) => o.Scheduled_finish_date <= filters.date_to!);
     return orders;
   }
 
   const params = new URLSearchParams();
-  Object.entries(filters).forEach(([k, v]) => { if (v) params.set(k, String(v)); });
+  Object.entries(filters).forEach(([k, v]) => {
+    if (v) params.set(k, String(v));
+  });
   return apiFetch<Order[]>(`${ep().ordersPath}?${params.toString()}`);
 }
 
 export async function getOrder(orderId: string): Promise<Order | undefined> {
   if (isDemo()) {
-    return _orders.find(o => o.Order === orderId);
+    return _orders.find((o) => o.Order === orderId);
   }
   return apiFetch<Order>(`${ep().ordersPath}/${orderId}`);
 }
@@ -188,9 +196,9 @@ export async function updateStatusMappings(mappings: StatusMapping[]): Promise<u
   if (isDemo()) {
     _statusMappings = mappings;
     // Recompute areas for all orders
-    _orders = _orders.map(o => {
+    _orders = _orders.map((o) => {
       const sapArea = deriveArea(o.System_Status, _statusMappings);
-      const isManual = o.source === 'manual';
+      const isManual = o.source === "manual";
       const discrepancy = isManual && sapArea !== o.current_area;
       return {
         ...o,
@@ -202,7 +210,7 @@ export async function updateStatusMappings(mappings: StatusMapping[]): Promise<u
     return { ok: true };
   }
   return apiFetch<unknown>(ep().statusMappingPath, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify(mappings),
   });
 }
@@ -210,7 +218,7 @@ export async function updateStatusMappings(mappings: StatusMapping[]): Promise<u
 export async function applyStatusMappings(): Promise<{ ok: boolean }> {
   if (isDemo()) return { ok: true };
   return apiFetch<{ ok: boolean }>(`${ep().statusMappingPath}/apply`, {
-    method: 'POST',
+    method: "POST",
   });
 }
 
@@ -219,9 +227,9 @@ export async function applyStatusMappings(): Promise<{ ok: boolean }> {
 // ============================================================
 export interface ProductTypeRule {
   id: number | null;
-  rule_type: 'PREFIX' | 'EXACT';
+  rule_type: "PREFIX" | "EXACT";
   rule_value: string;
-  product_type: 'FG' | 'SFG';
+  product_type: "FG" | "SFG";
   priority: number;
   is_active: 0 | 1;
   note?: string | null;
@@ -232,7 +240,7 @@ let _productTypeRules: ProductTypeRule[] = [];
 
 export async function getProductTypeRules(): Promise<ProductTypeRule[]> {
   if (isDemo()) return [..._productTypeRules];
-  return apiFetch<ProductTypeRule[]>('/admin/product-type-rules');
+  return apiFetch<ProductTypeRule[]>("/admin/product-type-rules");
 }
 
 export async function saveProductTypeRules(rules: ProductTypeRule[]): Promise<unknown> {
@@ -240,8 +248,8 @@ export async function saveProductTypeRules(rules: ProductTypeRule[]): Promise<un
     _productTypeRules = rules;
     return { ok: true };
   }
-  return apiFetch<unknown>('/admin/product-type-rules', {
-    method: 'PUT',
+  return apiFetch<unknown>("/admin/product-type-rules", {
+    method: "PUT",
     body: JSON.stringify(rules),
   });
 }
@@ -254,7 +262,9 @@ export async function getAreaModes(): Promise<AreaModes> {
     try {
       const raw = localStorage.getItem(AREA_MODES_KEY);
       if (raw) return { ...DEFAULT_AREA_MODES, ...JSON.parse(raw) };
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return { ...DEFAULT_AREA_MODES };
   }
   try {
@@ -265,7 +275,9 @@ export async function getAreaModes(): Promise<AreaModes> {
     try {
       const raw = localStorage.getItem(AREA_MODES_KEY);
       if (raw) return { ...DEFAULT_AREA_MODES, ...JSON.parse(raw) };
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return { ...DEFAULT_AREA_MODES };
   }
 }
@@ -280,8 +292,8 @@ export async function saveAreaModes(modes: AreaModes): Promise<{ saved: boolean;
 
   try {
     await apiFetch(ep().areaModesPath, {
-      method: 'PUT',
-      body: JSON.stringify({ key: 'area_modes', value: modes }),
+      method: "PUT",
+      body: JSON.stringify({ key: "area_modes", value: modes }),
     });
     return { saved: true, local: false };
   } catch {
@@ -295,8 +307,8 @@ export async function saveAreaModes(modes: AreaModes): Promise<{ saved: boolean;
 // ============================================================
 export async function moveOrder(req: FlowMoveRequest): Promise<FlowMoveResult> {
   if (isDemo()) {
-    const idx = _orders.findIndex(o => o.Order === req.order_id);
-    if (idx === -1) throw new Error('Order not found');
+    const idx = _orders.findIndex((o) => o.Order === req.order_id);
+    if (idx === -1) throw new Error("Order not found");
     const prev = _orders[idx];
     const sapArea = deriveArea(prev.System_Status, _statusMappings);
     const discrepancy = sapArea !== req.target_area;
@@ -304,20 +316,20 @@ export async function moveOrder(req: FlowMoveRequest): Promise<FlowMoveResult> {
       order_id: req.order_id,
       previous_area: prev.current_area,
       current_area: req.target_area,
-      source: 'manual',
+      source: "manual",
       moved_at: new Date().toISOString(),
-      moved_by: req.moved_by ?? 'current_user',
+      moved_by: req.moved_by ?? "current_user",
     };
     _orders = _orders.map((o, i) =>
       i === idx
         ? {
             ...o,
             current_area: req.target_area,
-            source: 'manual',
+            source: "manual",
             sap_area: sapArea,
             discrepancy,
           }
-        : o
+        : o,
     );
     _moveAuditTrail = [
       ..._moveAuditTrail,
@@ -335,7 +347,7 @@ export async function moveOrder(req: FlowMoveRequest): Promise<FlowMoveResult> {
 
   const path = resolvePath(ep().moveOrderPath, { order_id: req.order_id });
   return apiFetch<FlowMoveResult>(path, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify({
       target_area: req.target_area,
       justification: req.justification,
@@ -348,14 +360,14 @@ export async function moveOrder(req: FlowMoveRequest): Promise<FlowMoveResult> {
 // ============================================================
 export async function uploadOrders(_file: File): Promise<UploadResult> {
   if (isDemo()) {
-    await new Promise(r => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, 1500));
     return { ...MOCK_UPLOAD_RESULT };
   }
   const form = new FormData();
   // Field name MUST be "file" — backend expects multipart/form-data with this key
-  form.append('file', _file);
+  form.append("file", _file);
   const res = await fetch(`${apiBase()}${ep().uploadOrdersPath}`, {
-    method: 'POST',
+    method: "POST",
     // Do NOT set Content-Type header — browser sets it automatically with boundary
     body: form,
   });
@@ -365,9 +377,7 @@ export async function uploadOrders(_file: File): Promise<UploadResult> {
     try {
       const body = await res.json();
       if (body?.detail) {
-        errorMsg = typeof body.detail === 'string'
-          ? body.detail
-          : JSON.stringify(body.detail);
+        errorMsg = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
       } else if (body?.message) {
         errorMsg = body.message;
       } else if (body?.error) {
@@ -377,7 +387,9 @@ export async function uploadOrders(_file: File): Promise<UploadResult> {
       try {
         const text = await res.text();
         if (text) errorMsg = text;
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
     throw new Error(errorMsg);
   }
@@ -386,7 +398,7 @@ export async function uploadOrders(_file: File): Promise<UploadResult> {
 
 export async function getChangeReport(_uploadId: string): Promise<OrderChange[]> {
   if (isDemo()) {
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 500));
     return [...MOCK_CHANGE_REPORT];
   }
   return apiFetch<OrderChange[]>(`${ep().uploadOrdersPath}/${_uploadId}/changes`);
@@ -395,23 +407,20 @@ export async function getChangeReport(_uploadId: string): Promise<OrderChange[]>
 // ============================================================
 // FLOW ERRORS (computed client-side from order data)
 // ============================================================
-export async function computeFlowErrors(
-  orders: Order[],
-  mappings: StatusMapping[],
-): Promise<FlowError[]> {
+export async function computeFlowErrors(orders: Order[], mappings: StatusMapping[]): Promise<FlowError[]> {
   const errors: FlowError[] = [];
 
   for (const o of orders) {
     const sapArea = o.sap_area ?? deriveArea(o.System_Status, mappings);
 
     // E1: Manual vs SAP discrepancy
-    if (o.source === 'manual' && sapArea !== o.current_area) {
+    if (o.source === "manual" && sapArea !== o.current_area) {
       errors.push({
         order_id: o.Order,
         Order: o.Order,
         Material: o.Material,
         Plant: o.Plant,
-        category: 'E1_DISCREPANCY',
+        category: "E1_DISCREPANCY",
         description: `Manually placed in ${o.current_area}, but SAP mapping says ${sapArea}`,
         current_area: o.current_area,
         sap_area: sapArea,
@@ -428,7 +437,7 @@ export async function computeFlowErrors(
         Order: o.Order,
         Material: o.Material,
         Plant: o.Plant,
-        category: 'E4_INVALID',
+        category: "E4_INVALID",
         description: `Finish date (${finish}) is before start date (${start})`,
         system_status: o.System_Status,
       });
@@ -439,7 +448,7 @@ export async function computeFlowErrors(
         Order: o.Order,
         Material: o.Material,
         Plant: o.Plant,
-        category: 'E4_INVALID',
+        category: "E4_INVALID",
         description: `Order quantity is ${o.Order_quantity} (must be > 0)`,
         system_status: o.System_Status,
       });
@@ -450,7 +459,7 @@ export async function computeFlowErrors(
         Order: o.Order,
         Material: o.Material,
         Plant: o.Plant,
-        category: 'E4_INVALID',
+        category: "E4_INVALID",
         description: `Delivered quantity (${o.Delivered_quantity}) exceeds ordered quantity (${o.Order_quantity})`,
         system_status: o.System_Status,
       });
@@ -460,13 +469,13 @@ export async function computeFlowErrors(
   // E2: Status regression — compare has_changes orders where changed_fields contains System_Status
   // In LIVE mode the backend should provide this; in DEMO we flag orders with changed status
   for (const o of orders) {
-    if (o.has_changes && o.changed_fields?.includes('System_Status')) {
+    if (o.has_changes && o.changed_fields?.includes("System_Status")) {
       errors.push({
         order_id: o.Order,
         Order: o.Order,
         Material: o.Material,
         Plant: o.Plant,
-        category: 'E2_REGRESS',
+        category: "E2_REGRESS",
         description: `System status changed in latest upload — verify progression`,
         system_status: o.System_Status,
       });
@@ -482,31 +491,31 @@ export async function computeFlowErrors(
 export async function getOrderTimeline(orderId: string): Promise<OrderTimeline | null> {
   if (isDemo()) {
     // Generate a synthetic timeline from mock order data
-    const order = _orders.find(o => o.Order === orderId);
+    const order = _orders.find((o) => o.Order === orderId);
     if (!order) return null;
     const entries: OrderTimelineEntry[] = [
       {
-        upload_id: 'UPL-20240101-001',
+        upload_id: "UPL-20240101-001",
         uploaded_at: new Date(Date.now() - 14 * 86400000).toISOString(),
-        version_label: 'Upload 1 — Initial',
+        version_label: "Upload 1 — Initial",
         Start_date_sched: shiftDate(order.Start_date_sched, -5),
         Scheduled_finish_date: shiftDate(order.Scheduled_finish_date, -3),
         Order_quantity: Math.round(order.Order_quantity * 0.9),
-        System_Status: 'CRTD',
+        System_Status: "CRTD",
       },
       {
-        upload_id: 'UPL-20240108-001',
+        upload_id: "UPL-20240108-001",
         uploaded_at: new Date(Date.now() - 7 * 86400000).toISOString(),
-        version_label: 'Upload 2 — Revised',
+        version_label: "Upload 2 — Revised",
         Start_date_sched: shiftDate(order.Start_date_sched, -2),
         Scheduled_finish_date: order.Scheduled_finish_date,
         Order_quantity: order.Order_quantity,
         System_Status: order.System_Status,
       },
       {
-        upload_id: 'UPL-20240115-001',
+        upload_id: "UPL-20240115-001",
         uploaded_at: new Date().toISOString(),
-        version_label: 'Upload 3 — Latest',
+        version_label: "Upload 3 — Latest",
         Start_date_sched: order.Start_date_sched,
         Scheduled_finish_date: order.Scheduled_finish_date,
         Order_quantity: order.Order_quantity,
@@ -529,30 +538,30 @@ function shiftDate(dateStr: string | undefined | null, days: number): string {
     // Fallback to today ± days
     const d = new Date();
     d.setDate(d.getDate() + days);
-    return d.toISOString().split('T')[0];
+    return d.toISOString().split("T")[0];
   }
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) {
     const fallback = new Date();
     fallback.setDate(fallback.getDate() + days);
-    return fallback.toISOString().split('T')[0];
+    return fallback.toISOString().split("T")[0];
   }
   d.setDate(d.getDate() + days);
-  return d.toISOString().split('T')[0];
+  return d.toISOString().split("T")[0];
 }
 
 // ============================================================
 // ISSUES API
 // ============================================================
 export async function getIssues(orderId: string): Promise<Issue[]> {
-  if (isDemo()) return _issues.filter(i => i.order_id === orderId);
+  if (isDemo()) return _issues.filter((i) => i.order_id === orderId);
   const path = resolvePath(ep().orderIssuesPath, { order_id: orderId });
   return apiFetch<Issue[]>(path);
 }
 
 export async function createIssue(
   orderId: string,
-  data: { pn: string; issue_type: IssueType; comment: string }
+  data: { pn: string; issue_type: IssueType; comment: string },
 ): Promise<Issue> {
   if (isDemo()) {
     const newIssue: Issue = {
@@ -561,10 +570,10 @@ export async function createIssue(
       pn: data.pn,
       issue_type: data.issue_type,
       comment: data.comment,
-      status: 'OPEN',
+      status: "OPEN",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      created_by: 'current_user',
+      created_by: "current_user",
     };
     _issues = [..._issues, newIssue];
     _issueHistory = [
@@ -572,45 +581,43 @@ export async function createIssue(
       {
         id: `H-${Date.now()}`,
         issue_id: newIssue.id,
-        action: 'CREATED',
-        changed_by: 'current_user',
+        action: "CREATED",
+        changed_by: "current_user",
         changed_at: new Date().toISOString(),
-        details: 'Issue created.',
+        details: "Issue created.",
       },
     ];
     return newIssue;
   }
   const path = resolvePath(ep().orderIssuesPath, { order_id: orderId });
   return apiFetch<Issue>(path, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify(data),
   });
 }
 
 export async function patchIssue(
   issueId: string,
-  data: { status?: 'OPEN' | 'CLOSED'; comment?: string }
+  data: { status?: "OPEN" | "CLOSED"; comment?: string },
 ): Promise<Issue> {
   if (isDemo()) {
-    const idx = _issues.findIndex(i => i.id === issueId);
-    if (idx === -1) throw new Error('Issue not found');
+    const idx = _issues.findIndex((i) => i.id === issueId);
+    if (idx === -1) throw new Error("Issue not found");
     const updated: Issue = {
       ..._issues[idx],
       ...data,
       updated_at: new Date().toISOString(),
     };
     _issues = [..._issues.slice(0, idx), updated, ..._issues.slice(idx + 1)];
-    const action = data.status === 'CLOSED' ? 'STATUS_CHANGE' : 'EDITED';
-    const details = data.status === 'CLOSED'
-      ? 'Status changed from OPEN to CLOSED.'
-      : `Comment updated.`;
+    const action = data.status === "CLOSED" ? "STATUS_CHANGE" : "EDITED";
+    const details = data.status === "CLOSED" ? "Status changed from OPEN to CLOSED." : `Comment updated.`;
     _issueHistory = [
       ..._issueHistory,
       {
         id: `H-${Date.now()}`,
         issue_id: issueId,
         action,
-        changed_by: 'current_user',
+        changed_by: "current_user",
         changed_at: new Date().toISOString(),
         details,
       },
@@ -619,13 +626,13 @@ export async function patchIssue(
   }
   const path = resolvePath(ep().issuePath, { issue_id: issueId });
   return apiFetch<Issue>(path, {
-    method: 'PATCH',
+    method: "PATCH",
     body: JSON.stringify(data),
   });
 }
 
 export async function getIssueHistory(issueId: string): Promise<IssueHistoryEntry[]> {
-  if (isDemo()) return _issueHistory.filter(h => h.issue_id === issueId);
+  if (isDemo()) return _issueHistory.filter((h) => h.issue_id === issueId);
   const path = resolvePath(ep().issueHistoryPath, { issue_id: issueId });
   return apiFetch<IssueHistoryEntry[]>(path);
 }
@@ -640,20 +647,20 @@ export async function getProductionStatus(orderId: string): Promise<ProductionSt
 
 export async function updateProductionStatus(
   orderId: string,
-  status: ProductionStatus['status']
+  status: ProductionStatus["status"],
 ): Promise<ProductionStatus> {
   const updated: ProductionStatus = {
     order_id: orderId,
     status,
     updated_at: new Date().toISOString(),
-    updated_by: 'current_user',
+    updated_by: "current_user",
   };
   if (isDemo()) {
     _productionStatus = { ..._productionStatus, [orderId]: updated };
     return updated;
   }
   return apiFetch<ProductionStatus>(`${ep().ordersPath}/${orderId}/production-status`, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify({ status }),
   });
 }
@@ -666,10 +673,7 @@ export async function getLogisticsStatus(orderId: string): Promise<LogisticsStat
   return apiFetch<LogisticsStatus>(`${ep().ordersPath}/${orderId}/logistics-status`);
 }
 
-export async function updateLogisticsStatus(
-  orderId: string,
-  data: Partial<LogisticsStatus>
-): Promise<LogisticsStatus> {
+export async function updateLogisticsStatus(orderId: string, data: Partial<LogisticsStatus>): Promise<LogisticsStatus> {
   const current = _logisticsStatus[orderId] || {
     order_id: orderId,
     received_from_production: false,
@@ -685,7 +689,7 @@ export async function updateLogisticsStatus(
     return updated;
   }
   return apiFetch<LogisticsStatus>(`${ep().ordersPath}/${orderId}/logistics-status`, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify(data),
   });
 }
@@ -694,14 +698,14 @@ export async function updateLogisticsStatus(
 // DEMO ONLY: Move order between areas (legacy / simple)
 // ============================================================
 export async function demoMoveOrder(orderId: string, targetArea: Area): Promise<Order> {
-  const idx = _orders.findIndex(o => o.Order === orderId);
-  if (idx === -1) throw new Error('Order not found');
+  const idx = _orders.findIndex((o) => o.Order === orderId);
+  if (idx === -1) throw new Error("Order not found");
   const prev = _orders[idx];
   const sapArea = deriveArea(prev.System_Status, _statusMappings);
   const updated = {
     ..._orders[idx],
     current_area: targetArea,
-    source: 'manual' as const,
+    source: "manual" as const,
     sap_area: sapArea,
     discrepancy: sapArea !== targetArea,
   };
@@ -714,9 +718,9 @@ export async function demoMoveOrder(orderId: string, targetArea: Area): Promise<
 // ============================================================
 export async function markOrderReady(orderId: string): Promise<Order> {
   if (isDemo()) {
-    return demoMoveOrder(orderId, 'Production');
+    return demoMoveOrder(orderId, "Production");
   }
-  return apiFetch<Order>(`${ep().ordersPath}/${orderId}/mark-ready`, { method: 'POST' });
+  return apiFetch<Order>(`${ep().ordersPath}/${orderId}/mark-ready`, { method: "POST" });
 }
 
 // ============================================================
@@ -724,12 +728,12 @@ export async function markOrderReady(orderId: string): Promise<Order> {
 // ============================================================
 export function getAreaCounts(orders: Order[], mappings: StatusMapping[]) {
   const result: Record<string, Record<string, number>> = {
-    Orders: {},
+    Planning: {},
     Warehouse: {},
     Production: {},
     Logistics: {},
   };
-  orders.forEach(o => {
+  orders.forEach((o) => {
     const eff = getEffectiveStatus(o.System_Status, mappings);
     const label = eff ? eff.mapped_label : o.System_Status;
     const area = o.current_area;
@@ -739,7 +743,7 @@ export function getAreaCounts(orders: Order[], mappings: StatusMapping[]) {
 }
 
 export function getUniquePlants(orders: Order[]): string[] {
-  return [...new Set(orders.map(o => o.Plant))].sort();
+  return [...new Set(orders.map((o) => o.Plant))].sort();
 }
 
 export function resetDemoState() {
