@@ -216,7 +216,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   endpoints: { ...DEFAULT_ENDPOINTS },
 };
 
-export const AREAS: Area[] = ["Planning", "Warehouse", "Production", "Logistics"];
+export const AREAS: Area[] = ["Orders", "Warehouse", "Production", "Logistics"];
 export const FLOW_AREAS: Area[] = ["Warehouse", "Production", "Logistics"];
 
 export const ISSUE_TYPES: { value: IssueType; label: string }[] = [
