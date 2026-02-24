@@ -184,7 +184,7 @@ export async function getStatusMappings(): Promise<StatusMapping[]> {
   return apiFetch<StatusMapping[]>(ep().statusMappingPath);
 }
 
-export async function updateStatusMappings(mappings: StatusMapping[]): Promise<StatusMapping[]> {
+export async function updateStatusMappings(mappings: StatusMapping[]): Promise<unknown> {
   if (isDemo()) {
     _statusMappings = mappings;
     // Recompute areas for all orders
@@ -199,11 +199,18 @@ export async function updateStatusMappings(mappings: StatusMapping[]): Promise<S
         current_area: isManual ? o.current_area : sapArea,
       };
     });
-    return [..._statusMappings];
+    return { ok: true };
   }
-  return apiFetch<StatusMapping[]>(ep().statusMappingPath, {
+  return apiFetch<unknown>(ep().statusMappingPath, {
     method: 'PUT',
     body: JSON.stringify(mappings),
+  });
+}
+
+export async function applyStatusMappings(): Promise<{ ok: boolean }> {
+  if (isDemo()) return { ok: true };
+  return apiFetch<{ ok: boolean }>(`${ep().statusMappingPath}/apply`, {
+    method: 'POST',
   });
 }
 
