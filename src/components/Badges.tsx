@@ -2,11 +2,11 @@ import { Area } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 interface AreaBadgeProps {
-  area: Area;
+  area: Area | string | null | undefined;
   size?: 'sm' | 'md';
 }
 
-const areaConfig: Record<Area, { bg: string; text: string; dot: string }> = {
+const areaConfig: Record<string, { bg: string; text: string; dot: string }> = {
   Orders: {
     bg: 'bg-area-orders-bg',
     text: 'text-area-orders',
@@ -27,10 +27,18 @@ const areaConfig: Record<Area, { bg: string; text: string; dot: string }> = {
     text: 'text-area-logistics',
     dot: 'bg-area-logistics',
   },
+  HIDDEN: {
+    bg: 'bg-secondary',
+    text: 'text-secondary-foreground',
+    dot: 'bg-muted-foreground',
+  },
 };
 
+const DEFAULT_AREA = 'Orders';
+
 export function AreaBadge({ area, size = 'md' }: AreaBadgeProps) {
-  const c = areaConfig[area];
+  const safeArea = typeof area === 'string' && areaConfig[area] ? area : DEFAULT_AREA;
+  const c = areaConfig[safeArea] ?? areaConfig[DEFAULT_AREA];
   return (
     <span
       className={cn(
@@ -40,7 +48,7 @@ export function AreaBadge({ area, size = 'md' }: AreaBadgeProps) {
       )}
     >
       <span className={cn('rounded-full', c.dot, size === 'sm' ? 'w-1 h-1' : 'w-1.5 h-1.5')} />
-      {area}
+      {safeArea}
     </span>
   );
 }
