@@ -728,7 +728,7 @@ export async function markOrderReady(orderId: string): Promise<Order> {
 // ============================================================
 export function getAreaCounts(orders: Order[], mappings: StatusMapping[]) {
   const result: Record<string, Record<string, number>> = {
-    Planning: {},
+    Orders: {},
     Warehouse: {},
     Production: {},
     Logistics: {},
