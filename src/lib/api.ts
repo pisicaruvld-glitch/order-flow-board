@@ -735,9 +735,16 @@ export function getAreaCounts(orders: Order[], mappings: StatusMapping[]) {
   };
   orders.forEach((o) => {
     const eff = getEffectiveStatus(o.System_Status, mappings);
-    const label = eff ? eff.mapped_label : o.System_Status;
-    const area = o.current_area;
-    result[area][label] = (result[area][label] || 0) + 1;
+    const labelRaw = eff?.mapped_label ?? o.System_Status ?? "UNKNOWN";
+    const label = String(labelRaw).trim() || "UNKNOWN";
+
+    const areaRaw = (o as any)?.current_area;
+    const area =
+      typeof areaRaw === "string" && result[areaRaw]
+        ? areaRaw
+        : "Orders";
+
+    result[area][label] = (result[area][label] ?? 0) + 1;
   });
   return result;
 }
