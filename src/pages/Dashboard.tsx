@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Order, StatusMapping, Area, AREAS } from '@/lib/types';
-import { getOrders, getStatusMappings, getAreaCounts, getUniquePlants, demoMoveOrder, getBoardVersion } from '@/lib/api';
+import { getOrders, getStatusMappings, getAreaCounts, getUniquePlants, demoMoveOrder, getBoardVersion, getAllOpenIssueCounts } from '@/lib/api';
 import { AppConfig } from '@/lib/types';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { AreaBadge, StatusBadge } from '@/components/Badges';
 import { OrderCard } from '@/components/OrderCard';
 import { Search, Filter, RefreshCw, ArrowRight, Radio } from 'lucide-react';
 import { DiscrepancyBadge, SourceBadge } from '@/components/MoveOrderDialog';
+import { OrderIssueIndicator } from '@/components/OrderIssueIndicator';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -37,14 +38,16 @@ export default function Dashboard({ config }: DashboardProps) {
   const [plantFilter, setPlantFilter] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [movingOrder, setMovingOrder] = useState<string | null>(null);
+  const [openIssueCounts, setOpenIssueCounts] = useState<Record<string, number>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [o, m] = await Promise.all([getOrders(), getStatusMappings()]);
+      const [o, m, ic] = await Promise.all([getOrders(), getStatusMappings(), getAllOpenIssueCounts()]);
       setOrders(o);
       setMappings(m);
+      setOpenIssueCounts(ic);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load data');
     } finally {
@@ -180,6 +183,7 @@ export default function Dashboard({ config }: DashboardProps) {
                 onMove={config.mode === 'DEMO' ? handleMove : undefined}
                 movingOrder={movingOrder}
                 allAreas={AREAS}
+                openIssueCounts={area === 'Warehouse' ? openIssueCounts : undefined}
               />
             );
           })}
@@ -203,11 +207,12 @@ interface AreaColumnProps {
   onMove?: (orderId: string, area: Area) => void;
   movingOrder: string | null;
   allAreas: Area[];
+  openIssueCounts?: Record<string, number>;
 }
 
 function AreaColumn({
   area, orders, subCounts, colorClass, icon,
-  selectedOrder, onSelect, onMove, movingOrder, allAreas,
+  selectedOrder, onSelect, onMove, movingOrder, allAreas, openIssueCounts,
 }: AreaColumnProps) {
   const [expanded, setExpanded] = useState<Order | null>(null);
 
@@ -278,6 +283,7 @@ function AreaColumn({
               movingOrder={movingOrder}
               area={area}
               allAreas={allAreas}
+              openIssueCount={openIssueCounts?.[order.Order] ?? 0}
             />
           ))
         )}
@@ -298,11 +304,13 @@ interface OrderCardRowProps {
   movingOrder: string | null;
   area: Area;
   allAreas: Area[];
+  openIssueCount?: number;
 }
 
-function OrderCardRow({ order, expanded, setExpanded, onSelect, onMove, movingOrder, area, allAreas }: OrderCardRowProps) {
+function OrderCardRow({ order, expanded, setExpanded, onSelect, onMove, movingOrder, area, allAreas, openIssueCount }: OrderCardRowProps) {
   return (
-    <div key={order.Order}>
+    <div key={order.Order} className="relative">
+      {(openIssueCount ?? 0) > 0 && <OrderIssueIndicator count={openIssueCount!} />}
       <OrderCard
         order={order}
         compact
