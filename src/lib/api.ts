@@ -101,6 +101,21 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 // ============================================================
+// BOARD VERSION (polling)
+// ============================================================
+export async function getBoardVersion(): Promise<string> {
+  try {
+    const url = `${apiBase()}/board-version`;
+    const res = await fetch(url, { method: "GET" });
+    if (!res.ok) return "";
+    const data = await res.json();
+    return `${data?.last_upload ?? ""}|${data?.last_update ?? ""}`;
+  } catch {
+    return "";
+  }
+}
+
+// ============================================================
 // HEALTH CHECK
 // ============================================================
 export async function checkHealth(): Promise<{ ok: boolean; message: string }> {

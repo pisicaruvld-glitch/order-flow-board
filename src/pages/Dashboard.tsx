@@ -1,13 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Order, StatusMapping, Area, AREAS } from '@/lib/types';
-import { getOrders, getStatusMappings, getAreaCounts, getUniquePlants, demoMoveOrder } from '@/lib/api';
+import { getOrders, getStatusMappings, getAreaCounts, getUniquePlants, demoMoveOrder, getBoardVersion } from '@/lib/api';
 import { AppConfig } from '@/lib/types';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { AreaBadge, StatusBadge } from '@/components/Badges';
 import { OrderCard } from '@/components/OrderCard';
-import { Search, Filter, RefreshCw, ArrowRight } from 'lucide-react';
+import { Search, Filter, RefreshCw, ArrowRight, Radio } from 'lucide-react';
 import { DiscrepancyBadge, SourceBadge } from '@/components/MoveOrderDialog';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface DashboardProps {
   config: AppConfig;
@@ -53,6 +54,30 @@ export default function Dashboard({ config }: DashboardProps) {
 
   useEffect(() => { load(); }, [load]);
 
+  // ── Board version polling (auto-refresh) ──
+  const versionRef = useRef<string | null>(null);
+  const isFirstPoll = useRef(true);
+
+  useEffect(() => {
+    const poll = async () => {
+      const v = await getBoardVersion();
+      if (!v) return; // endpoint unavailable, skip
+      if (isFirstPoll.current) {
+        versionRef.current = v;
+        isFirstPoll.current = false;
+        return;
+      }
+      if (v !== versionRef.current) {
+        versionRef.current = v;
+        await load();
+        toast('Board updated', { duration: 2000 });
+      }
+    };
+    poll(); // initial fetch
+    const id = setInterval(poll, 5000);
+    return () => clearInterval(id);
+  }, [load]);
+
   const filtered = orders.filter(o => {
     const q = (searchQ ?? '').toLowerCase();
   
@@ -92,10 +117,16 @@ export default function Dashboard({ config }: DashboardProps) {
         title="Order Flow Dashboard"
         subtitle={`${filtered.length} orders across 4 areas`}
         actions={
-          <button onClick={load} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-            <RefreshCw size={14} />
-            Refresh
-          </button>
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1.5 text-xs text-primary">
+              <Radio size={12} className="animate-pulse" />
+              Live
+            </span>
+            <button onClick={load} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+              <RefreshCw size={14} />
+              Refresh
+            </button>
+          </div>
         }
       />
 
