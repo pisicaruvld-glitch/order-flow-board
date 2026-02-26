@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Order, Area, AREAS } from '@/lib/types';
-import { getOrders, getBoardVersion } from '@/lib/api';
+import { getOrders, getBoardVersion, getAllOpenIssueCounts } from '@/lib/api';
 import { Radio, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { OrderIssueIndicator } from '@/components/OrderIssueIndicator';
 
 // ============================================================
 // Helpers
@@ -76,6 +77,7 @@ export default function TvDashboard() {
   const [errorsCount, setErrorsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
+  const [openIssueCounts, setOpenIssueCounts] = useState<Record<string, number>>({});
   const [now, setNow] = useState(new Date());
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
 
@@ -88,8 +90,9 @@ export default function TvDashboard() {
   // Data loader
   const load = useCallback(async () => {
     try {
-      const o = await getOrders();
+      const [o, ic] = await Promise.all([getOrders(), getAllOpenIssueCounts()]);
       setOrders(o);
+      setOpenIssueCounts(ic);
       setOffline(false);
       // Try fetching error count
       try {
@@ -226,6 +229,7 @@ export default function TvDashboard() {
             area={area}
             orders={areaOrders[area] ?? []}
             topN={topN}
+            openIssueCounts={area === 'Warehouse' ? openIssueCounts : undefined}
           />
         ))}
       </div>
@@ -236,7 +240,7 @@ export default function TvDashboard() {
 // ============================================================
 // Area Column
 // ============================================================
-function AreaColumn({ area, orders, topN }: { area: Area; orders: Order[]; topN: number }) {
+function AreaColumn({ area, orders, topN, openIssueCounts }: { area: Area; orders: Order[]; topN: number; openIssueCounts?: Record<string, number> }) {
   const top = orders.slice(0, topN);
 
   return (
@@ -256,7 +260,7 @@ function AreaColumn({ area, orders, topN }: { area: Area; orders: Order[]; topN:
           <p className="text-sm text-muted-foreground text-center py-8">No orders</p>
         )}
         {top.map(o => (
-          <TvOrderRow key={o.Order} order={o} />
+          <TvOrderRow key={o.Order} order={o} openIssueCount={openIssueCounts?.[o.Order] ?? 0} />
         ))}
         {orders.length > topN && (
           <p className="text-xs text-muted-foreground text-center py-2">
@@ -271,14 +275,15 @@ function AreaColumn({ area, orders, topN }: { area: Area; orders: Order[]; topN:
 // ============================================================
 // Order Row (TV-sized)
 // ============================================================
-function TvOrderRow({ order }: { order: Order }) {
+function TvOrderRow({ order, openIssueCount }: { order: Order; openIssueCount?: number }) {
   const overdue = isOverdue(order);
 
   return (
     <div className={cn(
-      'flex items-center gap-3 px-3 py-2 rounded-md mb-1 text-sm',
+      'flex items-center gap-3 px-3 py-2 rounded-md mb-1 text-sm relative',
       overdue ? 'bg-destructive/10' : 'bg-muted/30'
     )}>
+      {(openIssueCount ?? 0) > 0 && <OrderIssueIndicator count={openIssueCount!} tv />}
       {/* Overdue indicator */}
       {overdue && <AlertTriangle size={14} className="text-destructive shrink-0" />}
 

@@ -592,6 +592,31 @@ export async function getIssues(orderId: string): Promise<Issue[]> {
   return apiFetch<Issue[]>(path);
 }
 
+/** Fetch all issues and return a map of order_id → open issue count */
+export async function getAllOpenIssueCounts(): Promise<Record<string, number>> {
+  try {
+    if (isDemo()) {
+      const map: Record<string, number> = {};
+      _issues.filter(i => i.status === 'OPEN').forEach(i => {
+        map[i.order_id] = (map[i.order_id] ?? 0) + 1;
+      });
+      return map;
+    }
+    const url = `${apiBase()}/issues?limit=5000`;
+    const res = await fetch(url, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+    if (!res.ok) return {};
+    const data = await res.json();
+    const arr: Issue[] = Array.isArray(data) ? data : (data?.issues ?? []);
+    const map: Record<string, number> = {};
+    arr.filter(i => i.status !== 'CLOSED').forEach(i => {
+      map[i.order_id] = (map[i.order_id] ?? 0) + 1;
+    });
+    return map;
+  } catch {
+    return {};
+  }
+}
+
 export async function createIssue(
   orderId: string,
   data: { pn: string; issue_type: IssueType; comment: string },
