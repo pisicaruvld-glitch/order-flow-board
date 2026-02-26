@@ -15,6 +15,7 @@ import LogisticsPage from "./pages/Logistics";
 import AdminPage from "./pages/Admin";
 import ProductTypeRulesPage from "./pages/ProductTypeRules";
 import ErrorsPage from "./pages/Errors";
+import TvDashboardPage from "./pages/TvDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => {
               <Route path="/errors" element={<ErrorsPage config={config} />} />
               <Route path="/admin" element={<AdminPage config={config} onConfigChange={setConfig} />} />
               <Route path="/admin/product-type-rules" element={<ProductTypeRulesPage config={config} />} />
+              <Route path="/tv" element={<TvDashboardPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>
