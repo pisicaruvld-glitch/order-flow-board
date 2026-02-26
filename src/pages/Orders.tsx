@@ -149,7 +149,7 @@ export default function OrdersPage({ config }: OrdersPageProps) {
           >
             <span className="flex items-center gap-2">
               <ChevronRight size={16} className={cn('transition-transform', showReport && 'rotate-90')} />
-              Change Report — {changeReport.length} orders changed
+              Change Report — {changeReport.length} changes
             </span>
           </button>
           {showReport && (
@@ -413,6 +413,8 @@ function UploadZone({
 }
 
 function UploadResultPanel({ result, mode }: { result: UploadResult; mode: string }) {
+  const errors = Array.isArray(result.validation_errors) ? result.validation_errors : [];
+  const failed = typeof result.rows_failed === 'number' ? result.rows_failed : 0;
   return (
     <div className="bg-card border border-border rounded-lg p-4 mb-6">
       <div className="flex items-start gap-3">
@@ -423,12 +425,12 @@ function UploadResultPanel({ result, mode }: { result: UploadResult; mode: strin
             Upload ID: <code className="font-mono">{result.upload_id}</code>
           </p>
           <div className="flex gap-4 mt-2 text-sm">
-            <span><strong>{result.rows_loaded}</strong> <span className="text-muted-foreground">rows loaded</span></span>
-            <span><strong className="text-destructive">{result.rows_failed}</strong> <span className="text-muted-foreground">failed</span></span>
+            <span><strong>{result.rows_loaded ?? 0}</strong> <span className="text-muted-foreground">rows loaded</span></span>
+            <span><strong className="text-destructive">{failed}</strong> <span className="text-muted-foreground">failed</span></span>
           </div>
-          {result.validation_errors.length > 0 && (
+          {errors.length > 0 && (
             <div className="mt-2 space-y-1">
-              {result.validation_errors.map((err, i) => (
+              {errors.map((err, i) => (
                 <div key={i} className="flex items-start gap-1.5 text-xs text-warning">
                   <AlertTriangle size={12} className="mt-0.5 shrink-0" />
                   {err}

@@ -401,7 +401,25 @@ export async function getChangeReport(_uploadId: string): Promise<OrderChange[]>
     await new Promise((r) => setTimeout(r, 500));
     return [...MOCK_CHANGE_REPORT];
   }
-  return apiFetch<OrderChange[]>(`${ep().uploadOrdersPath}/${_uploadId}/changes`);
+  try {
+    return await apiFetch<OrderChange[]>(`${ep().uploadOrdersPath}/${_uploadId}/changes`);
+  } catch (_e1) {
+    // Fallback: try alternate endpoint and transform rows
+    try {
+      const raw = await apiFetch<any[]>(`/uploads/${_uploadId}/changes`);
+      if (!Array.isArray(raw)) return [];
+      return raw.map((r: any) => ({
+        order_id: String(r.order_id ?? r.Order ?? ''),
+        Order: String(r.Order ?? r.order_id ?? ''),
+        Material: String(r.Material ?? ''),
+        field: String(r.field ?? r.changed_field ?? ''),
+        before: r.before ?? r.old_value ?? '',
+        after: r.after ?? r.new_value ?? '',
+      }));
+    } catch (_e2) {
+      return [];
+    }
+  }
 }
 
 // ============================================================
