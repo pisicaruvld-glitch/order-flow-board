@@ -13,6 +13,7 @@ import {
   ChevronRight,
   RefreshCw,
   AlertOctagon,
+  Tv,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -72,20 +73,31 @@ export function Layout({ children, config }: LayoutProps) {
                 </Link>
               );
             })}
-            {isAdmin && (
-              <Link
-                to="/admin"
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2 rounded text-sm font-medium transition-colors ml-auto',
-                  location.pathname.startsWith('/admin')
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-nav-fg hover:bg-nav-hover hover:text-[hsl(210_50%_98%)]'
-                )}
+            <div className="flex items-center gap-1 ml-auto">
+              <a
+                href="/tv"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium transition-colors text-nav-fg hover:bg-nav-hover hover:text-[hsl(210_50%_98%)]"
               >
-                <Settings size={15} />
-                Admin
-              </Link>
-            )}
+                <Tv size={15} />
+                TV View
+              </a>
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-2 rounded text-sm font-medium transition-colors',
+                    location.pathname.startsWith('/admin')
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-nav-fg hover:bg-nav-hover hover:text-[hsl(210_50%_98%)]'
+                  )}
+                >
+                  <Settings size={15} />
+                  Admin
+                </Link>
+              )}
+            </div>
           </nav>
         </div>
       </header>
