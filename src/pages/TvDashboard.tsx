@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Order, Area, AREAS } from '@/lib/types';
 import { getOrders, getBoardVersion, getAllOpenIssueCounts } from '@/lib/api';
 import { Radio, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
-import { cn, loadWeekFilter, saveWeekFilter } from '@/lib/utils';
+import { cn, loadKwFilter, saveKwFilter } from '@/lib/utils';
 import { OrderIssueIndicator } from '@/components/OrderIssueIndicator';
 import { WeekFilter, filterByWeek, WeekBadge } from '@/components/WeekFilter';
 // ============================================================
@@ -73,12 +73,12 @@ export default function TvDashboard() {
     ? (areasParam.split(',').filter(a => AREAS.includes(a as Area)) as Area[])
     : [...AREAS];
 
-  // Week filter: URL param overrides localStorage
-  const urlWeek = searchParams.get('week');
-  const [weekFilter, setWeekFilter] = useState<string>(urlWeek ?? loadWeekFilter());
-  const handleWeekChange = (v: string) => {
-    setWeekFilter(v);
-    saveWeekFilter(v);
+  // KW filter: URL param overrides localStorage
+  const urlKw = searchParams.get('kw');
+  const [kwFilter, setKwFilter] = useState<string>(urlKw ?? loadKwFilter());
+  const handleKwChange = (v: string) => {
+    setKwFilter(v);
+    saveKwFilter(v);
   };
 
   const [orders, setOrders] = useState<Order[]>([]);
@@ -154,7 +154,7 @@ export default function TvDashboard() {
   }, [load, interval]);
 
   // Derived data — apply week filter first
-  const weekFiltered = useMemo(() => filterByWeek(orders, weekFilter), [orders, weekFilter]);
+  const weekFiltered = useMemo(() => filterByWeek(orders, kwFilter), [orders, kwFilter]);
   const activeOrders = useMemo(() => weekFiltered.filter(o => o.current_area !== 'HIDDEN' as any), [weekFiltered]);
   const overdueOrders = useMemo(() => activeOrders.filter(isOverdue), [activeOrders]);
   const areaOrders = useMemo(() => {
@@ -203,7 +203,7 @@ export default function TvDashboard() {
           <h1 className="text-2xl font-bold tracking-tight">VSRO Order Flow – TV</h1>
         </div>
         <div className="flex items-center gap-6 text-sm">
-          <WeekFilter orders={orders} value={weekFilter} onChange={handleWeekChange} tv />
+          <WeekFilter orders={orders} value={kwFilter} onChange={handleKwChange} tv />
           <span className="flex items-center gap-2 text-primary">
             <Radio size={14} className="animate-pulse" />
             <span className="font-semibold">LIVE</span>
