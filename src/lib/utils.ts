@@ -37,7 +37,12 @@ export function dateToFactoryWeek(d: Date): number {
     ff = firstFridayOfYear(year);
   }
 
-  return Math.floor((ws.getTime() - ff.getTime()) / (7 * 86400000)) + 1;
+  const jan1 = new Date(Date.UTC(year, 0, 1));
+  // If Jan 1 is not a Friday, days before the first Friday form KW1,
+  // so all Friday-based weeks shift up by 1.
+  const offset = ff.getTime() > jan1.getTime() ? 1 : 0;
+
+  return Math.floor((ws.getTime() - ff.getTime()) / (7 * 86400000)) + 1 + offset;
 }
 
 /** Parse "YYYY-MM-DD" and return Factory Week number, or null if invalid. */
