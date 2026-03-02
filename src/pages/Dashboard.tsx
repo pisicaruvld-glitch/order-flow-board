@@ -10,7 +10,7 @@ import { Search, Filter, RefreshCw, ArrowRight, Radio } from 'lucide-react';
 import { DiscrepancyBadge, SourceBadge } from '@/components/MoveOrderDialog';
 import { OrderIssueIndicator } from '@/components/OrderIssueIndicator';
 import { WeekFilter, filterByWeek } from '@/components/WeekFilter';
-import { cn, loadWeekFilter, saveWeekFilter } from '@/lib/utils';
+import { cn, loadKwFilter, saveKwFilter } from '@/lib/utils';
 import { toast } from 'sonner';
 
 interface DashboardProps {
@@ -43,12 +43,12 @@ export default function Dashboard({ config }: DashboardProps) {
   const [movingOrder, setMovingOrder] = useState<string | null>(null);
   const [openIssueCounts, setOpenIssueCounts] = useState<Record<string, number>>({});
   
-  // Week filter: URL param overrides localStorage
-  const urlWeek = searchParams.get('week');
-  const [weekFilter, setWeekFilter] = useState<string>(urlWeek ?? loadWeekFilter());
-  const handleWeekChange = (v: string) => {
-    setWeekFilter(v);
-    saveWeekFilter(v);
+  // KW filter: URL param overrides localStorage
+  const urlKw = searchParams.get('kw');
+  const [kwFilter, setKwFilter] = useState<string>(urlKw ?? loadKwFilter());
+  const handleKwChange = (v: string) => {
+    setKwFilter(v);
+    saveKwFilter(v);
   };
 
   const load = useCallback(async () => {
@@ -92,7 +92,7 @@ export default function Dashboard({ config }: DashboardProps) {
     return () => clearInterval(id);
   }, [load]);
 
-  const filtered = filterByWeek(orders, weekFilter).filter(o => {
+  const filtered = filterByWeek(orders, kwFilter).filter(o => {
     const q = (searchQ ?? '').toLowerCase();
   
     const orderStr = String(o?.Order ?? '');
@@ -166,7 +166,7 @@ export default function Dashboard({ config }: DashboardProps) {
             {plants.map(p => <option key={p}>{p}</option>)}
           </select>
         </div>
-        <WeekFilter orders={orders} value={weekFilter} onChange={handleWeekChange} />
+        <WeekFilter orders={orders} value={kwFilter} onChange={handleKwChange} />
         {config.mode === 'DEMO' && (
           <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
             DEMO: Click cards to move between areas

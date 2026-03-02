@@ -53,18 +53,29 @@ export function currentFactoryWeek(): number {
   return dateToFactoryWeek(new Date());
 }
 
-const WEEK_FILTER_KEY = 'vsro_week_filter';
+const KW_FILTER_KEY = 'vsro_kw_filter';
 
-export function loadWeekFilter(): string {
+/** KW filter value: 'all' | 'this' | comma-separated numbers like '10,11' */
+export type KwFilterValue = string;
+
+export function loadKwFilter(): KwFilterValue {
   try {
-    return localStorage.getItem(WEEK_FILTER_KEY) ?? 'all';
+    return localStorage.getItem(KW_FILTER_KEY) ?? 'this';
   } catch {
-    return 'all';
+    return 'this';
   }
 }
 
-export function saveWeekFilter(value: string): void {
+export function saveKwFilter(value: KwFilterValue): void {
   try {
-    localStorage.setItem(WEEK_FILTER_KEY, value);
+    localStorage.setItem(KW_FILTER_KEY, value);
   } catch { /* ignore */ }
+}
+
+/** Parse KW filter value into a set of week numbers, or null for 'all'. */
+export function parseKwFilter(value: KwFilterValue): number[] | null {
+  if (value === 'all') return null;
+  if (value === 'this') return [currentFactoryWeek()];
+  const nums = value.split(',').map(Number).filter(n => !isNaN(n) && n > 0);
+  return nums.length > 0 ? nums : null;
 }
