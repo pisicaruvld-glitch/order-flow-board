@@ -140,6 +140,13 @@
 
 .kpi-animate { animation: count-up 0.3s ease-out both; }
 
+/* TV error dot blink — subtle opacity pulse */
+@keyframes tv-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+.tv-blink { animation: tv-blink 1.2s ease-in-out infinite; }
+
 /* Order card hover */
 .order-card {
   transition: box-shadow 0.15s ease, transform 0.15s ease;

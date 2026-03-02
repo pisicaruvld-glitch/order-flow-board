@@ -83,6 +83,7 @@ export default function TvDashboard() {
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [errorsCount, setErrorsCount] = useState(0);
+  const [severityMap, setSeverityMap] = useState<Record<string, 'ERROR' | 'WARNING'>>({});
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
   const [openIssueCounts, setOpenIssueCounts] = useState<Record<string, number>>({});
@@ -102,7 +103,7 @@ export default function TvDashboard() {
       setOrders(o);
       setOpenIssueCounts(ic);
       setOffline(false);
-      // Try fetching error count
+      // Try fetching errors and build severity map
       try {
         const url = `${'/api'}/errors?limit=500`;
         const res = await fetch(url);
@@ -110,8 +111,18 @@ export default function TvDashboard() {
           const data = await res.json();
           const arr = Array.isArray(data) ? data : (data?.errors ?? []);
           setErrorsCount(arr.filter((e: any) => e?.severity === 'ERROR' || e?.category?.startsWith('E')).length);
+          // Build per-order highest severity map
+          const sm: Record<string, 'ERROR' | 'WARNING'> = {};
+          for (const e of arr) {
+            const oid = e?.order_id || e?.Order;
+            if (!oid) continue;
+            const sev = e?.severity;
+            if (sev === 'ERROR') sm[oid] = 'ERROR';
+            else if (sev === 'WARNING' && sm[oid] !== 'ERROR') sm[oid] = 'WARNING';
+          }
+          setSeverityMap(sm);
         }
-      } catch { /* ignore errors endpoint */ }
+      } catch { /* fail-safe: render without error styling */ }
     } catch {
       setOffline(true);
     } finally {
@@ -172,8 +183,8 @@ export default function TvDashboard() {
     { label: 'Warehouse', value: areaOrders.Warehouse.length, color: AREA_COUNT_BG.Warehouse },
     { label: 'Production', value: areaOrders.Production.length, color: AREA_COUNT_BG.Production },
     { label: 'Logistics', value: areaOrders.Logistics.length, color: AREA_COUNT_BG.Logistics },
-    { label: 'Overdue', value: overdueOrders.length, color: overdueOrders.length > 0 ? 'bg-destructive text-destructive-foreground' : 'bg-muted text-muted-foreground' },
-    { label: 'Errors', value: errorsCount, color: errorsCount > 0 ? 'bg-destructive text-destructive-foreground' : 'bg-muted text-muted-foreground' },
+    { label: 'Overdue', value: overdueOrders.length, color: overdueOrders.length > 0 ? 'bg-[hsl(0,72%,51%,0.85)] text-destructive-foreground' : 'bg-muted text-muted-foreground' },
+    { label: 'Errors', value: errorsCount, color: errorsCount > 0 ? 'bg-[hsl(0,72%,41%)] text-destructive-foreground' : 'bg-muted text-muted-foreground' },
   ], [activeOrders, areaOrders, overdueOrders, errorsCount]);
 
   if (loading) {
@@ -239,6 +250,7 @@ export default function TvDashboard() {
             orders={areaOrders[area] ?? []}
             topN={topN}
             openIssueCounts={area === 'Warehouse' ? openIssueCounts : undefined}
+            severityMap={severityMap}
           />
         ))}
       </div>
@@ -249,7 +261,7 @@ export default function TvDashboard() {
 // ============================================================
 // Area Column
 // ============================================================
-function AreaColumn({ area, orders, topN, openIssueCounts }: { area: Area; orders: Order[]; topN: number; openIssueCounts?: Record<string, number> }) {
+function AreaColumn({ area, orders, topN, openIssueCounts, severityMap }: { area: Area; orders: Order[]; topN: number; openIssueCounts?: Record<string, number>; severityMap: Record<string, 'ERROR' | 'WARNING'> }) {
   const top = orders.slice(0, topN);
 
   return (
@@ -269,7 +281,7 @@ function AreaColumn({ area, orders, topN, openIssueCounts }: { area: Area; order
           <p className="text-sm text-muted-foreground text-center py-8">No orders</p>
         )}
         {top.map(o => (
-          <TvOrderRow key={o.Order} order={o} openIssueCount={openIssueCounts?.[o.Order] ?? 0} />
+          <TvOrderRow key={o.Order} order={o} openIssueCount={openIssueCounts?.[o.Order] ?? 0} severity={severityMap[o.Order]} />
         ))}
         {orders.length > topN && (
           <p className="text-xs text-muted-foreground text-center py-2">
@@ -284,17 +296,46 @@ function AreaColumn({ area, orders, topN, openIssueCounts }: { area: Area; order
 // ============================================================
 // Order Row (TV-sized)
 // ============================================================
-function TvOrderRow({ order, openIssueCount }: { order: Order; openIssueCount?: number }) {
+function TvOrderRow({ order, openIssueCount, severity }: { order: Order; openIssueCount?: number; severity?: 'ERROR' | 'WARNING' }) {
   const overdue = isOverdue(order);
+  const isError = severity === 'ERROR';
+  const isWarning = severity === 'WARNING';
 
   return (
     <div className={cn(
       'flex items-center gap-3 px-3 py-2 rounded-md mb-1 text-sm relative',
-      overdue ? 'bg-destructive/10' : 'bg-muted/30'
+      // Left border: overdue=red 6px, error=red 6px, warning=yellow 4px
+      overdue || isError
+        ? 'border-l-[6px] border-l-[hsl(0,72%,51%)]'
+        : isWarning
+          ? 'border-l-[4px] border-l-[hsl(38,92%,50%)]'
+          : '',
+      // Background tint
+      overdue ? 'bg-[hsl(0,86%,97%)]' : isError ? 'bg-destructive/10' : isWarning ? 'bg-[hsl(38,92%,50%,0.08)]' : 'bg-muted/30'
     )}>
+      {/* Blinking red dot for ERROR — top right */}
+      {isError && (
+        <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-destructive tv-blink" />
+      )}
+
       {(openIssueCount ?? 0) > 0 && <OrderIssueIndicator count={openIssueCount!} tv />}
-      {/* Overdue indicator */}
-      {overdue && <AlertTriangle size={14} className="text-destructive shrink-0" />}
+
+      {/* Badges: OVERDUE and/or ERROR/WARNING */}
+      {overdue && (
+        <span className="bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0">
+          OVERDUE
+        </span>
+      )}
+      {isError && (
+        <span className="bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0">
+          ERROR
+        </span>
+      )}
+      {isWarning && (
+        <span className="bg-warning text-warning-foreground text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0">
+          WARNING
+        </span>
+      )}
 
       {/* Order ID */}
       <span className="font-mono font-semibold w-28 shrink-0 text-foreground">{order.Order}</span>
