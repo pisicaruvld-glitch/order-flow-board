@@ -1,4 +1,4 @@
-import { Order } from '@/lib/types';
+import { Order, Area } from '@/lib/types';
 import { AreaBadge, StatusBadge } from './Badges';
 import { cn } from '@/lib/utils';
 import { Slash, Circle, X, GitCompareArrows } from 'lucide-react';
@@ -34,6 +34,43 @@ export function ChangedBadge({ fields }: { fields?: string[] }) {
 }
 
 // ============================================================
+// Liquid Fill helpers
+// ============================================================
+function getFillPercent(order: Order): number {
+  const orderQty = Number(order?.Order_quantity ?? 0);
+  if (orderQty <= 0) return 0;
+  const yieldQty = Number(order?.Confirmed_Yield_Quantity ?? 0);
+  return (yieldQty / orderQty) * 100;
+}
+
+function getFillColor(percent: number): string {
+  if (percent <= 0) return 'transparent';
+  if (percent <= 25) return 'hsl(0, 72%, 51%)';       // red
+  if (percent <= 70) return 'hsl(32, 95%, 44%)';       // orange
+  if (percent <= 99) return 'hsl(213, 78%, 48%)';      // blue
+  if (percent <= 100) return 'hsl(145, 63%, 38%)';     // green
+  return 'hsl(280, 55%, 50%)';                          // purple >100%
+}
+
+function LiquidFill({ order }: { order: Order }) {
+  const percent = getFillPercent(order);
+  if (percent <= 0) return null;
+  const color = getFillColor(percent);
+  const height = `${Math.min(100, percent)}%`;
+
+  return (
+    <div className="liquid-fill">
+      <div
+        className="liquid-fill-inner"
+        style={{ height, background: color }}
+      />
+    </div>
+  );
+}
+
+const LIQUID_AREAS: Area[] = ['Production', 'Logistics'];
+
+// ============================================================
 // Order Card
 // ============================================================
 interface OrderCardProps {
@@ -41,81 +78,90 @@ interface OrderCardProps {
   compact?: boolean;
   onClick?: () => void;
   selected?: boolean;
+  tv?: boolean;
 }
 
-export function OrderCard({ order, compact = false, onClick, selected }: OrderCardProps) {
+export function OrderCard({ order, compact = false, onClick, selected, tv }: OrderCardProps) {
   const orderQty = Number(order?.Order_quantity ?? 0);
   const deliveredQty = Number(order?.Delivered_quantity ?? 0);
   const progress = orderQty > 0 ? Math.round((deliveredQty / orderQty) * 100) : 0;
+  const showLiquid = LIQUID_AREAS.includes(order.current_area);
 
   return (
     <div
       className={cn(
         'bg-card rounded-lg border cursor-pointer order-card p-3 relative',
         selected ? 'border-primary ring-1 ring-primary' : 'border-border hover:border-primary/40',
-        compact && 'p-2'
+        compact && 'p-2',
+        tv && showLiquid && 'tv-liquid'
       )}
       onClick={onClick}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <PriorityIcon priority={order.Priority} />
-          <span className="font-mono text-xs font-semibold text-foreground truncate">{String(order?.Order ?? '')}</span>
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
-          {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
-          <StatusBadge status={order.System_Status} size="sm" />
-        </div>
-      </div>
+      {/* Liquid fill layer — behind content */}
+      {showLiquid && <LiquidFill order={order} />}
 
-      {compact && (
-        <div className="mt-1 min-w-0">
-          {(order.Material || order.Material_description) ? (
-            <>
-              {order.Material && (
-                <p className="font-mono text-[10px] text-muted-foreground leading-tight truncate">
-                  {String(order.Material)}
-                </p>
-              )}
-              {order.Material_description && (
-                <p className="text-[10px] text-muted-foreground leading-tight truncate" title={String(order.Material_description)}>
-                  {String(order.Material_description)}
-                </p>
-              )}
-            </>
-          ) : (
-            <p className="text-[10px] text-muted-foreground leading-tight">Material: N/A</p>
-          )}
+      {/* Content — above liquid */}
+      <div className="relative z-[1]">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <PriorityIcon priority={order.Priority} />
+            <span className="font-mono text-xs font-semibold text-foreground truncate">{String(order?.Order ?? '')}</span>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
+            <StatusBadge status={order.System_Status} size="sm" />
+          </div>
         </div>
-      )}
 
-      {!compact && (
-        <>
-          <div className="mt-1.5">
-          <p className="text-xs text-muted-foreground truncate" title={String(order?.Material_description ?? '')}>
-              {String(order?.Material_description ?? '')}
-            </p>
+        {compact && (
+          <div className="mt-1 min-w-0">
+            {(order.Material || order.Material_description) ? (
+              <>
+                {order.Material && (
+                  <p className="font-mono text-[10px] text-muted-foreground leading-tight truncate">
+                    {String(order.Material)}
+                  </p>
+                )}
+                {order.Material_description && (
+                  <p className="text-[10px] text-muted-foreground leading-tight truncate" title={String(order.Material_description)}>
+                    {String(order.Material_description)}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-[10px] text-muted-foreground leading-tight">Material: N/A</p>
+            )}
           </div>
-          <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-            <span>{String(order?.Plant ?? '')}</span>
-            <span>{orderQty.toLocaleString()} units</span>
-          </div>
-          {deliveredQty > 0 && (
-            <div className="mt-2">
-              <div className="flex justify-between text-[10px] text-muted-foreground mb-0.5">
-                <span>Delivered</span>
-                <span>{progress}%</span>
-              </div>
-              <div className="h-1 rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full bg-success rounded-full transition-all"
-                  style={{ width: `${Math.min(100, progress)}%` }}
-                />
-              </div>
+        )}
+
+        {!compact && (
+          <>
+            <div className="mt-1.5">
+              <p className="text-xs text-muted-foreground truncate" title={String(order?.Material_description ?? '')}>
+                {String(order?.Material_description ?? '')}
+              </p>
             </div>
-          )}
-        </>
-      )}
+            <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+              <span>{String(order?.Plant ?? '')}</span>
+              <span>{orderQty.toLocaleString()} units</span>
+            </div>
+            {deliveredQty > 0 && (
+              <div className="mt-2">
+                <div className="flex justify-between text-[10px] text-muted-foreground mb-0.5">
+                  <span>Delivered</span>
+                  <span>{progress}%</span>
+                </div>
+                <div className="h-1 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full bg-success rounded-full transition-all"
+                    style={{ width: `${Math.min(100, progress)}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
