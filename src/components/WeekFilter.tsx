@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Order } from '@/lib/types';
-import { getISOWeek, currentISOWeek, cn } from '@/lib/utils';
+import { getFactoryWeek, currentFactoryWeek, cn } from '@/lib/utils';
 import {
   Select,
   SelectContent,
@@ -19,19 +19,19 @@ interface WeekFilterProps {
 }
 
 export function WeekFilter({ orders, value, onChange, tv }: WeekFilterProps) {
-  const thisWeek = currentISOWeek();
+  const thisWeek = currentFactoryWeek();
 
   const availableWeeks = useMemo(() => {
     const set = new Set<number>();
     orders.forEach(o => {
-      const w = getISOWeek(o.Start_date_sched);
+      const w = getFactoryWeek(o.Start_date_sched);
       if (w !== null) set.add(w);
     });
     return Array.from(set).sort((a, b) => a - b);
   }, [orders]);
 
   const resolvedWeek = value === 'this' ? thisWeek : value === 'all' ? null : Number(value);
-  const weekLabel = resolvedWeek != null ? `W${resolvedWeek}` : null;
+  const weekLabel = resolvedWeek != null ? `FW${resolvedWeek}` : null;
 
   if (tv) {
     return (
@@ -42,9 +42,9 @@ export function WeekFilter({ orders, value, onChange, tv }: WeekFilterProps) {
           className="bg-nav-bg text-nav-fg border border-border rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
         >
           <option value="all">All weeks</option>
-          <option value="this">This week (W{thisWeek})</option>
+          <option value="this">This week (FW{thisWeek})</option>
           {availableWeeks.map(w => (
-            <option key={w} value={String(w)}>W{w}</option>
+            <option key={w} value={String(w)}>FW{w}</option>
           ))}
         </select>
         {weekLabel && (
@@ -63,9 +63,9 @@ export function WeekFilter({ orders, value, onChange, tv }: WeekFilterProps) {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All weeks</SelectItem>
-          <SelectItem value="this">This week (W{thisWeek})</SelectItem>
+          <SelectItem value="this">This week (FW{thisWeek})</SelectItem>
           {availableWeeks.map(w => (
-            <SelectItem key={w} value={String(w)}>W{w}</SelectItem>
+            <SelectItem key={w} value={String(w)}>FW{w}</SelectItem>
           ))}
         </SelectContent>
       </Select>
@@ -81,19 +81,19 @@ export function WeekFilter({ orders, value, onChange, tv }: WeekFilterProps) {
 /** Filter orders by week selection. Returns all if "all". */
 export function filterByWeek(orders: Order[], weekValue: string): Order[] {
   if (weekValue === 'all') return orders;
-  const thisWeek = currentISOWeek();
+  const thisWeek = currentFactoryWeek();
   const targetWeek = weekValue === 'this' ? thisWeek : Number(weekValue);
   if (isNaN(targetWeek)) return orders;
-  return orders.filter(o => getISOWeek(o.Start_date_sched) === targetWeek);
+  return orders.filter(o => getFactoryWeek(o.Start_date_sched) === targetWeek);
 }
 
-/** Small badge showing Wxx for an order. */
+/** Small badge showing FWxx for an order. */
 export function WeekBadge({ dateString, className }: { dateString: string; className?: string }) {
-  const w = getISOWeek(dateString);
+  const w = getFactoryWeek(dateString);
   if (w === null) return null;
   return (
     <span className={cn('text-[9px] font-semibold bg-muted text-muted-foreground px-1 py-0.5 rounded leading-none', className)}>
-      W{w}
+      FW{w}
     </span>
   );
 }

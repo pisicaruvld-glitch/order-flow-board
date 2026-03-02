@@ -6,29 +6,51 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // ============================================================
-// ISO Week helpers
+// Factory Week helpers (week runs Friday 00:00 → Thursday 23:59)
 // ============================================================
 
-/** Return the ISO week number for a Date (week starts Monday, ISO 8601). */
-export function dateToISOWeek(d: Date): number {
-  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  // Set to nearest Thursday: current date + 4 - current day number (Mon=1..Sun=7)
-  date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
-  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-  return Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+/** Return the first Friday on or after Jan 1 of the given year. */
+function firstFridayOfYear(year: number): Date {
+  const jan1 = new Date(Date.UTC(year, 0, 1));
+  const day = jan1.getUTCDay(); // 0=Sun … 5=Fri 6=Sat
+  const daysUntilFri = (5 - day + 7) % 7; // 0 if already Friday
+  return new Date(Date.UTC(year, 0, 1 + daysUntilFri));
 }
 
-/** Parse "YYYY-MM-DD" and return ISO week number, or null if invalid. */
-export function getISOWeek(dateString: string | null | undefined): number | null {
+/** Return the most recent Friday (start of factory week) for a given UTC date. */
+function weekStartFriday(d: Date): Date {
+  const utc = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = utc.getUTCDay(); // 0=Sun…6=Sat
+  const diff = (day - 5 + 7) % 7; // days since last Friday (0 if Friday)
+  return new Date(Date.UTC(utc.getUTCFullYear(), utc.getUTCMonth(), utc.getUTCDate() - diff));
+}
+
+/** Compute Factory Week number for a Date. */
+export function dateToFactoryWeek(d: Date): number {
+  const ws = weekStartFriday(d);
+  let year = ws.getUTCFullYear();
+  let ff = firstFridayOfYear(year);
+
+  // If ws is before first Friday of its year → last FW of previous year
+  if (ws.getTime() < ff.getTime()) {
+    year -= 1;
+    ff = firstFridayOfYear(year);
+  }
+
+  return Math.floor((ws.getTime() - ff.getTime()) / (7 * 86400000)) + 1;
+}
+
+/** Parse "YYYY-MM-DD" and return Factory Week number, or null if invalid. */
+export function getFactoryWeek(dateString: string | null | undefined): number | null {
   if (!dateString) return null;
   const d = new Date(dateString + 'T00:00:00');
   if (isNaN(d.getTime())) return null;
-  return dateToISOWeek(d);
+  return dateToFactoryWeek(d);
 }
 
-/** Return current ISO week number. */
-export function currentISOWeek(): number {
-  return dateToISOWeek(new Date());
+/** Return current Factory Week number. */
+export function currentFactoryWeek(): number {
+  return dateToFactoryWeek(new Date());
 }
 
 const WEEK_FILTER_KEY = 'vsro_week_filter';
