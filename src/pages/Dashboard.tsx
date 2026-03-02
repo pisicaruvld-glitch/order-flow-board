@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Order, StatusMapping, Area, AREAS } from '@/lib/types';
 import { getOrders, getStatusMappings, getAreaCounts, getUniquePlants, demoMoveOrder, getBoardVersion, getAllOpenIssueCounts } from '@/lib/api';
 import { AppConfig } from '@/lib/types';
@@ -8,7 +9,8 @@ import { OrderCard } from '@/components/OrderCard';
 import { Search, Filter, RefreshCw, ArrowRight, Radio } from 'lucide-react';
 import { DiscrepancyBadge, SourceBadge } from '@/components/MoveOrderDialog';
 import { OrderIssueIndicator } from '@/components/OrderIssueIndicator';
-import { cn } from '@/lib/utils';
+import { WeekFilter, filterByWeek } from '@/components/WeekFilter';
+import { cn, loadWeekFilter, saveWeekFilter } from '@/lib/utils';
 import { toast } from 'sonner';
 
 interface DashboardProps {
@@ -30,6 +32,7 @@ const areaIcons: Record<Area, string> = {
 };
 
 export default function Dashboard({ config }: DashboardProps) {
+  const [searchParams] = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [mappings, setMappings] = useState<StatusMapping[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,6 +42,14 @@ export default function Dashboard({ config }: DashboardProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [movingOrder, setMovingOrder] = useState<string | null>(null);
   const [openIssueCounts, setOpenIssueCounts] = useState<Record<string, number>>({});
+  
+  // Week filter: URL param overrides localStorage
+  const urlWeek = searchParams.get('week');
+  const [weekFilter, setWeekFilter] = useState<string>(urlWeek ?? loadWeekFilter());
+  const handleWeekChange = (v: string) => {
+    setWeekFilter(v);
+    saveWeekFilter(v);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -81,7 +92,7 @@ export default function Dashboard({ config }: DashboardProps) {
     return () => clearInterval(id);
   }, [load]);
 
-  const filtered = orders.filter(o => {
+  const filtered = filterByWeek(orders, weekFilter).filter(o => {
     const q = (searchQ ?? '').toLowerCase();
   
     const orderStr = String(o?.Order ?? '');
@@ -134,7 +145,7 @@ export default function Dashboard({ config }: DashboardProps) {
       />
 
       {/* Filters */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
         <div className="relative flex-1 max-w-xs">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -155,12 +166,15 @@ export default function Dashboard({ config }: DashboardProps) {
             {plants.map(p => <option key={p}>{p}</option>)}
           </select>
         </div>
+        <WeekFilter orders={orders} value={weekFilter} onChange={handleWeekChange} />
         {config.mode === 'DEMO' && (
           <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
             DEMO: Click cards to move between areas
           </span>
         )}
       </div>
+
+
 
       {loading && <LoadingSpinner label="Loading orders…" />}
       {error && <ErrorMessage message={error} onRetry={load} />}

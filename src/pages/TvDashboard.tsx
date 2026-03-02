@@ -3,9 +3,9 @@ import { useSearchParams } from 'react-router-dom';
 import { Order, Area, AREAS } from '@/lib/types';
 import { getOrders, getBoardVersion, getAllOpenIssueCounts } from '@/lib/api';
 import { Radio, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, loadWeekFilter, saveWeekFilter } from '@/lib/utils';
 import { OrderIssueIndicator } from '@/components/OrderIssueIndicator';
-
+import { WeekFilter, filterByWeek, WeekBadge } from '@/components/WeekFilter';
 // ============================================================
 // Helpers
 // ============================================================
@@ -72,6 +72,14 @@ export default function TvDashboard() {
   const visibleAreas: Area[] = areasParam
     ? (areasParam.split(',').filter(a => AREAS.includes(a as Area)) as Area[])
     : [...AREAS];
+
+  // Week filter: URL param overrides localStorage
+  const urlWeek = searchParams.get('week');
+  const [weekFilter, setWeekFilter] = useState<string>(urlWeek ?? loadWeekFilter());
+  const handleWeekChange = (v: string) => {
+    setWeekFilter(v);
+    saveWeekFilter(v);
+  };
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [errorsCount, setErrorsCount] = useState(0);
@@ -145,8 +153,9 @@ export default function TvDashboard() {
     return () => clearInterval(id);
   }, [load, interval]);
 
-  // Derived data
-  const activeOrders = useMemo(() => orders.filter(o => o.current_area !== 'HIDDEN' as any), [orders]);
+  // Derived data — apply week filter first
+  const weekFiltered = useMemo(() => filterByWeek(orders, weekFilter), [orders, weekFilter]);
+  const activeOrders = useMemo(() => weekFiltered.filter(o => o.current_area !== 'HIDDEN' as any), [weekFiltered]);
   const overdueOrders = useMemo(() => activeOrders.filter(isOverdue), [activeOrders]);
   const areaOrders = useMemo(() => {
     const m: Record<Area, Order[]> = { Orders: [], Warehouse: [], Production: [], Logistics: [] };
@@ -154,7 +163,6 @@ export default function TvDashboard() {
       const a = (typeof o.current_area === 'string' && m[o.current_area as Area]) ? o.current_area as Area : 'Orders';
       m[a].push(o);
     });
-    // Sort each
     Object.values(m).forEach(arr => arr.sort(tvSort));
     return m;
   }, [activeOrders]);
@@ -195,6 +203,7 @@ export default function TvDashboard() {
           <h1 className="text-2xl font-bold tracking-tight">VSRO Order Flow – TV</h1>
         </div>
         <div className="flex items-center gap-6 text-sm">
+          <WeekFilter orders={orders} value={weekFilter} onChange={handleWeekChange} tv />
           <span className="flex items-center gap-2 text-primary">
             <Radio size={14} className="animate-pulse" />
             <span className="font-semibold">LIVE</span>
@@ -298,7 +307,8 @@ function TvOrderRow({ order, openIssueCount }: { order: Order; openIssueCount?: 
         {truncate(order.Material_description || '—', 30)}
       </span>
 
-      {/* Dates */}
+      {/* Week + Dates */}
+      <WeekBadge dateString={order.Start_date_sched} className="shrink-0" />
       <span className="font-mono text-xs text-muted-foreground w-20 shrink-0">
         {order.Start_date_sched || '—'}
       </span>
