@@ -36,33 +36,37 @@ export function ChangedBadge({ fields }: { fields?: string[] }) {
 // ============================================================
 // Liquid Fill helpers
 // ============================================================
-function getFillPercent(order: Order): number {
+function getFillProgress(order: Order): number {
   const orderQty = Number(order?.Order_quantity ?? 0);
   if (orderQty <= 0) return 0;
   const yieldQty = Number(order?.Confirmed_Yield_Quantity ?? 0);
-  return (yieldQty / orderQty) * 100;
+  if (yieldQty <= 0) return 0;
+  return Math.min(yieldQty / orderQty, 1); // clamp 0–1
 }
 
-function getFillColor(percent: number): string {
-  if (percent <= 0) return 'transparent';
-  if (percent <= 25) return 'hsl(0, 72%, 51%)';       // red
-  if (percent <= 70) return 'hsl(32, 95%, 44%)';       // orange
-  if (percent <= 99) return 'hsl(213, 78%, 48%)';      // blue
-  if (percent <= 100) return 'hsl(145, 63%, 38%)';     // green
-  return 'hsl(280, 55%, 50%)';                          // purple >100%
+function getFillColor(progress: number): string {
+  if (progress <= 0) return 'transparent';
+  if (progress < 0.30) return '#dc2626';   // red
+  if (progress < 0.70) return '#f59e0b';   // amber
+  if (progress < 1)    return '#3b82f6';   // blue
+  return '#16a34a';                         // green (100%)
 }
 
-function LiquidFill({ order }: { order: Order }) {
-  const percent = getFillPercent(order);
-  if (percent <= 0) return null;
-  const color = getFillColor(percent);
-  const height = `${Math.min(100, percent)}%`;
+function LiquidFill({ order, tv }: { order: Order; tv?: boolean }) {
+  const progress = getFillProgress(order);
+  if (progress <= 0) return null;
+  const color = getFillColor(progress);
+  const height = `${Math.round(progress * 100)}%`;
 
   return (
     <div className="liquid-fill">
       <div
         className="liquid-fill-inner"
-        style={{ height, background: color }}
+        style={{
+          height,
+          background: color,
+          opacity: tv ? 0.35 : 0.25,
+        }}
       />
     </div>
   );
