@@ -27,6 +27,7 @@ export interface Order {
   sap_area?: Area; // area derived from SAP status mapping
   discrepancy?: boolean; // source=manual AND sap_area != current_area
   product_type?: "FG" | "SFG"; // FG = finite, SFG = semifinite
+  Confirmed_Yield_Quantity?: number; // confirmed yield for liquid fill
 }
 
 export interface StatusMapping {
