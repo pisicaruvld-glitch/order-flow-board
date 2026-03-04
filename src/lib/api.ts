@@ -709,6 +709,28 @@ export async function getIssueHistory(issueId: string): Promise<IssueHistoryEntr
   return apiFetch<IssueHistoryEntry[]>(path);
 }
 
+export async function addIssueFeedback(
+  issueId: string,
+  data: { feedback: string; changed_by: string },
+): Promise<IssueHistoryEntry> {
+  if (isDemo()) {
+    const entry: IssueHistoryEntry = {
+      id: `H-${Date.now()}`,
+      issue_id: issueId,
+      action: "FEEDBACK",
+      changed_by: data.changed_by,
+      changed_at: new Date().toISOString(),
+      details: data.feedback,
+    };
+    _issueHistory = [..._issueHistory, entry];
+    return entry;
+  }
+  return apiFetch<IssueHistoryEntry>(`/issues/${issueId}/feedback`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
 // ============================================================
 // PRODUCTION API
 // ============================================================
