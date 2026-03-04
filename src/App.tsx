@@ -15,6 +15,7 @@ import LogisticsPage from "./pages/Logistics";
 import AdminPage from "./pages/Admin";
 import ProductTypeRulesPage from "./pages/ProductTypeRules";
 import ErrorsPage from "./pages/Errors";
+import WarehouseIssuesPage from "./pages/WarehouseIssues";
 import TvDashboardPage from "./pages/TvDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -37,6 +38,7 @@ const App = () => {
               <Route path="/production" element={<ProductionPage config={config} />} />
               <Route path="/logistics" element={<LogisticsPage config={config} />} />
               <Route path="/errors" element={<ErrorsPage config={config} />} />
+              <Route path="/warehouse-issues" element={<WarehouseIssuesPage config={config} />} />
               <Route path="/admin" element={<AdminPage config={config} onConfigChange={setConfig} />} />
               <Route path="/admin/product-type-rules" element={<ProductTypeRulesPage config={config} />} />
               <Route path="/tv" element={<TvDashboardPage />} />
