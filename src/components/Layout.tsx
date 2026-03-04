@@ -13,6 +13,7 @@ import {
   ChevronRight,
   RefreshCw,
   AlertOctagon,
+  AlertTriangle,
   Tv,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -29,6 +30,7 @@ const navItems = [
   { path: '/production', label: 'Production', icon: Factory },
   { path: '/logistics', label: 'Logistics', icon: Truck },
   { path: '/errors', label: 'Errors', icon: AlertOctagon },
+  { path: '/warehouse-issues', label: 'WH Issues', icon: AlertTriangle },
 ];
 
 export function Layout({ children, config }: LayoutProps) {
