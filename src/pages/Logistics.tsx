@@ -3,6 +3,7 @@ import { Order, Shipment, AreaModes } from '@/lib/types';
 import { getOrders, getShipments, receiveShipment, getAreaModes, moveOrder } from '@/lib/api';
 import { AppConfig } from '@/lib/types';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
+import { OrderCard } from '@/components/OrderCard';
 import { ShipmentCard } from '@/components/ShipmentCard';
 import { LogisticsReceiveDialog } from '@/components/LogisticsReceiveDialog';
 import { MoveOrderDialog } from '@/components/MoveOrderDialog';
@@ -42,27 +43,31 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
       setAllOrders(orders);
       setAreaModes(modes);
 
-      // Find orders with shipments (prod_delivered_qty > 0 or in Logistics area)
-      const relevantOrders = orders.filter(
-        o => (o.prod_delivered_qty != null && o.prod_delivered_qty > 0) || o.current_area === 'Logistics'
+      // Collect order IDs that are currently in Logistics (to dedup)
+      const logisticsOrderIds = new Set(
+        orders.filter(o => o.current_area === 'Logistics').map(o => o.Order)
       );
 
-      // Fetch shipments for each relevant order
+      // Find orders NOT in Logistics but with shipments (prod_delivered_qty > 0)
+      const ordersWithShipments = orders.filter(
+        o => !logisticsOrderIds.has(o.Order) && o.prod_delivered_qty != null && o.prod_delivered_qty > 0
+      );
+
+      // Fetch shipments for those orders only
       const rows: ShipmentWithOrder[] = [];
       await Promise.all(
-        relevantOrders.map(async (order) => {
+        ordersWithShipments.map(async (order) => {
           try {
             const shipments = await getShipments(order.Order);
             for (const s of shipments) {
               rows.push({ shipment: s, order });
             }
           } catch {
-            // If shipments endpoint fails (e.g. DEMO mode), skip
+            // skip on error
           }
         })
       );
 
-      // Sort by reported_at descending
       rows.sort((a, b) => new Date(b.shipment.reported_at).getTime() - new Date(a.shipment.reported_at).getTime());
       setShipmentRows(rows);
     } catch (e: unknown) {
@@ -104,18 +109,21 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
 
   const isManualMode = areaModes.Logistics === 'MANUAL';
 
-  // Cumulative summary from orders
-  const logisticsOrders = allOrders.filter(o => o.current_area === 'Logistics' || (o.prod_delivered_qty != null && o.prod_delivered_qty > 0));
-  const totalDelivered = logisticsOrders.reduce((s, o) => s + (o.prod_delivered_qty ?? 0), 0);
-  const totalScrap = logisticsOrders.reduce((s, o) => s + (o.prod_scrap_qty ?? 0), 0);
-  const totalReceived = logisticsOrders.reduce((s, o) => s + (o.log_received_qty ?? 0), 0);
+  // Section 1: Orders currently in Logistics
+  const logisticsOrders = allOrders.filter(o => o.current_area === 'Logistics');
+
+  // Cumulative summary
+  const allRelevant = allOrders.filter(o => o.current_area === 'Logistics' || (o.prod_delivered_qty != null && o.prod_delivered_qty > 0));
+  const totalDelivered = allRelevant.reduce((s, o) => s + (o.prod_delivered_qty ?? 0), 0);
+  const totalScrap = allRelevant.reduce((s, o) => s + (o.prod_scrap_qty ?? 0), 0);
+  const totalReceived = allRelevant.reduce((s, o) => s + (o.log_received_qty ?? 0), 0);
   const pendingReceive = shipmentRows.filter(r => r.shipment.received_qty_delta == null || r.shipment.received_qty_delta === 0).length;
 
   return (
     <PageContainer>
       <PageHeader
-        title="Logistics — Shipments"
-        subtitle={`${shipmentRows.length} shipments from Production`}
+        title="Logistics"
+        subtitle={`${logisticsOrders.length} orders · ${shipmentRows.length} incoming shipments`}
         actions={
           <div className="flex items-center gap-3">
             <span className={cn(
@@ -153,34 +161,71 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
         </div>
       </div>
 
-      {loading && <LoadingSpinner label="Loading shipments…" />}
+      {loading && <LoadingSpinner label="Loading logistics…" />}
       {error && <ErrorMessage message={error} onRetry={load} />}
 
       {!loading && !error && (
-        <div className="space-y-2">
-          {shipmentRows.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground text-sm">
-              No shipments yet. Create shipments from the Production page using "Next Step".
-            </div>
-          )}
-          {shipmentRows.map(({ shipment, order }) => (
-            <div key={shipment.id} className="relative">
-              <ShipmentCard
-                shipment={shipment}
-                order={order}
-                onReceive={(s) => openReceive(s, order)}
-              />
-              {isManualMode && (
-                <button
-                  onClick={() => setMoveDialog({ orderId: order.Order })}
-                  className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 border border-border text-[10px] text-muted-foreground rounded hover:bg-muted transition-colors"
-                >
-                  <ArrowLeft size={10} />
-                  Move Back
-                </button>
-              )}
-            </div>
-          ))}
+        <div className="space-y-6">
+          {/* Section 1: Orders in Logistics */}
+          <section>
+            <h2 className="text-sm font-semibold text-foreground mb-2">Orders in Logistics ({logisticsOrders.length})</h2>
+            {logisticsOrders.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-4">No orders currently in Logistics.</p>
+            ) : (
+              <div className="space-y-2">
+                {logisticsOrders.map(order => (
+                  <div key={order.Order} className="bg-card border border-border rounded-lg p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-xs font-semibold">{order.Order}</span>
+                          {order.Material_description && (
+                            <span className="text-[10px] text-muted-foreground truncate">{order.Material_description}</span>
+                          )}
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[10px]">
+                          {order.prod_delivered_qty != null && <span className="text-muted-foreground">Delivered: <strong className="text-foreground">{order.prod_delivered_qty}</strong></span>}
+                          {order.prod_scrap_qty != null && <span className="text-muted-foreground">Scrap: <strong className="text-foreground">{order.prod_scrap_qty}</strong></span>}
+                          {order.finished_qty != null && <span className="text-muted-foreground">Finished: <strong className="text-foreground">{order.finished_qty}</strong></span>}
+                          <span className="text-muted-foreground">Received: <strong className="text-foreground">{order.log_received_qty ?? '—'}</strong></span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap shrink-0">
+                        {isManualMode && (
+                          <button
+                            onClick={() => setMoveDialog({ orderId: order.Order })}
+                            className="flex items-center gap-1 px-2 py-1 border border-border text-[10px] text-muted-foreground rounded hover:bg-muted transition-colors"
+                          >
+                            <ArrowLeft size={10} />
+                            Move Back
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Section 2: Incoming Shipments */}
+          <section>
+            <h2 className="text-sm font-semibold text-foreground mb-2">Incoming Shipments ({shipmentRows.length})</h2>
+            {shipmentRows.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-4">No incoming shipments. Create shipments from the Production page using "Next Step".</p>
+            ) : (
+              <div className="space-y-2">
+                {shipmentRows.map(({ shipment, order }) => (
+                  <ShipmentCard
+                    key={shipment.id}
+                    shipment={shipment}
+                    order={order}
+                    onReceive={(s) => openReceive(s, order)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
         </div>
       )}
 
