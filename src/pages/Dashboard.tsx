@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Order, StatusMapping, Area, AREAS } from '@/lib/types';
-import { getOrders, getStatusMappings, getAreaCounts, getUniquePlants, demoMoveOrder, getBoardVersion, getAllOpenIssueCounts } from '@/lib/api';
+import { getOrders, getStatusMappings, getAreaCounts, getUniquePlants, demoMoveOrder, getBoardVersion, getAllOpenIssueCounts, moveOrder } from '@/lib/api';
 import { AppConfig } from '@/lib/types';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { AreaBadge, StatusBadge } from '@/components/Badges';
 import { OrderCard } from '@/components/OrderCard';
 import { Search, Filter, RefreshCw, ArrowRight, Radio } from 'lucide-react';
-import { DiscrepancyBadge, SourceBadge } from '@/components/MoveOrderDialog';
+import { MoveOrderDialog, DiscrepancyBadge, SourceBadge } from '@/components/MoveOrderDialog';
 import { OrderIssueIndicator } from '@/components/OrderIssueIndicator';
 import { WeekFilter, filterByWeek } from '@/components/WeekFilter';
 import { cn, loadKwFilter, saveKwFilter } from '@/lib/utils';
@@ -42,6 +42,7 @@ export default function Dashboard({ config }: DashboardProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [movingOrder, setMovingOrder] = useState<string | null>(null);
   const [openIssueCounts, setOpenIssueCounts] = useState<Record<string, number>>({});
+  const [overrideDialog, setOverrideDialog] = useState<{ orderId: string; fromArea: Area; targetArea: Area } | null>(null);
   
   // KW filter: URL param overrides localStorage
   const urlKw = searchParams.get('kw');
@@ -115,6 +116,12 @@ export default function Dashboard({ config }: DashboardProps) {
 
   const handleMove = async (orderId: string, area: Area) => {
     if (config.mode !== 'DEMO') return;
+    // Check if moving from Warehouse to Production with open issues
+    const order = orders.find(o => o.Order === orderId);
+    if (order?.current_area === 'Warehouse' && area === 'Production' && (openIssueCounts[orderId] ?? 0) > 0) {
+      setOverrideDialog({ orderId, fromArea: 'Warehouse', targetArea: 'Production' });
+      return;
+    }
     setMovingOrder(orderId);
     try {
       const updated = await demoMoveOrder(orderId, area);
@@ -123,6 +130,22 @@ export default function Dashboard({ config }: DashboardProps) {
     } finally {
       setMovingOrder(null);
     }
+  };
+
+  const handleOverrideConfirm = async (justification?: string, movedBy?: string) => {
+    if (!overrideDialog) return;
+    await moveOrder({
+      order_id: overrideDialog.orderId,
+      target_area: overrideDialog.targetArea,
+      justification,
+      moved_by: movedBy,
+    });
+    setOrders(prev => prev.map(o =>
+      o.Order === overrideDialog.orderId
+        ? { ...o, current_area: overrideDialog.targetArea, source: 'manual' as const }
+        : o
+    ));
+    setOverrideDialog(null);
   };
 
   return (
@@ -202,6 +225,19 @@ export default function Dashboard({ config }: DashboardProps) {
             );
           })}
         </div>
+      )}
+
+      {/* Override dialog for Warehouse→Production with open issues */}
+      {overrideDialog && (
+        <MoveOrderDialog
+          orderId={overrideDialog.orderId}
+          currentArea={overrideDialog.fromArea}
+          targetArea={overrideDialog.targetArea}
+          isNextStep={true}
+          overrideMode
+          onConfirm={handleOverrideConfirm}
+          onCancel={() => setOverrideDialog(null)}
+        />
       )}
     </PageContainer>
   );
