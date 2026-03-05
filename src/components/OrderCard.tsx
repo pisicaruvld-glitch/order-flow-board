@@ -83,9 +83,10 @@ interface OrderCardProps {
   onClick?: () => void;
   selected?: boolean;
   tv?: boolean;
+  hasOpenIssue?: boolean;
 }
 
-export function OrderCard({ order, compact = false, onClick, selected, tv }: OrderCardProps) {
+export function OrderCard({ order, compact = false, onClick, selected, tv, hasOpenIssue }: OrderCardProps) {
   const orderQty = Number(order?.Order_quantity ?? 0);
   const deliveredQty = Number(order?.Delivered_quantity ?? 0);
   const progress = orderQty > 0 ? Math.round((deliveredQty / orderQty) * 100) : 0;
@@ -97,7 +98,8 @@ export function OrderCard({ order, compact = false, onClick, selected, tv }: Ord
         'bg-card rounded-lg border cursor-pointer order-card p-3 relative',
         selected ? 'border-primary ring-1 ring-primary' : 'border-border hover:border-primary/40',
         compact && 'p-2',
-        tv && showLiquid && 'tv-liquid'
+        tv && showLiquid && 'tv-liquid',
+        hasOpenIssue && 'order-card-issue'
       )}
       onClick={onClick}
     >
