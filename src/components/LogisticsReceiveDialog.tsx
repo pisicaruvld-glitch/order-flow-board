@@ -2,20 +2,22 @@ import { useState } from 'react';
 import { AlertTriangle, Package, X } from 'lucide-react';
 
 interface LogisticsReceiveDialogProps {
+  shipmentId: number;
   orderId: string;
-  finishedQty?: number;
-  onConfirm: (data: { log_received_qty: number; log_received_by: string }) => Promise<void>;
+  finishedQtyDelta?: number;
+  currentReceivedQty?: number | null;
+  onConfirm: (data: { received_qty_delta: number; received_by: string }) => Promise<void>;
   onCancel: () => void;
 }
 
-export function LogisticsReceiveDialog({ orderId, finishedQty, onConfirm, onCancel }: LogisticsReceiveDialogProps) {
-  const [receivedQty, setReceivedQty] = useState<string>('');
+export function LogisticsReceiveDialog({ shipmentId, orderId, finishedQtyDelta, currentReceivedQty, onConfirm, onCancel }: LogisticsReceiveDialogProps) {
+  const [receivedQty, setReceivedQty] = useState<string>(currentReceivedQty != null ? String(currentReceivedQty) : '');
   const [receivedBy, setReceivedBy] = useState('Purchasing');
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
   const received = parseInt(receivedQty) || 0;
-  const exceedsFinished = finishedQty != null && finishedQty > 0 && received > finishedQty;
+  const exceedsFinished = finishedQtyDelta != null && finishedQtyDelta > 0 && received > finishedQtyDelta;
   const canConfirm = receivedQty.trim() !== '' && received >= 0;
 
   const handleConfirm = async () => {
@@ -23,7 +25,7 @@ export function LogisticsReceiveDialog({ orderId, finishedQty, onConfirm, onCanc
     setSubmitting(true);
     setApiError(null);
     try {
-      await onConfirm({ log_received_qty: received, log_received_by: receivedBy.trim() || 'current_user' });
+      await onConfirm({ received_qty_delta: received, received_by: receivedBy.trim() || 'current_user' });
     } catch (e: unknown) {
       setApiError(e instanceof Error ? e.message : 'Failed to save');
       setSubmitting(false);
@@ -38,7 +40,7 @@ export function LogisticsReceiveDialog({ orderId, finishedQty, onConfirm, onCanc
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">
             <Package size={16} className="text-primary" />
-            <h2 className="text-sm font-semibold">Receive in Logistics</h2>
+            <h2 className="text-sm font-semibold">Receive Shipment</h2>
           </div>
           <button onClick={onCancel} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
             <X size={16} />
@@ -48,8 +50,11 @@ export function LogisticsReceiveDialog({ orderId, finishedQty, onConfirm, onCanc
         <div className="p-4 space-y-4">
           <div className="flex items-center gap-3 text-sm bg-muted rounded-lg px-3 py-2">
             <span className="font-mono font-semibold text-xs">{orderId}</span>
-            {finishedQty != null && finishedQty > 0 && (
-              <span className="text-muted-foreground text-xs ml-auto">Finished qty: {finishedQty}</span>
+            <span className="text-[10px] text-muted-foreground bg-background px-1.5 py-0.5 rounded">
+              Shipment #{shipmentId}
+            </span>
+            {finishedQtyDelta != null && finishedQtyDelta > 0 && (
+              <span className="text-muted-foreground text-xs ml-auto">Finished: {finishedQtyDelta}</span>
             )}
           </div>
 
@@ -75,7 +80,7 @@ export function LogisticsReceiveDialog({ orderId, finishedQty, onConfirm, onCanc
             />
             {exceedsFinished && (
               <p className="text-[10px] text-warning mt-1 flex items-center gap-1">
-                <AlertTriangle size={10} /> Received qty exceeds finished qty ({finishedQty})
+                <AlertTriangle size={10} /> Received qty exceeds finished qty ({finishedQtyDelta})
               </p>
             )}
           </div>

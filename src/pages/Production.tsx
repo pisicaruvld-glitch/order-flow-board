@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Order, ProductionStatus, AreaModes } from '@/lib/types';
-import { getOrders, getProductionStatus, updateProductionStatus, moveOrder, getAreaModes } from '@/lib/api';
+import { getOrders, getProductionStatus, updateProductionStatus, moveOrder, getAreaModes, createShipment } from '@/lib/api';
 import { AppConfig } from '@/lib/types';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { StatusBadge } from '@/components/Badges';
 import { PriorityIcon, ChangedBadge } from '@/components/OrderCard';
 import { MoveOrderDialog, DiscrepancyBadge, SourceBadge } from '@/components/MoveOrderDialog';
 import { ProductionHandoverDialog } from '@/components/ProductionHandoverDialog';
-import { updateLogisticsStatus } from '@/lib/api';
+// Shipment API imported via line 3
 import { toast } from 'sonner';
 import { RefreshCw, Play, CheckCircle2, Clock, ArrowRight, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -18,7 +18,7 @@ interface ProductionPageProps {
 
 type ProdStatus = ProductionStatus['status'];
 type MoveDialogState = { orderId: string; isNextStep: boolean; blockedReason?: string } | null;
-type HandoverDialogState = { orderId: string } | null;
+type HandoverDialogState = { orderId: string; orderQty?: number; remainingQty?: number } | null;
 
 const statusConfig: Record<ProdStatus, { label: string; color: string; icon: React.ReactNode }> = {
   PENDING: {
@@ -88,24 +88,27 @@ export default function ProductionPage({ config }: ProductionPageProps) {
   };
 
   const openNextStep = (order: Order) => {
-    setHandoverDialog({ orderId: order.Order });
+    const remaining = order.remaining_qty ?? (order.Order_quantity - (order.prod_delivered_qty ?? 0));
+    setHandoverDialog({ orderId: order.Order, orderQty: order.Order_quantity, remainingQty: remaining });
   };
 
-  const handleHandoverConfirm = async (data: { prod_delivered_qty: number; prod_scrap_qty: number; prod_reported_by: string }) => {
+  const handleHandoverConfirm = async (data: { delivered_qty_delta: number; scrap_qty_delta: number; reported_by: string }) => {
     if (!handoverDialog) return;
-    // 1) Save quantities
-    await updateLogisticsStatus(handoverDialog.orderId, {
-      prod_delivered_qty: data.prod_delivered_qty,
-      prod_scrap_qty: data.prod_scrap_qty,
-      prod_reported_by: data.prod_reported_by,
+    // 1) Create shipment (partial delivery)
+    const result = await createShipment(handoverDialog.orderId, {
+      delivered_qty_delta: data.delivered_qty_delta,
+      scrap_qty_delta: data.scrap_qty_delta,
+      reported_by: data.reported_by,
     });
-    // 2) Move order
-    await moveOrder({
-      order_id: handoverDialog.orderId,
-      target_area: 'Logistics',
-      justification: 'prod->logistics',
-      moved_by: data.prod_reported_by,
-    });
+    // 2) If remaining == 0, move order to Logistics
+    if (result.remaining_qty <= 0) {
+      await moveOrder({
+        order_id: handoverDialog.orderId,
+        target_area: 'Logistics',
+        justification: 'prod->logistics complete',
+        moved_by: data.reported_by,
+      });
+    }
     setHandoverDialog(null);
     await load(); // refresh
   };
@@ -221,9 +224,15 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1 truncate">{String(order?.Material_description ?? '')}</p>
-                    <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
                       <span>{String(order?.Plant ?? '')}</span>
                       <span>Qty: <strong className="text-foreground">{Number(order?.Order_quantity ?? 0)}</strong></span>
+                      {(order.prod_delivered_qty != null && order.prod_delivered_qty > 0) && (
+                        <>
+                          <span>Delivered: <strong className="text-foreground">{order.prod_delivered_qty}</strong></span>
+                          <span>Remaining: <strong className="text-foreground">{order.remaining_qty ?? (order.Order_quantity - order.prod_delivered_qty)}</strong></span>
+                        </>
+                      )}
                       <span>Start: {order.Start_date_sched}</span>
                       <span>Finish: {order.Scheduled_finish_date}</span>
                       {prodStatus?.updated_by && (
@@ -306,6 +315,8 @@ export default function ProductionPage({ config }: ProductionPageProps) {
       {handoverDialog && (
         <ProductionHandoverDialog
           orderId={handoverDialog.orderId}
+          orderQty={handoverDialog.orderQty}
+          remainingQty={handoverDialog.remainingQty}
           onConfirm={handleHandoverConfirm}
           onCancel={() => setHandoverDialog(null)}
         />

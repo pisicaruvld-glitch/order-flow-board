@@ -17,6 +17,7 @@ import {
   FlowMoveResult,
   FlowError,
   ErrorCategory,
+  Shipment,
 } from "./types";
 import {
   MOCK_ORDERS,
@@ -404,6 +405,62 @@ export async function updateLogisticsStatus(
   await apiFetch<unknown>(`/orders/${orderId}/logistics-status`, {
     method: "PUT",
     body: JSON.stringify(data),
+  });
+}
+
+// ============================================================
+// SHIPMENTS API
+// ============================================================
+export interface CreateShipmentPayload {
+  delivered_qty_delta: number;
+  scrap_qty_delta: number;
+  reported_by: string;
+}
+
+export interface CreateShipmentResult {
+  ok: boolean;
+  shipment_id: number;
+  order: Order;
+  remaining_qty: number;
+}
+
+export async function createShipment(orderId: string, payload: CreateShipmentPayload): Promise<CreateShipmentResult> {
+  if (isDemo()) {
+    // Simulate shipment creation in DEMO mode
+    const idx = _orders.findIndex(o => o.Order === orderId);
+    if (idx === -1) throw new Error("Order not found");
+    const o = _orders[idx];
+    const newDelivered = (o.prod_delivered_qty ?? 0) + payload.delivered_qty_delta;
+    const newScrap = (o.prod_scrap_qty ?? 0) + payload.scrap_qty_delta;
+    const remaining = o.Order_quantity - newDelivered;
+    _orders = _orders.map((ord, i) =>
+      i === idx
+        ? { ...ord, prod_delivered_qty: newDelivered, prod_scrap_qty: newScrap, finished_qty: newDelivered - newScrap, remaining_qty: remaining }
+        : ord
+    );
+    return { ok: true, shipment_id: Date.now(), order: _orders[idx], remaining_qty: remaining };
+  }
+  return apiFetch<CreateShipmentResult>(`/orders/${orderId}/shipments`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getShipments(orderId: string): Promise<Shipment[]> {
+  if (isDemo()) return [];
+  return apiFetch<Shipment[]>(`/orders/${orderId}/shipments`);
+}
+
+export interface ReceiveShipmentPayload {
+  received_qty_delta: number;
+  received_by: string;
+}
+
+export async function receiveShipment(shipmentId: number, payload: ReceiveShipmentPayload): Promise<unknown> {
+  if (isDemo()) return { ok: true };
+  return apiFetch<unknown>(`/shipments/${shipmentId}/receive`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
   });
 }
 
