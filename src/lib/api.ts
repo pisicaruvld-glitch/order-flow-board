@@ -616,14 +616,15 @@ export async function getAllOpenIssueCounts(): Promise<Record<string, number>> {
       });
       return map;
     }
-    const url = `${apiBase()}/issues?limit=5000`;
+    const url = `${apiBase()}/warehouse/issues?status=OPEN`;
     const res = await fetch(url, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
     if (!res.ok) return {};
     const data = await res.json();
-    const arr: Issue[] = Array.isArray(data) ? data : (data?.issues ?? []);
+    const arr: { id: string; order_id: string; status: string }[] = Array.isArray(data) ? data : (data?.issues ?? []);
     const map: Record<string, number> = {};
-    arr.filter(i => i.status !== 'CLOSED').forEach(i => {
-      map[i.order_id] = (map[i.order_id] ?? 0) + 1;
+    arr.forEach(i => {
+      const oid = String(i.order_id);
+      map[oid] = (map[oid] ?? 0) + 1;
     });
     return map;
   } catch {
