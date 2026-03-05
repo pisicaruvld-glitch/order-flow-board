@@ -360,13 +360,50 @@ export async function moveOrder(req: FlowMoveRequest): Promise<FlowMoveResult> {
     return result;
   }
 
-  const path = resolvePath(ep().moveOrderPath, { order_id: req.order_id });
+const path = resolvePath(ep().moveOrderPath, { order_id: req.order_id });
   return apiFetch<FlowMoveResult>(path, {
     method: "POST",
     body: JSON.stringify({
       target_area: req.target_area,
       justification: req.justification,
+      moved_by: req.moved_by,
     }),
+  });
+}
+
+// ============================================================
+// LOGISTICS STATUS API
+// ============================================================
+export async function updateLogisticsStatus(
+  orderId: string,
+  data: {
+    prod_delivered_qty?: number;
+    prod_scrap_qty?: number;
+    prod_reported_by?: string;
+    log_received_qty?: number;
+    log_received_by?: string;
+  },
+): Promise<void> {
+  if (isDemo()) {
+    // Update in-memory order with the fields
+    _orders = _orders.map(o => {
+      if (o.Order !== orderId) return o;
+      const updated = { ...o };
+      if (data.prod_delivered_qty != null) (updated as any).prod_delivered_qty = data.prod_delivered_qty;
+      if (data.prod_scrap_qty != null) (updated as any).prod_scrap_qty = data.prod_scrap_qty;
+      if (data.log_received_qty != null) (updated as any).log_received_qty = data.log_received_qty;
+      if (data.prod_delivered_qty != null || data.prod_scrap_qty != null) {
+        const del = (updated as any).prod_delivered_qty ?? 0;
+        const scr = (updated as any).prod_scrap_qty ?? 0;
+        (updated as any).finished_qty = del - scr;
+      }
+      return updated;
+    });
+    return;
+  }
+  await apiFetch<unknown>(`/orders/${orderId}/logistics-status`, {
+    method: "PUT",
+    body: JSON.stringify(data),
   });
 }
 
@@ -768,26 +805,7 @@ export async function getLogisticsStatus(orderId: string): Promise<LogisticsStat
   return apiFetch<LogisticsStatus>(`${ep().ordersPath}/${orderId}/logistics-status`);
 }
 
-export async function updateLogisticsStatus(orderId: string, data: Partial<LogisticsStatus>): Promise<LogisticsStatus> {
-  const current = _logisticsStatus[orderId] || {
-    order_id: orderId,
-    received_from_production: false,
-    delivered: false,
-  };
-  const updated: LogisticsStatus = {
-    ...current,
-    ...data,
-    order_id: orderId,
-  };
-  if (isDemo()) {
-    _logisticsStatus = { ..._logisticsStatus, [orderId]: updated };
-    return updated;
-  }
-  return apiFetch<LogisticsStatus>(`${ep().ordersPath}/${orderId}/logistics-status`, {
-    method: "PUT",
-    body: JSON.stringify(data),
-  });
-}
+// updateLogisticsStatus is now defined above (after moveOrder)
 
 // ============================================================
 // DEMO ONLY: Move order between areas (legacy / simple)

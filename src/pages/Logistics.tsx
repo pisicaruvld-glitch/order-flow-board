@@ -6,6 +6,7 @@ import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/compo
 import { StatusBadge } from '@/components/Badges';
 import { PriorityIcon, ChangedBadge } from '@/components/OrderCard';
 import { MoveOrderDialog, DiscrepancyBadge, SourceBadge } from '@/components/MoveOrderDialog';
+import { LogisticsReceiveDialog } from '@/components/LogisticsReceiveDialog';
 import { RefreshCw, PackageCheck, Truck, Circle, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -14,6 +15,7 @@ interface LogisticsPageProps {
 }
 
 type MoveDialogState = { orderId: string; isNextStep: boolean; blockedReason?: string } | null;
+type ReceiveDialogState = { orderId: string; finishedQty?: number } | null;
 
 export default function LogisticsPage({ config }: LogisticsPageProps) {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -24,6 +26,7 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
   const [updating, setUpdating] = useState<string | null>(null);
   const [filterStep, setFilterStep] = useState<'' | 'received' | 'delivered'>('');
   const [moveDialog, setMoveDialog] = useState<MoveDialogState>(null);
+  const [receiveDialog, setReceiveDialog] = useState<ReceiveDialogState>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,15 +55,27 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
 
   useEffect(() => { load(); }, [load]);
 
+  const openReceiveDialog = (order: Order) => {
+    const finishedQty = (order as any).finished_qty ?? undefined;
+    setReceiveDialog({ orderId: order.Order, finishedQty });
+  };
+
+  const handleReceiveConfirm = async (data: { log_received_qty: number; log_received_by: string }) => {
+    if (!receiveDialog) return;
+    await updateLogisticsStatus(receiveDialog.orderId, data);
+    setReceiveDialog(null);
+    await load(); // refresh
+  };
+
   const handleReceive = async (orderId: string) => {
     setUpdating(orderId);
     try {
-      const updated = await updateLogisticsStatus(orderId, {
-        received_from_production: true,
-        received_at: new Date().toISOString(),
-        received_by: 'current_user',
+      await updateLogisticsStatus(orderId, {
+        log_received_qty: 0,
+        log_received_by: 'current_user',
       });
-      setStatuses(prev => ({ ...prev, [orderId]: updated }));
+      // Refresh to get updated statuses
+      await load();
     } finally {
       setUpdating(null);
     }
@@ -69,12 +84,11 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
   const handleDeliver = async (orderId: string) => {
     setUpdating(orderId);
     try {
-      const updated = await updateLogisticsStatus(orderId, {
-        delivered: true,
-        delivered_at: new Date().toISOString(),
-        delivered_by: 'current_user',
+      await updateLogisticsStatus(orderId, {
+        log_received_qty: 0,
+        log_received_by: 'current_user',
       });
-      setStatuses(prev => ({ ...prev, [orderId]: updated }));
+      await load();
     } finally {
       setUpdating(null);
     }
@@ -187,6 +201,21 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
                       <StatusBadge status={String(order?.System_Status ?? '')} size="sm" />
                     </div>
                     <p className="text-xs text-muted-foreground mt-1 truncate">{String(order?.Material_description ?? '')}</p>
+                    {/* Logistics quantities */}
+                    <div className="flex items-center gap-4 mt-1.5 text-xs">
+                      {(order as any).prod_delivered_qty != null && (
+                        <span className="text-muted-foreground">Delivered (Prod): <strong className="text-foreground">{(order as any).prod_delivered_qty}</strong></span>
+                      )}
+                      {(order as any).prod_scrap_qty != null && (
+                        <span className="text-muted-foreground">Scrap: <strong className="text-foreground">{(order as any).prod_scrap_qty}</strong></span>
+                      )}
+                      {(order as any).finished_qty != null && (
+                        <span className="text-muted-foreground">Finished: <strong className="text-foreground">{(order as any).finished_qty}</strong></span>
+                      )}
+                      {(order as any).log_received_qty != null && (
+                        <span className="text-muted-foreground">Received: <strong className="text-foreground">{(order as any).log_received_qty}</strong></span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
                       <span>{String(order?.Plant ?? '')}</span>
                       <span>Qty: <strong className="text-foreground">{Number(order?.Order_quantity ?? 0).toLocaleString()}</strong></span>
@@ -214,7 +243,7 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
                     <div className="flex flex-col gap-1.5 ml-2">
                       {!s.received_from_production && (
                         <button
-                          onClick={() => handleReceive(order.Order)}
+                          onClick={() => openReceiveDialog(order)}
                           disabled={isUpdating}
                           className="flex items-center gap-1.5 px-3 py-1.5 bg-area-warehouse-bg text-area-warehouse text-xs font-medium rounded hover:opacity-80 transition-opacity disabled:opacity-50"
                         >
@@ -269,6 +298,16 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
           blockedReason={moveDialog.blockedReason}
           onConfirm={handleMoveConfirm}
           onCancel={() => setMoveDialog(null)}
+        />
+      )}
+
+      {/* Receive Dialog */}
+      {receiveDialog && (
+        <LogisticsReceiveDialog
+          orderId={receiveDialog.orderId}
+          finishedQty={receiveDialog.finishedQty}
+          onConfirm={handleReceiveConfirm}
+          onCancel={() => setReceiveDialog(null)}
         />
       )}
     </PageContainer>
