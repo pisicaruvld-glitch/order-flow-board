@@ -88,12 +88,6 @@ export default function ProductionPage({ config }: ProductionPageProps) {
   };
 
   const openNextStep = (order: Order) => {
-    const prodStatus = statuses[order.Order];
-    const isCompleted = prodStatus?.status === 'COMPLETED';
-    if (!isCompleted) {
-      toast.error(`Cannot move to Logistics: Production status must be COMPLETED (currently: ${prodStatus?.status ?? 'PENDING'}).`);
-      return;
-    }
     setHandoverDialog({ orderId: order.Order });
   };
 
@@ -280,12 +274,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                         </button>
                         <button
                           onClick={() => openNextStep(order)}
-                          className={cn(
-                            'flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors',
-                            isCompleted
-                              ? 'bg-success/10 text-success hover:bg-success/20'
-                              : 'bg-muted text-muted-foreground cursor-not-allowed'
-                          )}
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors bg-success/10 text-success hover:bg-success/20"
                         >
                           <ArrowRight size={11} />
                           Next Step
