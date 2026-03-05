@@ -47,6 +47,22 @@ export interface Shipment {
   received_by: string | null;
   received_at: string | null;
   finished_qty_delta: number; // delivered_qty_delta - scrap_qty_delta
+  // Cumulative totals (returned by /api/logistics/incoming-shipments)
+  finished_qty_total?: number;
+  available_to_ship_total?: number;
+  // Parent order info (returned by incoming-shipments endpoint)
+  order_number?: string;
+  material?: string;
+  material_description?: string;
+}
+
+export interface CustomerShipment {
+  id: number;
+  order_id: string;
+  shipped_qty_delta: number;
+  shipped_by: string;
+  shipped_doc?: string | null;
+  shipped_at: string;
 }
 
 export interface StatusMapping {

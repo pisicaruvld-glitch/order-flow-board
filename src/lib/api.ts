@@ -18,6 +18,7 @@ import {
   FlowError,
   ErrorCategory,
   Shipment,
+  CustomerShipment,
 } from "./types";
 import {
   MOCK_ORDERS,
@@ -462,6 +463,36 @@ export async function receiveShipment(shipmentId: number, payload: ReceiveShipme
     method: "PUT",
     body: JSON.stringify(payload),
   });
+}
+
+// ============================================================
+// INCOMING SHIPMENTS (Logistics worklist — avoids N+1)
+// ============================================================
+export async function getIncomingShipments(): Promise<Shipment[]> {
+  if (isDemo()) return [];
+  return apiFetch<Shipment[]>("/logistics/incoming-shipments");
+}
+
+// ============================================================
+// CUSTOMER SHIPMENTS (L2C)
+// ============================================================
+export interface CreateCustomerShipmentPayload {
+  shipped_qty_delta: number;
+  shipped_by: string;
+  shipped_doc?: string;
+}
+
+export async function createCustomerShipment(orderId: string, payload: CreateCustomerShipmentPayload): Promise<unknown> {
+  if (isDemo()) return { ok: true };
+  return apiFetch<unknown>(`/orders/${orderId}/customer-shipments`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getCustomerShipments(orderId: string): Promise<import("./types").CustomerShipment[]> {
+  if (isDemo()) return [];
+  return apiFetch<import("./types").CustomerShipment[]>(`/orders/${orderId}/customer-shipments`);
 }
 
 // ============================================================

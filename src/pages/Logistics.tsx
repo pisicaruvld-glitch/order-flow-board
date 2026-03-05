@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Order, Shipment, AreaModes } from '@/lib/types';
-import { getOrders, getShipments, receiveShipment, getAreaModes, moveOrder } from '@/lib/api';
+import { Order, Shipment, AreaModes, CustomerShipment } from '@/lib/types';
+import { getOrders, getIncomingShipments, receiveShipment, getAreaModes, moveOrder, createCustomerShipment, getCustomerShipments } from '@/lib/api';
 import { AppConfig } from '@/lib/types';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
-import { OrderCard } from '@/components/OrderCard';
 import { ShipmentCard } from '@/components/ShipmentCard';
 import { LogisticsReceiveDialog } from '@/components/LogisticsReceiveDialog';
+import { CustomerShipmentDialog } from '@/components/CustomerShipmentDialog';
 import { MoveOrderDialog } from '@/components/MoveOrderDialog';
-import { RefreshCw, ArrowLeft } from 'lucide-react';
+import { RefreshCw, ArrowLeft, Truck, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -15,61 +15,35 @@ interface LogisticsPageProps {
   config: AppConfig;
 }
 
-interface ShipmentWithOrder {
-  shipment: Shipment;
-  order: Order;
-}
-
-type ReceiveDialogState = { shipment: Shipment; order: Order } | null;
+type ReceiveDialogState = { shipment: Shipment } | null;
+type CustomerShipDialogState = { orderId: string; availableToShip?: number } | null;
 type MoveDialogState = { orderId: string } | null;
 
 export default function LogisticsPage({ config }: LogisticsPageProps) {
   const [allOrders, setAllOrders] = useState<Order[]>([]);
-  const [shipmentRows, setShipmentRows] = useState<ShipmentWithOrder[]>([]);
+  const [incomingShipments, setIncomingShipments] = useState<Shipment[]>([]);
   const [areaModes, setAreaModes] = useState<AreaModes>({ Warehouse: 'AUTO', Production: 'AUTO', Logistics: 'AUTO' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [receiveDialog, setReceiveDialog] = useState<ReceiveDialogState>(null);
+  const [customerShipDialog, setCustomerShipDialog] = useState<CustomerShipDialogState>(null);
   const [moveDialog, setMoveDialog] = useState<MoveDialogState>(null);
+  // Per-order customer shipment history (lazy loaded)
+  const [customerShipments, setCustomerShipments] = useState<Record<string, CustomerShipment[]>>({});
+  const [expandedCustomerShipments, setExpandedCustomerShipments] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [orders, modes] = await Promise.all([
+      const [orders, shipments, modes] = await Promise.all([
         getOrders(),
+        getIncomingShipments(),
         getAreaModes(),
       ]);
       setAllOrders(orders);
+      setIncomingShipments(shipments);
       setAreaModes(modes);
-
-      // Collect order IDs that are currently in Logistics (to dedup)
-      const logisticsOrderIds = new Set(
-        orders.filter(o => o.current_area === 'Logistics').map(o => o.Order)
-      );
-
-      // Find orders NOT in Logistics but with shipments (prod_delivered_qty > 0)
-      const ordersWithShipments = orders.filter(
-        o => !logisticsOrderIds.has(o.Order) && o.prod_delivered_qty != null && o.prod_delivered_qty > 0
-      );
-
-      // Fetch shipments for those orders only
-      const rows: ShipmentWithOrder[] = [];
-      await Promise.all(
-        ordersWithShipments.map(async (order) => {
-          try {
-            const shipments = await getShipments(order.Order);
-            for (const s of shipments) {
-              rows.push({ shipment: s, order });
-            }
-          } catch {
-            // skip on error
-          }
-        })
-      );
-
-      rows.sort((a, b) => new Date(b.shipment.reported_at).getTime() - new Date(a.shipment.reported_at).getTime());
-      setShipmentRows(rows);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load');
     } finally {
@@ -78,10 +52,6 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
   }, []);
 
   useEffect(() => { load(); }, [load]);
-
-  const openReceive = (shipment: Shipment, order: Order) => {
-    setReceiveDialog({ shipment, order });
-  };
 
   const handleReceiveConfirm = async (data: { received_qty_delta: number; received_by: string }) => {
     if (!receiveDialog) return;
@@ -96,6 +66,19 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
     await load();
   };
 
+  const handleCustomerShipConfirm = async (data: { shipped_qty_delta: number; shipped_by: string; shipped_doc?: string }) => {
+    if (!customerShipDialog) return;
+    try {
+      await createCustomerShipment(customerShipDialog.orderId, data);
+      toast.success('Customer shipment created');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to create shipment');
+      throw e;
+    }
+    setCustomerShipDialog(null);
+    await load();
+  };
+
   const handleMoveConfirm = async (justification?: string) => {
     if (!moveDialog) return;
     await moveOrder({
@@ -107,23 +90,40 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
     await load();
   };
 
+  const toggleCustomerShipments = async (orderId: string) => {
+    const next = new Set(expandedCustomerShipments);
+    if (next.has(orderId)) {
+      next.delete(orderId);
+    } else {
+      next.add(orderId);
+      // Lazy load customer shipments
+      if (!customerShipments[orderId]) {
+        try {
+          const cs = await getCustomerShipments(orderId);
+          setCustomerShipments(prev => ({ ...prev, [orderId]: cs }));
+        } catch {
+          // ignore
+        }
+      }
+    }
+    setExpandedCustomerShipments(next);
+  };
+
   const isManualMode = areaModes.Logistics === 'MANUAL';
 
   // Section 1: Orders currently in Logistics
   const logisticsOrders = allOrders.filter(o => o.current_area === 'Logistics');
 
-  // Cumulative summary
-  const allRelevant = allOrders.filter(o => o.current_area === 'Logistics' || (o.prod_delivered_qty != null && o.prod_delivered_qty > 0));
-  const totalDelivered = allRelevant.reduce((s, o) => s + (o.prod_delivered_qty ?? 0), 0);
-  const totalScrap = allRelevant.reduce((s, o) => s + (o.prod_scrap_qty ?? 0), 0);
-  const totalReceived = allRelevant.reduce((s, o) => s + (o.log_received_qty ?? 0), 0);
-  const pendingReceive = shipmentRows.filter(r => r.shipment.received_qty_delta == null || r.shipment.received_qty_delta === 0).length;
+  // KPI summary
+  const totalDelivered = logisticsOrders.reduce((s, o) => s + (o.prod_delivered_qty ?? 0), 0);
+  const totalReceived = logisticsOrders.reduce((s, o) => s + (o.log_received_qty ?? 0), 0);
+  const pendingReceive = incomingShipments.filter(s => s.received_qty_delta == null || s.received_qty_delta === 0).length;
 
   return (
     <PageContainer>
       <PageHeader
         title="Logistics"
-        subtitle={`${logisticsOrders.length} orders · ${shipmentRows.length} incoming shipments`}
+        subtitle={`${logisticsOrders.length} orders · ${incomingShipments.length} incoming shipments`}
         actions={
           <div className="flex items-center gap-3">
             <span className={cn(
@@ -142,14 +142,10 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
       />
 
       {/* Summary strip */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-card border border-border rounded-lg p-4">
           <p className="text-xs text-muted-foreground font-medium mb-1">Total Delivered</p>
           <p className="text-2xl font-bold kpi-animate">{totalDelivered}</p>
-        </div>
-        <div className="bg-card border border-border rounded-lg p-4">
-          <p className="text-xs text-muted-foreground font-medium mb-1">Total Scrap</p>
-          <p className="text-2xl font-bold kpi-animate">{totalScrap}</p>
         </div>
         <div className="bg-card border border-border rounded-lg p-4">
           <p className="text-xs text-muted-foreground font-medium mb-1">Total Received</p>
@@ -166,7 +162,25 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
 
       {!loading && !error && (
         <div className="space-y-6">
-          {/* Section 1: Orders in Logistics */}
+          {/* Section 1: Incoming Shipments (Receive) */}
+          <section>
+            <h2 className="text-sm font-semibold text-foreground mb-2">Incoming (Receive) ({incomingShipments.length})</h2>
+            {incomingShipments.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-4">No pending shipments. Create shipments from the Production page using "Next Step".</p>
+            ) : (
+              <div className="space-y-2">
+                {incomingShipments.map(shipment => (
+                  <ShipmentCard
+                    key={shipment.id}
+                    shipment={shipment}
+                    onReceive={(s) => setReceiveDialog({ shipment: s })}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Section 2: Orders in Logistics */}
           <section>
             <h2 className="text-sm font-semibold text-foreground mb-2">Orders in Logistics ({logisticsOrders.length})</h2>
             {logisticsOrders.length === 0 ? (
@@ -191,6 +205,16 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap shrink-0">
+                        <button
+                          onClick={() => setCustomerShipDialog({
+                            orderId: order.Order,
+                            availableToShip: order.finished_qty != null ? order.finished_qty - (order.log_received_qty ?? 0) : undefined,
+                          })}
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                        >
+                          <Truck size={11} />
+                          Ship to Customer
+                        </button>
                         {isManualMode && (
                           <button
                             onClick={() => setMoveDialog({ orderId: order.Order })}
@@ -200,28 +224,35 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
                             Move Back
                           </button>
                         )}
+                        <button
+                          onClick={() => toggleCustomerShipments(order.Order)}
+                          className="flex items-center gap-1 px-2 py-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {expandedCustomerShipments.has(order.Order) ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+                          History
+                        </button>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
 
-          {/* Section 2: Incoming Shipments */}
-          <section>
-            <h2 className="text-sm font-semibold text-foreground mb-2">Incoming Shipments ({shipmentRows.length})</h2>
-            {shipmentRows.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-4">No incoming shipments. Create shipments from the Production page using "Next Step".</p>
-            ) : (
-              <div className="space-y-2">
-                {shipmentRows.map(({ shipment, order }) => (
-                  <ShipmentCard
-                    key={shipment.id}
-                    shipment={shipment}
-                    order={order}
-                    onReceive={(s) => openReceive(s, order)}
-                  />
+                    {/* Customer shipment history (collapsible) */}
+                    {expandedCustomerShipments.has(order.Order) && (
+                      <div className="mt-2 border-t border-border pt-2 space-y-1">
+                        <p className="text-[10px] font-medium text-muted-foreground mb-1">Customer Shipments</p>
+                        {(customerShipments[order.Order] ?? []).length === 0 ? (
+                          <p className="text-[10px] text-muted-foreground">No customer shipments yet.</p>
+                        ) : (
+                          (customerShipments[order.Order] ?? []).map(cs => (
+                            <div key={cs.id} className="flex items-center gap-3 text-[10px] bg-muted rounded px-2 py-1">
+                              <span>Shipped: <strong className="text-foreground">{cs.shipped_qty_delta}</strong></span>
+                              <span className="text-muted-foreground">by {cs.shipped_by}</span>
+                              {cs.shipped_doc && <span className="text-muted-foreground">Doc: {cs.shipped_doc}</span>}
+                              <span className="text-muted-foreground ml-auto">{new Date(cs.shipped_at).toLocaleDateString()}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
@@ -233,11 +264,21 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
       {receiveDialog && (
         <LogisticsReceiveDialog
           shipmentId={receiveDialog.shipment.id}
-          orderId={receiveDialog.order.Order}
+          orderId={receiveDialog.shipment.order_number ?? receiveDialog.shipment.order_id}
           finishedQtyDelta={receiveDialog.shipment.finished_qty_delta}
           currentReceivedQty={receiveDialog.shipment.received_qty_delta}
           onConfirm={handleReceiveConfirm}
           onCancel={() => setReceiveDialog(null)}
+        />
+      )}
+
+      {/* Customer Shipment Dialog */}
+      {customerShipDialog && (
+        <CustomerShipmentDialog
+          orderId={customerShipDialog.orderId}
+          availableToShip={customerShipDialog.availableToShip}
+          onConfirm={handleCustomerShipConfirm}
+          onCancel={() => setCustomerShipDialog(null)}
         />
       )}
 
