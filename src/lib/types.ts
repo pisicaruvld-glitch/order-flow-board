@@ -33,6 +33,20 @@ export interface Order {
   prod_scrap_qty?: number;
   log_received_qty?: number;
   finished_qty?: number; // derived: prod_delivered_qty - prod_scrap_qty
+  remaining_qty?: number; // Order_quantity - prod_delivered_qty
+}
+
+export interface Shipment {
+  id: number;
+  order_id: string;
+  delivered_qty_delta: number;
+  scrap_qty_delta: number;
+  reported_by: string;
+  reported_at: string;
+  received_qty_delta: number | null;
+  received_by: string | null;
+  received_at: string | null;
+  finished_qty_delta: number; // delivered_qty_delta - scrap_qty_delta
 }
 
 export interface StatusMapping {

@@ -1,51 +1,70 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Order, LogisticsStatus, AreaModes } from '@/lib/types';
-import { getOrders, getLogisticsStatus, updateLogisticsStatus, moveOrder, getAreaModes } from '@/lib/api';
+import { Order, Shipment, AreaModes } from '@/lib/types';
+import { getOrders, getShipments, receiveShipment, getAreaModes, moveOrder } from '@/lib/api';
 import { AppConfig } from '@/lib/types';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
-import { StatusBadge } from '@/components/Badges';
-import { PriorityIcon, ChangedBadge } from '@/components/OrderCard';
-import { MoveOrderDialog, DiscrepancyBadge, SourceBadge } from '@/components/MoveOrderDialog';
+import { ShipmentCard } from '@/components/ShipmentCard';
 import { LogisticsReceiveDialog } from '@/components/LogisticsReceiveDialog';
-import { RefreshCw, PackageCheck, Truck, Circle, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { MoveOrderDialog } from '@/components/MoveOrderDialog';
+import { RefreshCw, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface LogisticsPageProps {
   config: AppConfig;
 }
 
-type MoveDialogState = { orderId: string; isNextStep: boolean; blockedReason?: string } | null;
-type ReceiveDialogState = { orderId: string; finishedQty?: number } | null;
+interface ShipmentWithOrder {
+  shipment: Shipment;
+  order: Order;
+}
+
+type ReceiveDialogState = { shipment: Shipment; order: Order } | null;
+type MoveDialogState = { orderId: string } | null;
 
 export default function LogisticsPage({ config }: LogisticsPageProps) {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [statuses, setStatuses] = useState<Record<string, LogisticsStatus>>({});
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
+  const [shipmentRows, setShipmentRows] = useState<ShipmentWithOrder[]>([]);
   const [areaModes, setAreaModes] = useState<AreaModes>({ Warehouse: 'AUTO', Production: 'AUTO', Logistics: 'AUTO' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [updating, setUpdating] = useState<string | null>(null);
-  const [filterStep, setFilterStep] = useState<'' | 'received' | 'delivered'>('');
-  const [moveDialog, setMoveDialog] = useState<MoveDialogState>(null);
   const [receiveDialog, setReceiveDialog] = useState<ReceiveDialogState>(null);
+  const [moveDialog, setMoveDialog] = useState<MoveDialogState>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [logisticsOrders, modes] = await Promise.all([
-        getOrders({ area: 'Logistics' }),
+      const [orders, modes] = await Promise.all([
+        getOrders(),
         getAreaModes(),
       ]);
-      setOrders(logisticsOrders);
+      setAllOrders(orders);
       setAreaModes(modes);
-      const statusMap: Record<string, LogisticsStatus> = {};
+
+      // Find orders with shipments (prod_delivered_qty > 0 or in Logistics area)
+      const relevantOrders = orders.filter(
+        o => (o.prod_delivered_qty != null && o.prod_delivered_qty > 0) || o.current_area === 'Logistics'
+      );
+
+      // Fetch shipments for each relevant order
+      const rows: ShipmentWithOrder[] = [];
       await Promise.all(
-        logisticsOrders.map(async o => {
-          const s = await getLogisticsStatus(o.Order);
-          statusMap[o.Order] = s || { order_id: o.Order, received_from_production: false, delivered: false };
+        relevantOrders.map(async (order) => {
+          try {
+            const shipments = await getShipments(order.Order);
+            for (const s of shipments) {
+              rows.push({ shipment: s, order });
+            }
+          } catch {
+            // If shipments endpoint fails (e.g. DEMO mode), skip
+          }
         })
       );
-      setStatuses(statusMap);
+
+      // Sort by reported_at descending
+      rows.sort((a, b) => new Date(b.shipment.reported_at).getTime() - new Date(a.shipment.reported_at).getTime());
+      setShipmentRows(rows);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load');
     } finally {
@@ -55,46 +74,21 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
 
   useEffect(() => { load(); }, [load]);
 
-  const openReceiveDialog = (order: Order) => {
-    setReceiveDialog({ orderId: order.Order, finishedQty: order.finished_qty });
+  const openReceive = (shipment: Shipment, order: Order) => {
+    setReceiveDialog({ shipment, order });
   };
 
-  const handleReceiveConfirm = async (data: { log_received_qty: number; log_received_by: string }) => {
+  const handleReceiveConfirm = async (data: { received_qty_delta: number; received_by: string }) => {
     if (!receiveDialog) return;
-    await updateLogisticsStatus(receiveDialog.orderId, data);
+    try {
+      await receiveShipment(receiveDialog.shipment.id, data);
+      toast.success('Shipment received');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to receive');
+      throw e;
+    }
     setReceiveDialog(null);
-    await load(); // refresh
-  };
-
-  const handleReceive = async (orderId: string) => {
-    setUpdating(orderId);
-    try {
-      await updateLogisticsStatus(orderId, {
-        log_received_qty: 0,
-        log_received_by: 'current_user',
-      });
-      // Refresh to get updated statuses
-      await load();
-    } finally {
-      setUpdating(null);
-    }
-  };
-
-  const handleDeliver = async (orderId: string) => {
-    setUpdating(orderId);
-    try {
-      await updateLogisticsStatus(orderId, {
-        log_received_qty: 0,
-        log_received_by: 'current_user',
-      });
-      await load();
-    } finally {
-      setUpdating(null);
-    }
-  };
-
-  const openMoveBack = (order: Order) => {
-    setMoveDialog({ orderId: order.Order, isNextStep: false });
+    await load();
   };
 
   const handleMoveConfirm = async (justification?: string) => {
@@ -104,30 +98,24 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
       target_area: 'Production',
       justification,
     });
-    setOrders(prev => prev.filter(o => o.Order !== moveDialog.orderId));
     setMoveDialog(null);
-  };
-
-  const filteredOrders = orders.filter(o => {
-    const s = statuses[o.Order];
-    if (filterStep === 'received') return s?.received_from_production && !s?.delivered;
-    if (filterStep === 'delivered') return s?.delivered;
-    return true;
-  });
-
-  const counts = {
-    pending: orders.filter(o => !statuses[o.Order]?.received_from_production).length,
-    received: orders.filter(o => statuses[o.Order]?.received_from_production && !statuses[o.Order]?.delivered).length,
-    delivered: orders.filter(o => statuses[o.Order]?.delivered).length,
+    await load();
   };
 
   const isManualMode = areaModes.Logistics === 'MANUAL';
 
+  // Cumulative summary from orders
+  const logisticsOrders = allOrders.filter(o => o.current_area === 'Logistics' || (o.prod_delivered_qty != null && o.prod_delivered_qty > 0));
+  const totalDelivered = logisticsOrders.reduce((s, o) => s + (o.prod_delivered_qty ?? 0), 0);
+  const totalScrap = logisticsOrders.reduce((s, o) => s + (o.prod_scrap_qty ?? 0), 0);
+  const totalReceived = logisticsOrders.reduce((s, o) => s + (o.log_received_qty ?? 0), 0);
+  const pendingReceive = shipmentRows.filter(r => r.shipment.received_qty_delta == null || r.shipment.received_qty_delta === 0).length;
+
   return (
     <PageContainer>
       <PageHeader
-        title="Logistics"
-        subtitle="Track receipt from production and delivery"
+        title="Logistics — Shipments"
+        subtitle={`${shipmentRows.length} shipments from Production`}
         actions={
           <div className="flex items-center gap-3">
             <span className={cn(
@@ -146,145 +134,66 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
       />
 
       {/* Summary strip */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <SummaryTile
-          label="Awaiting Receipt"
-          count={counts.pending}
-          icon={<Circle size={14} />}
-          colorClass="text-muted-foreground"
-          active={filterStep === ''}
-          onClick={() => setFilterStep('')}
-        />
-        <SummaryTile
-          label="Received from Production"
-          count={counts.received}
-          icon={<PackageCheck size={14} />}
-          colorClass="text-area-warehouse"
-          active={filterStep === 'received'}
-          onClick={() => setFilterStep(filterStep === 'received' ? '' : 'received')}
-        />
-        <SummaryTile
-          label="Delivered / Shipped"
-          count={counts.delivered}
-          icon={<Truck size={14} />}
-          colorClass="text-area-logistics"
-          active={filterStep === 'delivered'}
-          onClick={() => setFilterStep(filterStep === 'delivered' ? '' : 'delivered')}
-        />
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="bg-card border border-border rounded-lg p-4">
+          <p className="text-xs text-muted-foreground font-medium mb-1">Total Delivered</p>
+          <p className="text-2xl font-bold kpi-animate">{totalDelivered}</p>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-4">
+          <p className="text-xs text-muted-foreground font-medium mb-1">Total Scrap</p>
+          <p className="text-2xl font-bold kpi-animate">{totalScrap}</p>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-4">
+          <p className="text-xs text-muted-foreground font-medium mb-1">Total Received</p>
+          <p className="text-2xl font-bold kpi-animate">{totalReceived}</p>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-4">
+          <p className="text-xs text-muted-foreground font-medium mb-1">Pending Receive</p>
+          <p className="text-2xl font-bold kpi-animate">{pendingReceive}</p>
+        </div>
       </div>
 
-      {loading && <LoadingSpinner label="Loading logistics orders…" />}
+      {loading && <LoadingSpinner label="Loading shipments…" />}
       {error && <ErrorMessage message={error} onRetry={load} />}
 
       {!loading && !error && (
         <div className="space-y-2">
-          {filteredOrders.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground text-sm">No orders in this view</div>
+          {shipmentRows.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground text-sm">
+              No shipments yet. Create shipments from the Production page using "Next Step".
+            </div>
           )}
-          {filteredOrders.map(order => {
-            const s: LogisticsStatus = statuses[order.Order] || { order_id: order.Order, received_from_production: false, delivered: false };
-            const isUpdating = updating === order.Order;
-            return (
-              <div key={order.Order} className="bg-card border border-border rounded-lg p-4">
-                <div className="flex items-start gap-4">
-                  {/* Order Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <div className="flex items-center gap-1.5">
-                        <PriorityIcon priority={order.Priority} />
-                        <span className="font-mono text-sm font-bold">{String(order?.Order ?? '')}</span>
-                        {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
-                        {order.discrepancy && <DiscrepancyBadge sapArea={order.sap_area} />}
-                        {order.source === 'manual' && <SourceBadge source={order.source} />}
-                      </div>
-                      <StatusBadge status={String(order?.System_Status ?? '')} size="sm" />
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1 truncate">{String(order?.Material_description ?? '')}</p>
-                    {/* Logistics quantities */}
-                    <div className="flex items-center gap-4 mt-1.5 text-xs">
-                      {order.prod_delivered_qty != null && (
-                        <span className="text-muted-foreground">Delivered (Prod): <strong className="text-foreground">{order.prod_delivered_qty}</strong></span>
-                      )}
-                      {order.prod_scrap_qty != null && (
-                        <span className="text-muted-foreground">Scrap: <strong className="text-foreground">{order.prod_scrap_qty}</strong></span>
-                      )}
-                      {order.finished_qty != null && (
-                        <span className="text-muted-foreground">Finished: <strong className="text-foreground">{order.finished_qty}</strong></span>
-                      )}
-                      {order.log_received_qty != null && (
-                        <span className="text-muted-foreground">Received: <strong className="text-foreground">{order.log_received_qty}</strong></span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
-                      <span>{String(order?.Plant ?? '')}</span>
-                      <span>Qty: <strong className="text-foreground">{Number(order?.Order_quantity ?? 0).toLocaleString()}</strong></span>
-                      <span>Finish: {order.Scheduled_finish_date}</span>
-                    </div>
-                  </div>
-
-                  {/* Two-step tracker + actions */}
-                  <div className="flex items-center gap-3 shrink-0 flex-wrap justify-end">
-                    <StepIndicator
-                      label="Received from Production"
-                      done={s.received_from_production}
-                      timestamp={s.received_at}
-                      by={s.received_by}
-                    />
-                    <div className="w-8 h-px bg-border" />
-                    <StepIndicator
-                      label="Delivered / Shipped"
-                      done={s.delivered}
-                      timestamp={s.delivered_at}
-                      by={s.delivered_by}
-                    />
-
-                    {/* Actions */}
-                    <div className="flex flex-col gap-1.5 ml-2">
-                      {!s.received_from_production && (
-                        <button
-                          onClick={() => openReceiveDialog(order)}
-                          disabled={isUpdating}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-area-warehouse-bg text-area-warehouse text-xs font-medium rounded hover:opacity-80 transition-opacity disabled:opacity-50"
-                        >
-                          <PackageCheck size={12} />
-                          Receive
-                        </button>
-                      )}
-                      {s.received_from_production && !s.delivered && (
-                        <button
-                          onClick={() => handleDeliver(order.Order)}
-                          disabled={isUpdating}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-area-logistics-bg text-area-logistics text-xs font-medium rounded hover:opacity-80 transition-opacity disabled:opacity-50"
-                        >
-                          <Truck size={12} />
-                          Mark Delivered
-                        </button>
-                      )}
-                      {s.delivered && (
-                        <span className="flex items-center gap-1 text-xs text-success font-medium">
-                          <CheckCircle2 size={12} />
-                          Shipped
-                        </span>
-                      )}
-                      {isUpdating && <RefreshCw size={12} className="animate-spin text-muted-foreground mx-auto" />}
-
-                      {/* MANUAL mode: Move Back */}
-                      {isManualMode && (
-                        <button
-                          onClick={() => openMoveBack(order)}
-                          className="flex items-center gap-1 px-2.5 py-1.5 border border-border text-xs text-muted-foreground rounded hover:bg-muted transition-colors"
-                        >
-                          <ArrowLeft size={11} />
-                          Move Back
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {shipmentRows.map(({ shipment, order }) => (
+            <div key={shipment.id} className="relative">
+              <ShipmentCard
+                shipment={shipment}
+                order={order}
+                onReceive={(s) => openReceive(s, order)}
+              />
+              {isManualMode && (
+                <button
+                  onClick={() => setMoveDialog({ orderId: order.Order })}
+                  className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 border border-border text-[10px] text-muted-foreground rounded hover:bg-muted transition-colors"
+                >
+                  <ArrowLeft size={10} />
+                  Move Back
+                </button>
+              )}
+            </div>
+          ))}
         </div>
+      )}
+
+      {/* Receive Dialog */}
+      {receiveDialog && (
+        <LogisticsReceiveDialog
+          shipmentId={receiveDialog.shipment.id}
+          orderId={receiveDialog.order.Order}
+          finishedQtyDelta={receiveDialog.shipment.finished_qty_delta}
+          currentReceivedQty={receiveDialog.shipment.received_qty_delta}
+          onConfirm={handleReceiveConfirm}
+          onCancel={() => setReceiveDialog(null)}
+        />
       )}
 
       {/* Move Dialog */}
@@ -294,77 +203,10 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
           currentArea="Logistics"
           targetArea="Production"
           isNextStep={false}
-          blockedReason={moveDialog.blockedReason}
           onConfirm={handleMoveConfirm}
           onCancel={() => setMoveDialog(null)}
         />
       )}
-
-      {/* Receive Dialog */}
-      {receiveDialog && (
-        <LogisticsReceiveDialog
-          orderId={receiveDialog.orderId}
-          finishedQty={receiveDialog.finishedQty}
-          onConfirm={handleReceiveConfirm}
-          onCancel={() => setReceiveDialog(null)}
-        />
-      )}
     </PageContainer>
-  );
-}
-
-function SummaryTile({
-  label, count, icon, colorClass, active, onClick,
-}: {
-  label: string;
-  count: number;
-  icon: React.ReactNode;
-  colorClass: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'bg-card border rounded-lg p-4 text-left transition-colors hover:border-primary/60',
-        active ? 'border-primary ring-1 ring-primary' : 'border-border'
-      )}
-    >
-      <div className={cn('flex items-center gap-1.5 text-xs font-medium mb-2', colorClass)}>
-        {icon}
-        {label}
-      </div>
-      <div className="text-3xl font-bold kpi-animate">{count}</div>
-    </button>
-  );
-}
-
-function StepIndicator({
-  label, done, timestamp, by,
-}: {
-  label: string;
-  done: boolean;
-  timestamp?: string;
-  by?: string;
-}) {
-  return (
-    <div className="text-center">
-      <div
-        className={cn(
-          'w-8 h-8 rounded-full border-2 flex items-center justify-center mx-auto mb-1 transition-colors',
-          done ? 'border-success bg-success/10' : 'border-border bg-card'
-        )}
-      >
-        {done ? <CheckCircle2 size={14} className="text-success" /> : <Circle size={14} className="text-muted-foreground" />}
-      </div>
-      <p className="text-[10px] text-muted-foreground max-w-[80px] text-center leading-tight">{label}</p>
-      {done && timestamp && (
-        <p className="text-[10px] text-muted-foreground mt-0.5">{new Date(timestamp).toLocaleDateString()}</p>
-      )}
-      {done && by && (
-        <p className="text-[10px] text-foreground font-medium">{by}</p>
-      )}
-    </div>
   );
 }

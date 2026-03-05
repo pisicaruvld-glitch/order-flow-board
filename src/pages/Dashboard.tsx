@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Order, StatusMapping, Area, AREAS } from '@/lib/types';
-import { getOrders, getStatusMappings, getAreaCounts, getUniquePlants, demoMoveOrder, getBoardVersion, getAllOpenIssueCounts, moveOrder, updateLogisticsStatus } from '@/lib/api';
+import { getOrders, getStatusMappings, getAreaCounts, getUniquePlants, demoMoveOrder, getBoardVersion, getAllOpenIssueCounts, moveOrder, createShipment } from '@/lib/api';
 import { AppConfig } from '@/lib/types';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { AreaBadge, StatusBadge } from '@/components/Badges';
@@ -9,7 +9,7 @@ import { OrderCard } from '@/components/OrderCard';
 import { Search, Filter, RefreshCw, ArrowRight, Radio } from 'lucide-react';
 import { MoveOrderDialog, DiscrepancyBadge, SourceBadge } from '@/components/MoveOrderDialog';
 import { ProductionHandoverDialog } from '@/components/ProductionHandoverDialog';
-import { LogisticsReceiveDialog } from '@/components/LogisticsReceiveDialog';
+// LogisticsReceiveDialog removed from Dashboard — shipment-level receive is on Logistics page
 import { OrderIssueIndicator } from '@/components/OrderIssueIndicator';
 import { WeekFilter, filterByWeek } from '@/components/WeekFilter';
 import { cn, loadKwFilter, saveKwFilter } from '@/lib/utils';
@@ -45,7 +45,7 @@ export default function Dashboard({ config }: DashboardProps) {
   const [movingOrder, setMovingOrder] = useState<string | null>(null);
   const [openIssueCounts, setOpenIssueCounts] = useState<Record<string, number>>({});
   const [overrideDialog, setOverrideDialog] = useState<{ orderId: string; fromArea: Area; targetArea: Area } | null>(null);
-  const [handoverDialog, setHandoverDialog] = useState<{ orderId: string } | null>(null);
+  const [handoverDialog, setHandoverDialog] = useState<{ orderId: string; orderQty?: number; remainingQty?: number } | null>(null);
   const [receiveDialog, setReceiveDialog] = useState<{ orderId: string; finishedQty?: number } | null>(null);
   
   // KW filter: URL param overrides localStorage
@@ -128,7 +128,8 @@ export default function Dashboard({ config }: DashboardProps) {
     }
     // Production→Logistics: handover dialog
     if (order?.current_area === 'Production' && area === 'Logistics') {
-      setHandoverDialog({ orderId });
+      const remaining = order.remaining_qty ?? (order.Order_quantity - (order.prod_delivered_qty ?? 0));
+      setHandoverDialog({ orderId, orderQty: order.Order_quantity, remainingQty: remaining });
       return;
     }
     setMovingOrder(orderId);
@@ -157,45 +158,29 @@ export default function Dashboard({ config }: DashboardProps) {
     setOverrideDialog(null);
   };
 
-  const handleHandoverConfirm = async (data: { prod_delivered_qty: number; prod_scrap_qty: number; prod_reported_by: string }) => {
+  const handleHandoverConfirm = async (data: { delivered_qty_delta: number; scrap_qty_delta: number; reported_by: string }) => {
     if (!handoverDialog) return;
-    // 1) Save quantities
-    await updateLogisticsStatus(handoverDialog.orderId, {
-      prod_delivered_qty: data.prod_delivered_qty,
-      prod_scrap_qty: data.prod_scrap_qty,
-      prod_reported_by: data.prod_reported_by,
+    const result = await createShipment(handoverDialog.orderId, {
+      delivered_qty_delta: data.delivered_qty_delta,
+      scrap_qty_delta: data.scrap_qty_delta,
+      reported_by: data.reported_by,
     });
-    // 2) Move order
-    await moveOrder({
-      order_id: handoverDialog.orderId,
-      target_area: 'Logistics',
-      justification: 'prod->logistics',
-      moved_by: data.prod_reported_by,
-    });
-    setOrders(prev => prev.map(o =>
-      o.Order === handoverDialog.orderId
-        ? {
-            ...o,
-            current_area: 'Logistics' as Area,
-            source: 'manual' as const,
-            prod_delivered_qty: data.prod_delivered_qty,
-            prod_scrap_qty: data.prod_scrap_qty,
-            finished_qty: data.prod_delivered_qty - data.prod_scrap_qty,
-          }
-        : o
-    ));
+    if (result.remaining_qty <= 0) {
+      await moveOrder({
+        order_id: handoverDialog.orderId,
+        target_area: 'Logistics',
+        justification: 'prod->logistics complete',
+        moved_by: data.reported_by,
+      });
+    }
     setHandoverDialog(null);
+    await load();
   };
 
-  const handleReceiveConfirm = async (data: { log_received_qty: number; log_received_by: string }) => {
-    if (!receiveDialog) return;
-    await updateLogisticsStatus(receiveDialog.orderId, data);
-    setOrders(prev => prev.map(o =>
-      o.Order === receiveDialog.orderId
-        ? { ...o, log_received_qty: data.log_received_qty }
-        : o
-    ));
+  const handleReceiveConfirm = async (_data: { received_qty_delta: number; received_by: string }) => {
+    // Dashboard doesn't handle shipment-level receive; use Logistics page
     setReceiveDialog(null);
+    await load();
   };
 
   return (
@@ -294,20 +279,14 @@ export default function Dashboard({ config }: DashboardProps) {
       {handoverDialog && (
         <ProductionHandoverDialog
           orderId={handoverDialog.orderId}
+          orderQty={handoverDialog.orderQty}
+          remainingQty={handoverDialog.remainingQty}
           onConfirm={handleHandoverConfirm}
           onCancel={() => setHandoverDialog(null)}
         />
       )}
 
-      {/* Logistics receive dialog */}
-      {receiveDialog && (
-        <LogisticsReceiveDialog
-          orderId={receiveDialog.orderId}
-          finishedQty={receiveDialog.finishedQty}
-          onConfirm={handleReceiveConfirm}
-          onCancel={() => setReceiveDialog(null)}
-        />
-      )}
+      {/* Logistics receive — shipment-level receive is on Logistics page, remove from dashboard */}
     </PageContainer>
   );
 }
