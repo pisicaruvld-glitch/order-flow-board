@@ -137,6 +137,15 @@ export function OrderCard({ order, compact = false, onClick, selected, tv, hasOp
             ) : (
               <p className="text-[10px] text-muted-foreground leading-tight">Material: N/A</p>
             )}
+            {/* Logistics quantities */}
+            {order.current_area === 'Logistics' && (order.prod_delivered_qty != null || order.log_received_qty != null) && (
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
+                {order.prod_delivered_qty != null && <span>Del: <strong className="text-foreground">{order.prod_delivered_qty}</strong></span>}
+                {order.prod_scrap_qty != null && <span>Scrap: <strong className="text-foreground">{order.prod_scrap_qty}</strong></span>}
+                {order.finished_qty != null && <span>Fin: <strong className="text-foreground">{order.finished_qty}</strong></span>}
+                {order.log_received_qty != null && <span>Rcvd: <strong className="text-foreground">{order.log_received_qty}</strong></span>}
+              </div>
+            )}
           </div>
         )}
 

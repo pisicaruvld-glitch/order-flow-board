@@ -28,6 +28,11 @@ export interface Order {
   discrepancy?: boolean; // source=manual AND sap_area != current_area
   product_type?: "FG" | "SFG"; // FG = finite, SFG = semifinite
   Confirmed_Yield_Quantity?: number; // confirmed yield for liquid fill
+  // Logistics handover fields
+  prod_delivered_qty?: number;
+  prod_scrap_qty?: number;
+  log_received_qty?: number;
+  finished_qty?: number; // derived: prod_delivered_qty - prod_scrap_qty
 }
 
 export interface StatusMapping {
