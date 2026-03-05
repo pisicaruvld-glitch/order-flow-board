@@ -249,7 +249,7 @@ export default function TvDashboard() {
             area={area}
             orders={areaOrders[area] ?? []}
             topN={topN}
-            openIssueCounts={area === 'Warehouse' ? openIssueCounts : undefined}
+            openIssueCounts={openIssueCounts}
             severityMap={severityMap}
           />
         ))}
@@ -300,10 +300,12 @@ function TvOrderRow({ order, openIssueCount, severity }: { order: Order; openIss
   const overdue = isOverdue(order);
   const isError = severity === 'ERROR';
   const isWarning = severity === 'WARNING';
+  const hasOpenIssue = (openIssueCount ?? 0) > 0;
 
   return (
     <div className={cn(
       'flex items-center gap-3 px-3 py-2 rounded-md mb-1 text-sm relative',
+      hasOpenIssue && 'order-card-issue',
       // Left border: overdue=red 6px, error=red 6px, warning=yellow 4px
       overdue || isError
         ? 'border-l-[6px] border-l-[hsl(0,72%,51%)]'

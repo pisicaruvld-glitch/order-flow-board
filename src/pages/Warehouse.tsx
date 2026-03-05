@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Order, Issue, IssueHistoryEntry, StatusMapping, ISSUE_TYPES, AreaModes } from '@/lib/types';
-import { getOrders, getStatusMappings, getIssues, createIssue, patchIssue, getIssueHistory, markOrderReady, moveOrder, getAreaModes } from '@/lib/api';
+import { getOrders, getStatusMappings, getIssues, createIssue, patchIssue, getIssueHistory, markOrderReady, moveOrder, getAreaModes, getAllOpenIssueCounts } from '@/lib/api';
 import { AppConfig } from '@/lib/types';
 import { PageContainer, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { StatusBadge, IssueBadge } from '@/components/Badges';
@@ -36,19 +36,22 @@ export default function WarehousePage({ config }: WarehousePageProps) {
   const [submitting, setSubmitting] = useState(false);
   const [markingReady, setMarkingReady] = useState(false);
   const [moveDialog, setMoveDialog] = useState<MoveDialogState>(null);
+  const [openIssueCounts, setOpenIssueCounts] = useState<Record<string, number>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [o, m, modes] = await Promise.all([
+      const [o, m, modes, ic] = await Promise.all([
         getOrders({ area: 'Warehouse' }),
         getStatusMappings(),
         getAreaModes(),
+        getAllOpenIssueCounts(),
       ]);
       setOrders(o);
       setMappings(m);
       setAreaModes(modes);
+      setOpenIssueCounts(ic);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load');
     } finally {
@@ -201,7 +204,8 @@ export default function WarehousePage({ config }: WarehousePageProps) {
               onClick={() => selectOrder(order)}
               className={cn(
                 'w-full text-left px-4 py-3 border-b border-border hover:bg-muted/60 transition-colors',
-                selectedOrder?.Order === order.Order && 'bg-primary-subtle border-l-2 border-l-primary'
+                selectedOrder?.Order === order.Order && 'bg-primary-subtle border-l-2 border-l-primary',
+                (openIssueCounts[order.Order] ?? 0) > 0 && 'order-card-issue'
               )}
             >
               <div className="flex items-center justify-between">

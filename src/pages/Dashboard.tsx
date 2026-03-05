@@ -197,7 +197,7 @@ export default function Dashboard({ config }: DashboardProps) {
                 onMove={config.mode === 'DEMO' ? handleMove : undefined}
                 movingOrder={movingOrder}
                 allAreas={AREAS}
-                openIssueCounts={area === 'Warehouse' ? openIssueCounts : undefined}
+                openIssueCounts={openIssueCounts}
               />
             );
           })}
@@ -329,6 +329,7 @@ function OrderCardRow({ order, expanded, setExpanded, onSelect, onMove, movingOr
         order={order}
         compact
         selected={expanded?.Order === order.Order}
+        hasOpenIssue={(openIssueCount ?? 0) > 0}
         onClick={() => {
           setExpanded(expanded?.Order === order.Order ? null : order);
           onSelect(order);
