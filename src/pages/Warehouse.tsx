@@ -18,6 +18,7 @@ type MoveDialogState = {
   orderId: string;
   isNextStep: boolean;
   blockedReason?: string;
+  overrideMode?: boolean;
 } | null;
 
 export default function WarehousePage({ config }: WarehousePageProps) {
@@ -123,7 +124,7 @@ export default function WarehousePage({ config }: WarehousePageProps) {
     setMoveDialog({
       orderId: selectedOrder.Order,
       isNextStep: true,
-      blockedReason: openCount > 0 ? `Cannot move to Production: ${openCount} open issue(s) must be closed first.` : undefined,
+      overrideMode: openCount > 0,
     });
   };
 
@@ -135,13 +136,14 @@ export default function WarehousePage({ config }: WarehousePageProps) {
     });
   };
 
-  const handleMoveConfirm = async (justification?: string) => {
+  const handleMoveConfirm = async (justification?: string, movedBy?: string) => {
     if (!moveDialog || !selectedOrder) return;
     const target = moveDialog.isNextStep ? 'Production' : 'Orders';
     await moveOrder({
       order_id: moveDialog.orderId,
       target_area: target,
       justification,
+      moved_by: movedBy,
     });
     setOrders(prev => prev.filter(o => o.Order !== moveDialog.orderId));
     setSelectedOrder(null);
@@ -377,23 +379,23 @@ export default function WarehousePage({ config }: WarehousePageProps) {
                   {openIssues.length > 0 && (
                     <div className="flex items-center gap-2 text-xs text-warning">
                       <AlertTriangle size={12} />
-                      {openIssues.length} open issue(s) must be closed before moving to Production
+                      {openIssues.length} open issue(s) — override required to move to Production
                     </div>
                   )}
 
-                  {/* AUTO mode: classic Mark Ready */}
+                  {/* AUTO mode: Mark Ready (opens override dialog if issues exist) */}
                   {!isManualMode && (
                     <button
-                      onClick={handleMarkReady}
-                      disabled={!canMarkReady || markingReady || openIssues.length > 0}
+                      onClick={openIssues.length > 0 ? openNextStep : handleMarkReady}
+                      disabled={markingReady}
                       className={cn(
                         'w-full py-2 rounded-md text-sm font-medium transition-colors',
-                        canMarkReady && openIssues.length === 0
-                          ? 'bg-success text-success-foreground hover:bg-success/90'
-                          : 'bg-muted text-muted-foreground cursor-not-allowed'
+                        openIssues.length > 0
+                          ? 'bg-warning text-warning-foreground hover:bg-warning/90'
+                          : 'bg-success text-success-foreground hover:bg-success/90'
                       )}
                     >
-                      {markingReady ? 'Marking…' : '✓ Mark Ready → Send to Production'}
+                      {markingReady ? 'Marking…' : openIssues.length > 0 ? '⚠ Override → Send to Production' : '✓ Mark Ready → Send to Production'}
                     </button>
                   )}
 
@@ -412,12 +414,12 @@ export default function WarehousePage({ config }: WarehousePageProps) {
                         className={cn(
                           'flex items-center gap-1.5 flex-1 justify-center py-2 text-xs font-medium rounded-md transition-colors',
                           openIssues.length > 0
-                            ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                            ? 'bg-warning text-warning-foreground hover:bg-warning/90'
                             : 'bg-success text-success-foreground hover:bg-success/90'
                         )}
                       >
                         <ArrowRight size={13} />
-                        Next Step → Production
+                        {openIssues.length > 0 ? 'Override → Production' : 'Next Step → Production'}
                       </button>
                     </div>
                   )}
@@ -441,6 +443,7 @@ export default function WarehousePage({ config }: WarehousePageProps) {
           targetArea={moveDialog.isNextStep ? 'Production' : 'Orders'}
           isNextStep={moveDialog.isNextStep}
           blockedReason={moveDialog.blockedReason}
+          overrideMode={moveDialog.overrideMode}
           onConfirm={handleMoveConfirm}
           onCancel={() => setMoveDialog(null)}
         />

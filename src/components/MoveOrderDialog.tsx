@@ -7,9 +7,11 @@ interface MoveOrderDialogProps {
   orderId: string;
   currentArea: Area;
   targetArea: Area;
-  isNextStep: boolean; // true = next step, false = move back
-  blockedReason?: string; // if set, show blocking message
-  onConfirm: (justification?: string) => Promise<void>;
+  isNextStep: boolean;
+  blockedReason?: string;
+  /** When true, show override fields (reason + name) instead of blocking */
+  overrideMode?: boolean;
+  onConfirm: (justification?: string, movedBy?: string) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -19,12 +21,16 @@ export function MoveOrderDialog({
   targetArea,
   isNextStep,
   blockedReason,
+  overrideMode,
   onConfirm,
   onCancel,
 }: MoveOrderDialogProps) {
   const [justification, setJustification] = useState('');
+  const [movedBy, setMovedBy] = useState('Purchasing');
   const [submitting, setSubmitting] = useState(false);
-  const requiresJustification = !isNextStep; // move back always requires justification
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  const requiresJustification = !isNextStep || overrideMode;
 
   const canConfirm = blockedReason
     ? false
@@ -33,11 +39,19 @@ export function MoveOrderDialog({
   const handleConfirm = async () => {
     if (!canConfirm) return;
     setSubmitting(true);
+    setApiError(null);
     try {
-      await onConfirm(requiresJustification ? justification.trim() : undefined);
-    } finally {
+      await onConfirm(
+        requiresJustification ? justification.trim() : undefined,
+        overrideMode ? (movedBy.trim() || 'current_user') : undefined,
+      );
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Move failed';
+      setApiError(msg);
       setSubmitting(false);
+      return; // keep modal open
     }
+    setSubmitting(false);
   };
 
   return (
@@ -46,11 +60,13 @@ export function MoveOrderDialog({
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">
-            {isNextStep
-              ? <ArrowRight size={16} className="text-success" />
-              : <ArrowLeft size={16} className="text-warning" />}
+            {overrideMode
+              ? <AlertTriangle size={16} className="text-warning" />
+              : isNextStep
+                ? <ArrowRight size={16} className="text-success" />
+                : <ArrowLeft size={16} className="text-warning" />}
             <h2 className="text-sm font-semibold">
-              {isNextStep ? 'Next Step' : 'Move Back'}
+              {overrideMode ? 'Override: order has open issues' : isNextStep ? 'Next Step' : 'Move Back'}
             </h2>
           </div>
           <button
@@ -84,17 +100,37 @@ export function MoveOrderDialog({
             </div>
           )}
 
-          {/* Justification (move back) */}
+          {/* Override warning */}
+          {overrideMode && (
+            <div className="flex items-start gap-2 bg-warning/10 text-warning text-xs px-3 py-2 rounded-lg border border-warning/30">
+              <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+              <span>This order has open warehouse issues. A reason is required to proceed.</span>
+            </div>
+          )}
+
+          {/* API error */}
+          {apiError && (
+            <div className="flex items-start gap-2 bg-destructive/10 text-destructive text-xs px-3 py-2 rounded-lg border border-destructive/20">
+              <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+              <span>{apiError}</span>
+            </div>
+          )}
+
+          {/* Justification (move back OR override) */}
           {!blockedReason && requiresJustification && (
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                Justification <span className="text-destructive">*</span>
-                <span className="text-muted-foreground font-normal"> (required for move back)</span>
+                Reason <span className="text-destructive">*</span>
+                <span className="text-muted-foreground font-normal">
+                  {overrideMode ? ' (required to override)' : ' (required for move back)'}
+                </span>
               </label>
               <textarea
                 value={justification}
                 onChange={e => setJustification(e.target.value)}
-                placeholder="Explain why this order is being moved back…"
+                placeholder={overrideMode
+                  ? 'Explain why this order can proceed despite open issues…'
+                  : 'Explain why this order is being moved back…'}
                 rows={3}
                 className="w-full px-3 py-2 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-ring resize-none"
                 autoFocus
@@ -105,8 +141,23 @@ export function MoveOrderDialog({
             </div>
           )}
 
+          {/* Name field (override only) */}
+          {!blockedReason && overrideMode && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                Name <span className="text-muted-foreground font-normal">(optional)</span>
+              </label>
+              <input
+                value={movedBy}
+                onChange={e => setMovedBy(e.target.value)}
+                placeholder="Your name"
+                className="w-full px-3 py-2 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+          )}
+
           {/* Next step — no justification needed, just confirmation */}
-          {!blockedReason && isNextStep && (
+          {!blockedReason && isNextStep && !overrideMode && (
             <p className="text-xs text-muted-foreground">
               This order will be manually moved to <strong className="text-foreground">{targetArea}</strong>.
               It will be flagged as <em>Manual</em> source. If the next SAP upload indicates a different area,
@@ -129,12 +180,14 @@ export function MoveOrderDialog({
               disabled={!canConfirm || submitting}
               className={cn(
                 'flex-1 py-2 text-sm font-medium rounded-md transition-colors disabled:opacity-50',
-                isNextStep
-                  ? 'bg-success text-success-foreground hover:bg-success/90'
-                  : 'bg-warning text-warning-foreground hover:bg-warning/90'
+                overrideMode
+                  ? 'bg-warning text-warning-foreground hover:bg-warning/90'
+                  : isNextStep
+                    ? 'bg-success text-success-foreground hover:bg-success/90'
+                    : 'bg-warning text-warning-foreground hover:bg-warning/90'
               )}
             >
-              {submitting ? 'Moving…' : isNextStep ? 'Confirm Next Step' : 'Confirm Move Back'}
+              {submitting ? 'Moving…' : overrideMode ? 'Move anyway' : isNextStep ? 'Confirm Next Step' : 'Confirm Move Back'}
             </button>
           )}
         </div>
