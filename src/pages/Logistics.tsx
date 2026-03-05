@@ -56,8 +56,7 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
   useEffect(() => { load(); }, [load]);
 
   const openReceiveDialog = (order: Order) => {
-    const finishedQty = (order as any).finished_qty ?? undefined;
-    setReceiveDialog({ orderId: order.Order, finishedQty });
+    setReceiveDialog({ orderId: order.Order, finishedQty: order.finished_qty });
   };
 
   const handleReceiveConfirm = async (data: { log_received_qty: number; log_received_by: string }) => {
@@ -203,17 +202,17 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
                     <p className="text-xs text-muted-foreground mt-1 truncate">{String(order?.Material_description ?? '')}</p>
                     {/* Logistics quantities */}
                     <div className="flex items-center gap-4 mt-1.5 text-xs">
-                      {(order as any).prod_delivered_qty != null && (
-                        <span className="text-muted-foreground">Delivered (Prod): <strong className="text-foreground">{(order as any).prod_delivered_qty}</strong></span>
+                      {order.prod_delivered_qty != null && (
+                        <span className="text-muted-foreground">Delivered (Prod): <strong className="text-foreground">{order.prod_delivered_qty}</strong></span>
                       )}
-                      {(order as any).prod_scrap_qty != null && (
-                        <span className="text-muted-foreground">Scrap: <strong className="text-foreground">{(order as any).prod_scrap_qty}</strong></span>
+                      {order.prod_scrap_qty != null && (
+                        <span className="text-muted-foreground">Scrap: <strong className="text-foreground">{order.prod_scrap_qty}</strong></span>
                       )}
-                      {(order as any).finished_qty != null && (
-                        <span className="text-muted-foreground">Finished: <strong className="text-foreground">{(order as any).finished_qty}</strong></span>
+                      {order.finished_qty != null && (
+                        <span className="text-muted-foreground">Finished: <strong className="text-foreground">{order.finished_qty}</strong></span>
                       )}
-                      {(order as any).log_received_qty != null && (
-                        <span className="text-muted-foreground">Received: <strong className="text-foreground">{(order as any).log_received_qty}</strong></span>
+                      {order.log_received_qty != null && (
+                        <span className="text-muted-foreground">Received: <strong className="text-foreground">{order.log_received_qty}</strong></span>
                       )}
                     </div>
                     <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">

@@ -6,6 +6,9 @@ import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/compo
 import { StatusBadge } from '@/components/Badges';
 import { PriorityIcon, ChangedBadge } from '@/components/OrderCard';
 import { MoveOrderDialog, DiscrepancyBadge, SourceBadge } from '@/components/MoveOrderDialog';
+import { ProductionHandoverDialog } from '@/components/ProductionHandoverDialog';
+import { updateLogisticsStatus } from '@/lib/api';
+import { toast } from 'sonner';
 import { RefreshCw, Play, CheckCircle2, Clock, ArrowRight, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +18,7 @@ interface ProductionPageProps {
 
 type ProdStatus = ProductionStatus['status'];
 type MoveDialogState = { orderId: string; isNextStep: boolean; blockedReason?: string } | null;
+type HandoverDialogState = { orderId: string } | null;
 
 const statusConfig: Record<ProdStatus, { label: string; color: string; icon: React.ReactNode }> = {
   PENDING: {
@@ -43,6 +47,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
   const [updating, setUpdating] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<ProdStatus | ''>('');
   const [moveDialog, setMoveDialog] = useState<MoveDialogState>(null);
+  const [handoverDialog, setHandoverDialog] = useState<HandoverDialogState>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -85,13 +90,30 @@ export default function ProductionPage({ config }: ProductionPageProps) {
   const openNextStep = (order: Order) => {
     const prodStatus = statuses[order.Order];
     const isCompleted = prodStatus?.status === 'COMPLETED';
-    setMoveDialog({
-      orderId: order.Order,
-      isNextStep: true,
-      blockedReason: !isCompleted
-        ? `Cannot move to Logistics: Production status must be COMPLETED (currently: ${prodStatus?.status ?? 'PENDING'}).`
-        : undefined,
+    if (!isCompleted) {
+      toast.error(`Cannot move to Logistics: Production status must be COMPLETED (currently: ${prodStatus?.status ?? 'PENDING'}).`);
+      return;
+    }
+    setHandoverDialog({ orderId: order.Order });
+  };
+
+  const handleHandoverConfirm = async (data: { prod_delivered_qty: number; prod_scrap_qty: number; prod_reported_by: string }) => {
+    if (!handoverDialog) return;
+    // 1) Save quantities
+    await updateLogisticsStatus(handoverDialog.orderId, {
+      prod_delivered_qty: data.prod_delivered_qty,
+      prod_scrap_qty: data.prod_scrap_qty,
+      prod_reported_by: data.prod_reported_by,
     });
+    // 2) Move order
+    await moveOrder({
+      order_id: handoverDialog.orderId,
+      target_area: 'Logistics',
+      justification: 'prod->logistics',
+      moved_by: data.prod_reported_by,
+    });
+    setHandoverDialog(null);
+    await load(); // refresh
   };
 
   const openMoveBack = (order: Order) => {
@@ -278,16 +300,25 @@ export default function ProductionPage({ config }: ProductionPageProps) {
         </>
       )}
 
-      {/* Move Dialog */}
+      {/* Move Back Dialog */}
       {moveDialog && (
         <MoveOrderDialog
           orderId={moveDialog.orderId}
           currentArea="Production"
-          targetArea={moveDialog.isNextStep ? 'Logistics' : 'Warehouse'}
-          isNextStep={moveDialog.isNextStep}
+          targetArea="Warehouse"
+          isNextStep={false}
           blockedReason={moveDialog.blockedReason}
           onConfirm={handleMoveConfirm}
           onCancel={() => setMoveDialog(null)}
+        />
+      )}
+
+      {/* Production→Logistics Handover Dialog */}
+      {handoverDialog && (
+        <ProductionHandoverDialog
+          orderId={handoverDialog.orderId}
+          onConfirm={handleHandoverConfirm}
+          onCancel={() => setHandoverDialog(null)}
         />
       )}
     </PageContainer>
