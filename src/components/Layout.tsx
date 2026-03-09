@@ -32,6 +32,7 @@ const navItems = [
   { path: '/logistics', label: 'Logistics', icon: Truck },
   { path: '/errors', label: 'Errors', icon: AlertOctagon },
   { path: '/warehouse-issues', label: 'WH Issues', icon: AlertTriangle },
+  { path: '/history', label: 'History', icon: History },
 ];
 
 export function Layout({ children, config }: LayoutProps) {
