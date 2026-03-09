@@ -18,6 +18,7 @@ import ProductTypeRulesPage from "./pages/ProductTypeRules";
 import ErrorsPage from "./pages/Errors";
 import WarehouseIssuesPage from "./pages/WarehouseIssues";
 import TvDashboardPage from "./pages/TvDashboard";
+import HistoryPage from "./pages/History";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +44,7 @@ const App = () => {
               <Route path="/warehouse-issues" element={<WarehouseIssuesPage config={config} />} />
               <Route path="/admin" element={<AdminPage config={config} onConfigChange={setConfig} />} />
               <Route path="/admin/product-type-rules" element={<ProductTypeRulesPage config={config} />} />
+              <Route path="/history" element={<HistoryPage config={config} />} />
               <Route path="/tv" element={<TvDashboardPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
