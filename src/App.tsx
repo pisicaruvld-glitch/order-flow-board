@@ -12,6 +12,7 @@ import OrdersPage from "./pages/Orders";
 import WarehousePage from "./pages/Warehouse";
 import ProductionPage from "./pages/Production";
 import LogisticsPage from "./pages/Logistics";
+import DeliveryPreparationPage from "./pages/DeliveryPreparation";
 import AdminPage from "./pages/Admin";
 import ProductTypeRulesPage from "./pages/ProductTypeRules";
 import ErrorsPage from "./pages/Errors";
