@@ -15,6 +15,7 @@ import {
   AlertOctagon,
   AlertTriangle,
   Tv,
+  History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
