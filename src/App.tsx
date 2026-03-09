@@ -18,6 +18,7 @@ import ProductTypeRulesPage from "./pages/ProductTypeRules";
 import ErrorsPage from "./pages/Errors";
 import WarehouseIssuesPage from "./pages/WarehouseIssues";
 import TvDashboardPage from "./pages/TvDashboard";
+import HistoryPage from "./pages/History";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
