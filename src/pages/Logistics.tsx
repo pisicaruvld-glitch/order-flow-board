@@ -21,6 +21,7 @@ type CustomerShipDialogState = { orderId: string; availableToShip?: number } | n
 type MoveDialogState = { orderId: string } | null;
 
 export default function LogisticsPage({ config }: LogisticsPageProps) {
+  const navigate = useNavigate();
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [incomingShipments, setIncomingShipments] = useState<Shipment[]>([]);
   const [areaModes, setAreaModes] = useState<AreaModes>({ Warehouse: 'AUTO', Production: 'AUTO', Logistics: 'AUTO' });
