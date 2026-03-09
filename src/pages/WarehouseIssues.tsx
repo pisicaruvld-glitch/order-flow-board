@@ -126,19 +126,22 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40">
-                <TableHead className="w-32">Order</TableHead>
-                <TableHead className="w-24">Severity</TableHead>
-                <TableHead className="w-24">Status</TableHead>
-                <TableHead>Description</TableHead>
+                <TableHead className="w-24">Issue ID</TableHead>
+                <TableHead className="w-28">Order</TableHead>
+                <TableHead className="w-28">Finish Good No</TableHead>
+                <TableHead>Finish Good Desc.</TableHead>
+                <TableHead className="w-28">Part Number</TableHead>
+                <TableHead className="w-28">Issue Type</TableHead>
+                <TableHead>Comment</TableHead>
+                <TableHead className="w-20">Status</TableHead>
                 <TableHead className="w-36">Created At</TableHead>
-                <TableHead className="w-28">Created By</TableHead>
                 <TableHead className="w-36">Purchasing Feedback</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-12">
+                  <TableCell colSpan={10} className="text-center text-muted-foreground py-12">
                     No issues found
                   </TableCell>
                 </TableRow>
@@ -159,6 +162,7 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                         isExpanded && 'border-b-0',
                       )}
                     >
+                      <TableCell className="font-mono text-xs text-muted-foreground">{issue.id.slice(0, 8)}</TableCell>
                       <TableCell>
                         <button
                           onClick={() => navigate(`/warehouse`)}
@@ -167,24 +171,23 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                           {issue.order_id}
                         </button>
                       </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{issue.finish_good_no || '—'}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground truncate max-w-[200px]" title={issue.finish_good_description}>{issue.finish_good_description || '—'}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{issue.part_number || issue.pn || '—'}</TableCell>
                       <TableCell>
                         <span className={cn('inline-flex items-center gap-1 text-xs font-medium', severity === 'ERROR' ? 'text-destructive' : 'text-warning')}>
                           {severity === 'ERROR' ? <AlertOctagon size={12} /> : <AlertTriangle size={12} />}
-                          {severity}
+                          {ISSUE_TYPES.find(t => t.value === issue.issue_type)?.label ?? issue.issue_type}
                         </span>
                       </TableCell>
-                      <TableCell><IssueBadge status={issue.status} /></TableCell>
                       <TableCell>
-                        <div className={cn(!isOpen && 'text-muted-foreground')}>
-                          <span className="text-xs font-medium">{ISSUE_TYPES.find(t => t.value === issue.issue_type)?.label ?? issue.issue_type}</span>
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{issue.comment}</p>
-                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-1">{issue.comment}</p>
                       </TableCell>
+                      <TableCell><IssueBadge status={issue.status} /></TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {new Date(issue.created_at).toLocaleDateString()}{' '}
                         {new Date(issue.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{issue.created_by}</TableCell>
                       <TableCell>
                         <Button
                           variant={isExpanded ? 'secondary' : 'ghost'}
@@ -200,7 +203,7 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                     </TableRow>
                     {isExpanded && (
                       <TableRow key={`${issue.id}-feedback`} className={cn(severity === 'ERROR' && 'bg-destructive/5', severity === 'WARNING' && 'bg-warning/5')}>
-                        <TableCell colSpan={7} className="p-0">
+                        <TableCell colSpan={10} className="p-0">
                           <FeedbackPanel issueId={issue.id} />
                         </TableCell>
                       </TableRow>

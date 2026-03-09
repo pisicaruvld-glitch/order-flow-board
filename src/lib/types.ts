@@ -85,6 +85,9 @@ export interface Issue {
   created_at: string;
   updated_at: string;
   created_by: string;
+  part_number?: string;
+  finish_good_no?: string;
+  finish_good_description?: string;
 }
 
 export type IssueType =

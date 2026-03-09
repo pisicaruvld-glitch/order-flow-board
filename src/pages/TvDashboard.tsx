@@ -194,9 +194,9 @@ export default function TvDashboard() {
     { label: 'Warehouse', value: areaOrders.Warehouse.length, color: AREA_COUNT_BG.Warehouse },
     { label: 'Production', value: areaOrders.Production.length, color: AREA_COUNT_BG.Production },
     { label: 'Logistics', value: areaOrders.Logistics.length, color: AREA_COUNT_BG.Logistics },
-    { label: 'Overdue', value: overdueOrders.length, color: overdueOrders.length > 0 ? 'bg-[hsl(0,72%,51%,0.85)] text-destructive-foreground' : 'bg-muted text-muted-foreground' },
+    { label: 'WH Issues', value: whIssueOrderCount, color: whIssueOrderCount > 0 ? 'bg-[hsl(38,92%,50%,0.85)] text-warning-foreground' : 'bg-muted text-muted-foreground' },
     { label: 'Errors', value: errorsCount, color: errorsCount > 0 ? 'bg-[hsl(0,72%,41%)] text-destructive-foreground' : 'bg-muted text-muted-foreground' },
-  ], [activeOrders, areaOrders, overdueOrders, errorsCount]);
+  ], [activeOrders, areaOrders, whIssueOrderCount, errorsCount]);
 
   if (loading) {
     return (
