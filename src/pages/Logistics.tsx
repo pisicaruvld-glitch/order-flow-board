@@ -128,6 +128,12 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
         subtitle={`${logisticsOrders.length} orders · ${incomingShipments.length} incoming shipments`}
         actions={
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/logistics/delivery-preparation')}
+              className="flex items-center gap-1.5 text-sm bg-primary text-primary-foreground px-3 py-1.5 rounded hover:bg-primary/90 transition-colors"
+            >
+              <Package size={14} />Pregătire livrare
+            </button>
             <span className={cn(
               'text-xs font-semibold px-2 py-0.5 rounded border',
               isManualMode

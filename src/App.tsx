@@ -38,6 +38,7 @@ const App = () => {
               <Route path="/warehouse" element={<WarehousePage config={config} />} />
               <Route path="/production" element={<ProductionPage config={config} />} />
               <Route path="/logistics" element={<LogisticsPage config={config} />} />
+              <Route path="/logistics/delivery-preparation" element={<DeliveryPreparationPage />} />
               <Route path="/errors" element={<ErrorsPage config={config} />} />
               <Route path="/warehouse-issues" element={<WarehouseIssuesPage config={config} />} />
               <Route path="/admin" element={<AdminPage config={config} onConfigChange={setConfig} />} />
