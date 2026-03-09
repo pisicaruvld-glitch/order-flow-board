@@ -124,6 +124,16 @@ export default function TvDashboard() {
           setSeverityMap(sm);
         }
       } catch { /* fail-safe: render without error styling */ }
+      // Fetch open WH issues for distinct order count
+      try {
+        const whRes = await fetch('/api/warehouse/issues?status=OPEN');
+        if (whRes.ok) {
+          const whData = await whRes.json();
+          const whArr = Array.isArray(whData) ? whData : (whData?.issues ?? []);
+          const distinctOrders = new Set(whArr.map((i: any) => i.order_id)).size;
+          setWhIssueOrderCount(distinctOrders);
+        }
+      } catch { /* fail-safe */ }
     } catch {
       setOffline(true);
     } finally {
