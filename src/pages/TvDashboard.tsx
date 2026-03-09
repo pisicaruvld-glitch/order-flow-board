@@ -87,6 +87,7 @@ export default function TvDashboard() {
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
   const [openIssueCounts, setOpenIssueCounts] = useState<Record<string, number>>({});
+  const [whIssueOrderCount, setWhIssueOrderCount] = useState(0);
   const [now, setNow] = useState(new Date());
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
 
@@ -123,6 +124,16 @@ export default function TvDashboard() {
           setSeverityMap(sm);
         }
       } catch { /* fail-safe: render without error styling */ }
+      // Fetch open WH issues for distinct order count
+      try {
+        const whRes = await fetch('/api/warehouse/issues?status=OPEN');
+        if (whRes.ok) {
+          const whData = await whRes.json();
+          const whArr = Array.isArray(whData) ? whData : (whData?.issues ?? []);
+          const distinctOrders = new Set(whArr.map((i: any) => i.order_id)).size;
+          setWhIssueOrderCount(distinctOrders);
+        }
+      } catch { /* fail-safe */ }
     } catch {
       setOffline(true);
     } finally {
@@ -183,9 +194,9 @@ export default function TvDashboard() {
     { label: 'Warehouse', value: areaOrders.Warehouse.length, color: AREA_COUNT_BG.Warehouse },
     { label: 'Production', value: areaOrders.Production.length, color: AREA_COUNT_BG.Production },
     { label: 'Logistics', value: areaOrders.Logistics.length, color: AREA_COUNT_BG.Logistics },
-    { label: 'Overdue', value: overdueOrders.length, color: overdueOrders.length > 0 ? 'bg-[hsl(0,72%,51%,0.85)] text-destructive-foreground' : 'bg-muted text-muted-foreground' },
+    { label: 'WH Issues', value: whIssueOrderCount, color: whIssueOrderCount > 0 ? 'bg-[hsl(38,92%,50%,0.85)] text-warning-foreground' : 'bg-muted text-muted-foreground' },
     { label: 'Errors', value: errorsCount, color: errorsCount > 0 ? 'bg-[hsl(0,72%,41%)] text-destructive-foreground' : 'bg-muted text-muted-foreground' },
-  ], [activeOrders, areaOrders, overdueOrders, errorsCount]);
+  ], [activeOrders, areaOrders, whIssueOrderCount, errorsCount]);
 
   if (loading) {
     return (
