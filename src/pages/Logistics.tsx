@@ -7,7 +7,8 @@ import { ShipmentCard } from '@/components/ShipmentCard';
 import { LogisticsReceiveDialog } from '@/components/LogisticsReceiveDialog';
 import { CustomerShipmentDialog } from '@/components/CustomerShipmentDialog';
 import { MoveOrderDialog } from '@/components/MoveOrderDialog';
-import { RefreshCw, ArrowLeft, Truck, ChevronDown, ChevronRight } from 'lucide-react';
+import { RefreshCw, ArrowLeft, Truck, ChevronDown, ChevronRight, Package } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -20,6 +21,7 @@ type CustomerShipDialogState = { orderId: string; availableToShip?: number } | n
 type MoveDialogState = { orderId: string } | null;
 
 export default function LogisticsPage({ config }: LogisticsPageProps) {
+  const navigate = useNavigate();
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [incomingShipments, setIncomingShipments] = useState<Shipment[]>([]);
   const [areaModes, setAreaModes] = useState<AreaModes>({ Warehouse: 'AUTO', Production: 'AUTO', Logistics: 'AUTO' });
@@ -126,6 +128,12 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
         subtitle={`${logisticsOrders.length} orders · ${incomingShipments.length} incoming shipments`}
         actions={
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/logistics/delivery-preparation')}
+              className="flex items-center gap-1.5 text-sm bg-primary text-primary-foreground px-3 py-1.5 rounded hover:bg-primary/90 transition-colors"
+            >
+              <Package size={14} />Pregătire livrare
+            </button>
             <span className={cn(
               'text-xs font-semibold px-2 py-0.5 rounded border',
               isManualMode
