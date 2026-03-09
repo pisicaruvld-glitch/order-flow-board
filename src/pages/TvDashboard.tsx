@@ -87,6 +87,7 @@ export default function TvDashboard() {
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
   const [openIssueCounts, setOpenIssueCounts] = useState<Record<string, number>>({});
+  const [whIssueOrderCount, setWhIssueOrderCount] = useState(0);
   const [now, setNow] = useState(new Date());
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
 
