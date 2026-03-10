@@ -23,6 +23,7 @@ import {
   HistoryEvent,
   HistoryIssue,
   HistoryIssueHistoryEntry,
+  UploadChange,
 } from "@/lib/historyApi";
 import { AppConfig } from "@/lib/types";
 import { format } from "date-fns";
@@ -306,33 +307,50 @@ function OrderHistoryTab({ config }: { config: AppConfig }) {
           {/* C) SAP Upload Changes */}
           {(data.upload_changes?.length ?? 0) > 0 && (
             <CollapsibleSection title="SAP Upload Changes" count={data.upload_changes.length}>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Uploaded At</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Changed Fields</TableHead>
-                      <TableHead>Before</TableHead>
-                      <TableHead>After</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.upload_changes.map((uc, i) => (
-                      <TableRow key={i}>
-                        <TableCell className="text-xs whitespace-nowrap">{fmtDate(uc.uploaded_at)}</TableCell>
-                        <TableCell><Badge variant="outline" className="text-xs">{uc.change_type}</Badge></TableCell>
-                        <TableCell>
+              <div className="space-y-3">
+                {data.upload_changes.map((uc, i) => {
+                  const rows = getChangedFieldRows(uc);
+                  return (
+                    <Card key={i} className="overflow-hidden">
+                      <CardHeader className="py-3 px-4 bg-muted/30">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">{fmtDate(uc.uploaded_at)}</span>
+                          <Badge variant="outline" className="text-xs">{uc.change_type}</Badge>
+                          {uc.upload_id && <span className="text-xs text-muted-foreground">Upload {uc.upload_id}</span>}
                           <div className="flex gap-1 flex-wrap">
-                            {(uc.changed_fields ?? []).map(f => <Badge key={f} variant="secondary" className="text-xs">{f}</Badge>)}
+                            {(uc.changed_fields ?? []).length > 0
+                              ? uc.changed_fields.map(f => <Badge key={f} variant="secondary" className="text-xs">{f}</Badge>)
+                              : <span className="text-xs text-muted-foreground">—</span>}
                           </div>
-                        </TableCell>
-                        <TableCell className="text-xs"><KVBlock obj={uc.before_values} /></TableCell>
-                        <TableCell className="text-xs"><KVBlock obj={uc.after_values} /></TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        {rows.length > 0 ? (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="text-xs">Field</TableHead>
+                                <TableHead className="text-xs">Before</TableHead>
+                                <TableHead className="text-xs">After</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {rows.map(r => (
+                                <TableRow key={r.field}>
+                                  <TableCell className="text-xs font-medium">{r.field}</TableCell>
+                                  <TableCell className="text-xs text-muted-foreground">{r.before}</TableCell>
+                                  <TableCell className="text-xs font-medium">{r.after}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        ) : (
+                          <p className="text-xs text-muted-foreground p-4">No field changes recorded.</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </CollapsibleSection>
           )}
@@ -699,6 +717,17 @@ function KV({ label, value, className }: { label: string; value: any; className?
   );
 }
 
+function formatValue(v: any): string {
+  if (v == null) return "—";
+  if (Array.isArray(v)) return v.length === 0 ? "—" : v.map(formatValue).join(", ");
+  if (typeof v === "object") {
+    const keys = Object.keys(v);
+    if (keys.length === 0) return "—";
+    return keys.map(k => `${k}: ${formatValue(v[k])}`).join("; ");
+  }
+  return String(v);
+}
+
 function KVBlock({ obj }: { obj?: Record<string, any> | null }) {
   if (!obj || Object.keys(obj).length === 0) return <span className="text-muted-foreground">—</span>;
   return (
@@ -706,11 +735,24 @@ function KVBlock({ obj }: { obj?: Record<string, any> | null }) {
       {Object.entries(obj).map(([k, v]) => (
         <div key={k} className="flex gap-2">
           <span className="text-muted-foreground shrink-0">{k}:</span>
-          <span className="font-medium">{v != null ? String(v) : "—"}</span>
+          <span className="font-medium">{formatValue(v)}</span>
         </div>
       ))}
     </div>
   );
+}
+
+function getChangedFieldRows(change: UploadChange): { field: string; before: string; after: string }[] {
+  const beforeObj = change.before_values && typeof change.before_values === "object" && !Array.isArray(change.before_values) ? change.before_values : {};
+  const afterObj = change.after_values && typeof change.after_values === "object" && !Array.isArray(change.after_values) ? change.after_values : {};
+  const fields = Array.isArray(change.changed_fields) && change.changed_fields.length > 0
+    ? change.changed_fields
+    : [...new Set([...Object.keys(beforeObj), ...Object.keys(afterObj)])];
+  return fields.map(f => ({
+    field: f,
+    before: formatValue(beforeObj[f]),
+    after: formatValue(afterObj[f]),
+  }));
 }
 
 function EventCard({ event, defaultOpen }: { event: HistoryEvent; defaultOpen: boolean }) {
