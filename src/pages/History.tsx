@@ -306,33 +306,50 @@ function OrderHistoryTab({ config }: { config: AppConfig }) {
           {/* C) SAP Upload Changes */}
           {(data.upload_changes?.length ?? 0) > 0 && (
             <CollapsibleSection title="SAP Upload Changes" count={data.upload_changes.length}>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Uploaded At</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Changed Fields</TableHead>
-                      <TableHead>Before</TableHead>
-                      <TableHead>After</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.upload_changes.map((uc, i) => (
-                      <TableRow key={i}>
-                        <TableCell className="text-xs whitespace-nowrap">{fmtDate(uc.uploaded_at)}</TableCell>
-                        <TableCell><Badge variant="outline" className="text-xs">{uc.change_type}</Badge></TableCell>
-                        <TableCell>
+              <div className="space-y-3">
+                {data.upload_changes.map((uc, i) => {
+                  const rows = getChangedFieldRows(uc);
+                  return (
+                    <Card key={i} className="overflow-hidden">
+                      <CardHeader className="py-3 px-4 bg-muted/30">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">{fmtDate(uc.uploaded_at)}</span>
+                          <Badge variant="outline" className="text-xs">{uc.change_type}</Badge>
+                          {uc.upload_id && <span className="text-xs text-muted-foreground">Upload {uc.upload_id}</span>}
                           <div className="flex gap-1 flex-wrap">
-                            {(uc.changed_fields ?? []).map(f => <Badge key={f} variant="secondary" className="text-xs">{f}</Badge>)}
+                            {(uc.changed_fields ?? []).length > 0
+                              ? uc.changed_fields.map(f => <Badge key={f} variant="secondary" className="text-xs">{f}</Badge>)
+                              : <span className="text-xs text-muted-foreground">—</span>}
                           </div>
-                        </TableCell>
-                        <TableCell className="text-xs"><KVBlock obj={uc.before_values} /></TableCell>
-                        <TableCell className="text-xs"><KVBlock obj={uc.after_values} /></TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        {rows.length > 0 ? (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="text-xs">Field</TableHead>
+                                <TableHead className="text-xs">Before</TableHead>
+                                <TableHead className="text-xs">After</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {rows.map(r => (
+                                <TableRow key={r.field}>
+                                  <TableCell className="text-xs font-medium">{r.field}</TableCell>
+                                  <TableCell className="text-xs text-muted-foreground">{r.before}</TableCell>
+                                  <TableCell className="text-xs font-medium">{r.after}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        ) : (
+                          <p className="text-xs text-muted-foreground p-4">No field changes recorded.</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </CollapsibleSection>
           )}
