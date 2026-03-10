@@ -699,6 +699,17 @@ function KV({ label, value, className }: { label: string; value: any; className?
   );
 }
 
+function formatValue(v: any): string {
+  if (v == null) return "—";
+  if (Array.isArray(v)) return v.length === 0 ? "—" : v.map(formatValue).join(", ");
+  if (typeof v === "object") {
+    const keys = Object.keys(v);
+    if (keys.length === 0) return "—";
+    return keys.map(k => `${k}: ${formatValue(v[k])}`).join("; ");
+  }
+  return String(v);
+}
+
 function KVBlock({ obj }: { obj?: Record<string, any> | null }) {
   if (!obj || Object.keys(obj).length === 0) return <span className="text-muted-foreground">—</span>;
   return (
@@ -706,11 +717,24 @@ function KVBlock({ obj }: { obj?: Record<string, any> | null }) {
       {Object.entries(obj).map(([k, v]) => (
         <div key={k} className="flex gap-2">
           <span className="text-muted-foreground shrink-0">{k}:</span>
-          <span className="font-medium">{v != null ? String(v) : "—"}</span>
+          <span className="font-medium">{formatValue(v)}</span>
         </div>
       ))}
     </div>
   );
+}
+
+function getChangedFieldRows(change: UploadChange): { field: string; before: string; after: string }[] {
+  const beforeObj = change.before_values && typeof change.before_values === "object" && !Array.isArray(change.before_values) ? change.before_values : {};
+  const afterObj = change.after_values && typeof change.after_values === "object" && !Array.isArray(change.after_values) ? change.after_values : {};
+  const fields = Array.isArray(change.changed_fields) && change.changed_fields.length > 0
+    ? change.changed_fields
+    : [...new Set([...Object.keys(beforeObj), ...Object.keys(afterObj)])];
+  return fields.map(f => ({
+    field: f,
+    before: formatValue(beforeObj[f]),
+    after: formatValue(afterObj[f]),
+  }));
 }
 
 function EventCard({ event, defaultOpen }: { event: HistoryEvent; defaultOpen: boolean }) {
