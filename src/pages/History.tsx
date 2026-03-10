@@ -23,6 +23,7 @@ import {
   HistoryEvent,
   HistoryIssue,
   HistoryIssueHistoryEntry,
+  UploadChange,
 } from "@/lib/historyApi";
 import { AppConfig } from "@/lib/types";
 import { format } from "date-fns";
