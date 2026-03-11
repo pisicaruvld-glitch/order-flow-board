@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Order } from '@/lib/types';
-import { getOrders } from '@/lib/api';
+import { getLogisticsOrdersWorklist } from '@/lib/api';
 import {
   Pallet, PalletLine, PalletStatus,
   getPallets, getPallet, createPallet, updatePallet,
