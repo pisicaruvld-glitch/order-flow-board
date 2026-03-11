@@ -8,7 +8,7 @@ import { ShipmentCard } from '@/components/ShipmentCard';
 import { LogisticsReceiveDialog } from '@/components/LogisticsReceiveDialog';
 import { CustomerShipmentDialog } from '@/components/CustomerShipmentDialog';
 import { MoveOrderDialog } from '@/components/MoveOrderDialog';
-import { RefreshCw, ArrowLeft, Truck, ChevronDown, ChevronRight, Package } from 'lucide-react';
+import { RefreshCw, ArrowLeft, Truck, ChevronDown, ChevronRight, Package, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
