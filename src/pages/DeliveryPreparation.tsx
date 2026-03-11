@@ -434,33 +434,38 @@ export default function DeliveryPreparationPage() {
                             <p className="text-[10px] text-muted-foreground">No orders available.</p>
                           ) : (
                             <div className="max-h-32 overflow-y-auto space-y-1">
-                              {logisticsOrders.map(o => (
-                                <div key={o.Order} className="flex items-center gap-2 text-[10px]">
-                                  <input
-                                    type="checkbox"
-                                    checked={!!addOrderSelections[o.Order]}
-                                    onChange={e => {
-                                      if (e.target.checked) {
-                                        setAddOrderSelections(prev => ({ ...prev, [o.Order]: 1 }));
-                                      } else {
-                                        setAddOrderSelections(prev => { const n = { ...prev }; delete n[o.Order]; return n; });
-                                      }
-                                    }}
-                                    className="rounded"
-                                  />
-                                  <span className="font-mono">{o.Order}</span>
-                                  <span className="text-muted-foreground truncate flex-1">{o.Material_description}</span>
-                                  {addOrderSelections[o.Order] !== undefined && (
+                              {logisticsOrders.map(o => {
+                                const maxQty = o.available_in_logistics_qty ?? 0;
+                                return (
+                                  <div key={o.Order} className="flex items-center gap-2 text-[10px]">
                                     <input
-                                      type="number"
-                                      min={0}
-                                      value={addOrderSelections[o.Order] ?? 0}
-                                      onChange={e => setAddOrderSelections(prev => ({ ...prev, [o.Order]: Math.max(0, parseInt(e.target.value) || 0) }))}
-                                      className="w-16 px-1 py-0.5 text-[10px] bg-background border border-border rounded text-right"
+                                      type="checkbox"
+                                      checked={!!addOrderSelections[o.Order]}
+                                      onChange={e => {
+                                        if (e.target.checked) {
+                                          setAddOrderSelections(prev => ({ ...prev, [o.Order]: 1 }));
+                                        } else {
+                                          setAddOrderSelections(prev => { const n = { ...prev }; delete n[o.Order]; return n; });
+                                        }
+                                      }}
+                                      className="rounded"
                                     />
-                                  )}
-                                </div>
-                              ))}
+                                    <span className="font-mono">{o.Order}</span>
+                                    <span className="text-muted-foreground truncate flex-1">{o.Material_description ?? '-'}</span>
+                                    <span className="text-muted-foreground shrink-0">Avail: {maxQty}</span>
+                                    {addOrderSelections[o.Order] !== undefined && (
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        max={maxQty}
+                                        value={addOrderSelections[o.Order] ?? 0}
+                                        onChange={e => setAddOrderSelections(prev => ({ ...prev, [o.Order]: Math.max(0, Math.min(maxQty, parseInt(e.target.value) || 0)) }))}
+                                        className="w-16 px-1 py-0.5 text-[10px] bg-background border border-border rounded text-right"
+                                      />
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                           <div className="flex items-center gap-2">
