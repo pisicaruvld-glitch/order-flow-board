@@ -19,6 +19,7 @@ import ErrorsPage from "./pages/Errors";
 import WarehouseIssuesPage from "./pages/WarehouseIssues";
 import TvDashboardPage from "./pages/TvDashboard";
 import HistoryPage from "./pages/History";
+import TransportsPage from "./pages/Transports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
