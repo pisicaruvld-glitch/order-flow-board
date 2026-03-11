@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Order, ProductionStatus, AreaModes } from '@/lib/types';
-import { getOrders, getProductionStatus, updateProductionStatus, moveOrder, getAreaModes, createShipment } from '@/lib/api';
+import { getOrders, getProductionStatus, updateProductionStatus, moveOrder, getAreaModes, createShipment, getAllOpenIssueCounts } from '@/lib/api';
 import { AppConfig } from '@/lib/types';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { StatusBadge } from '@/components/Badges';
