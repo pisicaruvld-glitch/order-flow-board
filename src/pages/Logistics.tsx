@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Order, Shipment, AreaModes, CustomerShipment } from '@/lib/types';
-import { getOrders, getIncomingShipments, receiveShipment, getAreaModes, moveOrder, createCustomerShipment, getCustomerShipments } from '@/lib/api';
+import { getOrders, getIncomingShipments, receiveShipment, getAreaModes, moveOrder, createCustomerShipment, getCustomerShipments, getAllOpenIssueCounts } from '@/lib/api';
 import { AppConfig } from '@/lib/types';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { ShipmentCard } from '@/components/ShipmentCard';
