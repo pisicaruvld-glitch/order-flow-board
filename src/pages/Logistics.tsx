@@ -35,6 +35,11 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
   const [customerShipments, setCustomerShipments] = useState<Record<string, CustomerShipment[]>>({});
   const [expandedCustomerShipments, setExpandedCustomerShipments] = useState<Set<string>>(new Set());
 
+  const { data: openIssueCounts } = useQuery({
+    queryKey: ['openIssueCounts'],
+    queryFn: getAllOpenIssueCounts,
+  });
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
