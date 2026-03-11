@@ -99,7 +99,8 @@ export default function DeliveryPreparationPage() {
     try {
       const detail = await getPallet(palletId);
       setPalletDetails(prev => ({ ...prev, [palletId]: detail }));
-    } catch {
+    } catch (e) {
+      console.error("Failed to load pallet details", e);
       toast.error('Failed to load pallet details');
     }
   };
