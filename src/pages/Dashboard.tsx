@@ -355,6 +355,7 @@ function AreaColumn({
               movingOrder={movingOrder}
               area={area}
               allAreas={allAreas}
+              openIssueCounts={openIssueCounts}
             />
             <div className="border-t border-border my-1" />
             <SubLane
@@ -367,6 +368,7 @@ function AreaColumn({
               movingOrder={movingOrder}
               area={area}
               allAreas={allAreas}
+              openIssueCounts={openIssueCounts}
             />
           </>
         ) : (
