@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Order, Shipment, AreaModes, CustomerShipment } from '@/lib/types';
-import { getOrders, getIncomingShipments, receiveShipment, getAreaModes, moveOrder, createCustomerShipment, getCustomerShipments, getAllOpenIssueCounts } from '@/lib/api';
+import { getIncomingShipments, receiveShipment, getAreaModes, moveOrder, createCustomerShipment, getCustomerShipments, getAllOpenIssueCounts, getLogisticsOrdersWorklist } from '@/lib/api';
 import { AppConfig } from '@/lib/types';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { ShipmentCard } from '@/components/ShipmentCard';
@@ -23,8 +23,8 @@ type MoveDialogState = { orderId: string } | null;
 
 export default function LogisticsPage({ config }: LogisticsPageProps) {
   const navigate = useNavigate();
-  const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [incomingShipments, setIncomingShipments] = useState<Shipment[]>([]);
+  const [worklistOrders, setWorklistOrders] = useState<Order[]>([]);
   const [areaModes, setAreaModes] = useState<AreaModes>({ Warehouse: 'AUTO', Production: 'AUTO', Logistics: 'AUTO' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,13 +44,13 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
     setLoading(true);
     setError(null);
     try {
-      const [orders, shipments, modes] = await Promise.all([
-        getOrders(),
+      const [shipments, worklist, modes] = await Promise.all([
         getIncomingShipments(),
+        getLogisticsOrdersWorklist(),
         getAreaModes(),
       ]);
-      setAllOrders(orders);
       setIncomingShipments(shipments);
+      setWorklistOrders(worklist);
       setAreaModes(modes);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load');
@@ -104,7 +104,6 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
       next.delete(orderId);
     } else {
       next.add(orderId);
-      // Lazy load customer shipments
       if (!customerShipments[orderId]) {
         try {
           const cs = await getCustomerShipments(orderId);
@@ -119,19 +118,22 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
 
   const isManualMode = areaModes.Logistics === 'MANUAL';
 
-  // Section 1: Orders currently in Logistics
-  const logisticsOrders = allOrders.filter(o => o.current_area === 'Logistics');
+  // Incoming: shipments with remaining qty to receive
+  const pendingIncoming = incomingShipments.filter(s => {
+    const remaining = s.remaining_to_receive_qty ?? (s.finished_qty_delta - (s.received_qty_delta ?? 0));
+    return remaining > 0;
+  });
 
   // KPI summary
-  const totalDelivered = logisticsOrders.reduce((s, o) => s + (o.prod_delivered_qty ?? 0), 0);
-  const totalReceived = logisticsOrders.reduce((s, o) => s + (o.log_received_qty ?? 0), 0);
-  const pendingReceive = incomingShipments.filter(s => s.received_qty_delta == null || s.received_qty_delta === 0).length;
+  const totalReceived = worklistOrders.reduce((s, o) => s + (o.log_received_qty ?? 0), 0);
+  const totalAvailable = worklistOrders.reduce((s, o) => s + (o.available_in_logistics_qty ?? 0), 0);
+  const pendingReceiveCount = pendingIncoming.length;
 
   return (
     <PageContainer>
       <PageHeader
         title="Logistics"
-        subtitle={`${logisticsOrders.length} orders · ${incomingShipments.length} incoming shipments`}
+        subtitle={`${worklistOrders.length} orders · ${pendingIncoming.length} incoming shipments`}
         actions={
           <div className="flex items-center gap-3">
             <button
@@ -158,16 +160,16 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
       {/* Summary strip */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-card border border-border rounded-lg p-4">
-          <p className="text-xs text-muted-foreground font-medium mb-1">Total Delivered</p>
-          <p className="text-2xl font-bold kpi-animate">{totalDelivered}</p>
-        </div>
-        <div className="bg-card border border-border rounded-lg p-4">
           <p className="text-xs text-muted-foreground font-medium mb-1">Total Received</p>
           <p className="text-2xl font-bold kpi-animate">{totalReceived}</p>
         </div>
         <div className="bg-card border border-border rounded-lg p-4">
+          <p className="text-xs text-muted-foreground font-medium mb-1">Available to Ship</p>
+          <p className="text-2xl font-bold kpi-animate">{totalAvailable}</p>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-4">
           <p className="text-xs text-muted-foreground font-medium mb-1">Pending Receive</p>
-          <p className="text-2xl font-bold kpi-animate">{pendingReceive}</p>
+          <p className="text-2xl font-bold kpi-animate">{pendingReceiveCount}</p>
         </div>
       </div>
 
@@ -178,12 +180,12 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
         <div className="space-y-6">
           {/* Section 1: Incoming Shipments (Receive) */}
           <section>
-            <h2 className="text-sm font-semibold text-foreground mb-2">Incoming (Receive) ({incomingShipments.length})</h2>
-            {incomingShipments.length === 0 ? (
+            <h2 className="text-sm font-semibold text-foreground mb-2">Incoming (Receive) ({pendingIncoming.length})</h2>
+            {pendingIncoming.length === 0 ? (
               <p className="text-xs text-muted-foreground py-4">No pending shipments. Create shipments from the Production page using "Next Step".</p>
             ) : (
               <div className="space-y-2">
-                {incomingShipments.map(shipment => (
+                {pendingIncoming.map(shipment => (
                   <ShipmentCard
                     key={shipment.id}
                     shipment={shipment}
@@ -194,15 +196,15 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
             )}
           </section>
 
-          {/* Section 2: Orders in Logistics */}
+          {/* Section 2: Orders in Logistics (from worklist endpoint) */}
           <section>
-            <h2 className="text-sm font-semibold text-foreground mb-2">Orders in Logistics ({logisticsOrders.length})</h2>
-            {logisticsOrders.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-4">No orders currently in Logistics.</p>
+            <h2 className="text-sm font-semibold text-foreground mb-2">Orders in Logistics ({worklistOrders.length})</h2>
+            {worklistOrders.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-4">No orders with stock in Logistics.</p>
             ) : (
               <div className="space-y-2">
-                {logisticsOrders.map(order => {
-                  const issueCount = openIssueCounts?.[order.Order] ?? 0;
+                {worklistOrders.map(order => {
+                  const issueCount = openIssueCounts?.[String(order.Order)] ?? 0;
                   const hasOpenIssue = issueCount > 0;
                   return (
                   <div key={order.Order} className={cn(
@@ -224,17 +226,21 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
                           )}
                         </div>
                         <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[10px]">
-                          {order.prod_delivered_qty != null && <span className="text-muted-foreground">Delivered: <strong className="text-foreground">{order.prod_delivered_qty}</strong></span>}
+                          <span className="text-muted-foreground">Produced / Sent: <strong className="text-foreground">{order.prod_delivered_qty ?? '—'}</strong></span>
                           {order.prod_scrap_qty != null && <span className="text-muted-foreground">Scrap: <strong className="text-foreground">{order.prod_scrap_qty}</strong></span>}
-                          {order.finished_qty != null && <span className="text-muted-foreground">Finished: <strong className="text-foreground">{order.finished_qty}</strong></span>}
                           <span className="text-muted-foreground">Received: <strong className="text-foreground">{order.log_received_qty ?? '—'}</strong></span>
+                          <span className="text-muted-foreground">Shipped to Customer: <strong className="text-foreground">{order.log_shipped_qty ?? 0}</strong></span>
+                          <span className="text-muted-foreground font-medium">Available: <strong className="text-primary">{order.available_in_logistics_qty ?? '—'}</strong></span>
+                          {(order.pending_receive_qty ?? 0) > 0 && (
+                            <span className="text-muted-foreground">Pending Receive: <strong className="text-warning">{order.pending_receive_qty}</strong></span>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap shrink-0">
                         <button
                           onClick={() => setCustomerShipDialog({
                             orderId: order.Order,
-                            availableToShip: order.finished_qty != null ? order.finished_qty - (order.log_received_qty ?? 0) : undefined,
+                            availableToShip: order.available_in_logistics_qty,
                           })}
                           className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                         >

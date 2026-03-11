@@ -37,6 +37,11 @@ export function ShipmentCard({ shipment, order, onReceive }: ShipmentCardProps) 
             <span className="text-muted-foreground">
               Received: <strong className="text-foreground">{shipment.received_qty_delta ?? '—'}</strong>
             </span>
+            {remaining > 0 && (
+              <span className="text-muted-foreground">
+                Remaining: <strong className="text-warning">{remaining}</strong>
+              </span>
+            )}
           </div>
 
           {/* Cumulative totals if available */}
