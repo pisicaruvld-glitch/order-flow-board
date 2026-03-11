@@ -47,6 +47,7 @@ export interface Shipment {
   received_by: string | null;
   received_at: string | null;
   finished_qty_delta: number; // delivered_qty_delta - scrap_qty_delta
+  remaining_to_receive_qty?: number; // finished_qty_delta - (received_qty_delta ?? 0)
   // Cumulative totals (returned by /api/logistics/incoming-shipments)
   finished_qty_total?: number;
   available_to_ship_total?: number;
