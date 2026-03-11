@@ -355,6 +355,7 @@ function AreaColumn({
               movingOrder={movingOrder}
               area={area}
               allAreas={allAreas}
+              openIssueCounts={openIssueCounts}
             />
             <div className="border-t border-border my-1" />
             <SubLane
@@ -367,6 +368,7 @@ function AreaColumn({
               movingOrder={movingOrder}
               area={area}
               allAreas={allAreas}
+              openIssueCounts={openIssueCounts}
             />
           </>
         ) : (
@@ -469,9 +471,10 @@ interface SubLaneProps {
   movingOrder: string | null;
   area: Area;
   allAreas: Area[];
+  openIssueCounts?: Record<string, number>;
 }
 
-function SubLane({ label, orders, expanded, setExpanded, onSelect, onMove, movingOrder, area, allAreas }: SubLaneProps) {
+function SubLane({ label, orders, expanded, setExpanded, onSelect, onMove, movingOrder, area, allAreas, openIssueCounts }: SubLaneProps) {
   return (
     <div>
       <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide px-1 py-1">{label}</h3>
@@ -490,6 +493,7 @@ function SubLane({ label, orders, expanded, setExpanded, onSelect, onMove, movin
               movingOrder={movingOrder}
               area={area}
               allAreas={allAreas}
+              openIssueCount={openIssueCounts?.[String(order.Order)] ?? 0}
             />
           ))}
         </div>
