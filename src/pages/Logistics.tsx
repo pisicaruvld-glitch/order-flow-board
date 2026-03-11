@@ -201,8 +201,14 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
               <p className="text-xs text-muted-foreground py-4">No orders currently in Logistics.</p>
             ) : (
               <div className="space-y-2">
-                {logisticsOrders.map(order => (
-                  <div key={order.Order} className="bg-card border border-border rounded-lg p-3">
+                {logisticsOrders.map(order => {
+                  const issueCount = openIssueCounts?.[order.Order] ?? 0;
+                  const hasOpenIssue = issueCount > 0;
+                  return (
+                  <div key={order.Order} className={cn(
+                    'bg-card border border-border rounded-lg p-3 relative',
+                    hasOpenIssue && 'order-card-issue'
+                  )}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
