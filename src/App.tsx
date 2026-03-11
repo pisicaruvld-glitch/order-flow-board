@@ -46,6 +46,7 @@ const App = () => {
               <Route path="/admin" element={<AdminPage config={config} onConfigChange={setConfig} />} />
               <Route path="/admin/product-type-rules" element={<ProductTypeRulesPage config={config} />} />
               <Route path="/history" element={<HistoryPage config={config} />} />
+              <Route path="/logistics/transports" element={<TransportsPage />} />
               <Route path="/tv" element={<TvDashboardPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
