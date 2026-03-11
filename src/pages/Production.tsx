@@ -228,6 +228,12 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                         {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
                         {order.discrepancy && <DiscrepancyBadge sapArea={order.sap_area} />}
                         {order.source === 'manual' && <SourceBadge source={order.source} />}
+                        {hasOpenIssue && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-warning/15 text-warning border border-warning/30">
+                            <AlertTriangle size={10} />
+                            {issueCount} {issueCount === 1 ? 'Issue' : 'Issues'}
+                          </span>
+                        )}
                       </div>
                       <StatusBadge status={String(order?.System_Status ?? '')} size="sm" />
                       <span className={cn('inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full', cfg.color)}>
