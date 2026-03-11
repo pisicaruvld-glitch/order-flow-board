@@ -209,10 +209,15 @@ export default function ProductionPage({ config }: ProductionPageProps) {
               const isUpdating = updating === order.Order;
               const cfg = prodStatus ? statusConfig[prodStatus.status] : statusConfig.PENDING;
               const isCompleted = prodStatus?.status === 'COMPLETED';
+              const issueCount = openIssueCounts?.[order.Order] ?? 0;
+              const hasOpenIssue = issueCount > 0;
               return (
                 <div
                   key={order.Order}
-                  className="bg-card border border-border rounded-lg p-4 flex items-center gap-4 hover:border-border/80 transition-colors"
+                  className={cn(
+                    'bg-card border border-border rounded-lg p-4 flex items-center gap-4 hover:border-border/80 transition-colors relative',
+                    hasOpenIssue && 'order-card-issue'
+                  )}
                 >
                   {/* Order Info */}
                   <div className="flex-1 min-w-0">
