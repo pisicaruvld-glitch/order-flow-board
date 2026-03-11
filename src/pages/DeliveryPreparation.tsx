@@ -48,7 +48,7 @@ export default function DeliveryPreparationPage() {
     setLoading(true);
     setError(null);
     try {
-      const [p, o] = await Promise.all([getPallets(), getOrders()]);
+      const [p, o] = await Promise.all([getPallets(), getLogisticsOrdersWorklist()]);
       setPallets(p);
       setOrders(o);
     } catch (e: unknown) {
