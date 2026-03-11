@@ -383,7 +383,7 @@ function AreaColumn({
               movingOrder={movingOrder}
               area={area}
               allAreas={allAreas}
-              openIssueCount={openIssueCounts?.[order.Order] ?? 0}
+              openIssueCount={openIssueCounts?.[String(order.Order)] ?? 0}
             />
           ))
         )}
