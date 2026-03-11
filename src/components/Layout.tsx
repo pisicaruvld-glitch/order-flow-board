@@ -7,6 +7,7 @@ import {
   Warehouse,
   Factory,
   Truck,
+  PackageCheck,
   Settings,
   Radio,
   Server,
