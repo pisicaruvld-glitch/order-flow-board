@@ -213,6 +213,12 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-mono text-xs font-semibold">{order.Order}</span>
+                          {hasOpenIssue && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-warning/15 text-warning border border-warning/30">
+                              <AlertTriangle size={10} />
+                              {issueCount} {issueCount === 1 ? 'Issue' : 'Issues'}
+                            </span>
+                          )}
                           {order.Material_description && (
                             <span className="text-[10px] text-muted-foreground truncate">{order.Material_description}</span>
                           )}
