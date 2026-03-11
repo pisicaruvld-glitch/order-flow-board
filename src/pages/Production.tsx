@@ -51,6 +51,11 @@ export default function ProductionPage({ config }: ProductionPageProps) {
   const [moveDialog, setMoveDialog] = useState<MoveDialogState>(null);
   const [handoverDialog, setHandoverDialog] = useState<HandoverDialogState>(null);
 
+  const { data: openIssueCounts } = useQuery({
+    queryKey: ['openIssueCounts'],
+    queryFn: getAllOpenIssueCounts,
+  });
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
