@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Order, Shipment, AreaModes, CustomerShipment } from '@/lib/types';
-import { getOrders, getIncomingShipments, receiveShipment, getAreaModes, moveOrder, createCustomerShipment, getCustomerShipments } from '@/lib/api';
+import { getOrders, getIncomingShipments, receiveShipment, getAreaModes, moveOrder, createCustomerShipment, getCustomerShipments, getAllOpenIssueCounts } from '@/lib/api';
 import { AppConfig } from '@/lib/types';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { ShipmentCard } from '@/components/ShipmentCard';
 import { LogisticsReceiveDialog } from '@/components/LogisticsReceiveDialog';
 import { CustomerShipmentDialog } from '@/components/CustomerShipmentDialog';
 import { MoveOrderDialog } from '@/components/MoveOrderDialog';
-import { RefreshCw, ArrowLeft, Truck, ChevronDown, ChevronRight, Package } from 'lucide-react';
+import { RefreshCw, ArrowLeft, Truck, ChevronDown, ChevronRight, Package, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -33,6 +34,11 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
   // Per-order customer shipment history (lazy loaded)
   const [customerShipments, setCustomerShipments] = useState<Record<string, CustomerShipment[]>>({});
   const [expandedCustomerShipments, setExpandedCustomerShipments] = useState<Set<string>>(new Set());
+
+  const { data: openIssueCounts } = useQuery({
+    queryKey: ['openIssueCounts'],
+    queryFn: getAllOpenIssueCounts,
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -195,12 +201,24 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
               <p className="text-xs text-muted-foreground py-4">No orders currently in Logistics.</p>
             ) : (
               <div className="space-y-2">
-                {logisticsOrders.map(order => (
-                  <div key={order.Order} className="bg-card border border-border rounded-lg p-3">
+                {logisticsOrders.map(order => {
+                  const issueCount = openIssueCounts?.[order.Order] ?? 0;
+                  const hasOpenIssue = issueCount > 0;
+                  return (
+                  <div key={order.Order} className={cn(
+                    'bg-card border border-border rounded-lg p-3 relative',
+                    hasOpenIssue && 'order-card-issue'
+                  )}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-mono text-xs font-semibold">{order.Order}</span>
+                          {hasOpenIssue && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-warning/15 text-warning border border-warning/30">
+                              <AlertTriangle size={10} />
+                              {issueCount} {issueCount === 1 ? 'Issue' : 'Issues'}
+                            </span>
+                          )}
                           {order.Material_description && (
                             <span className="text-[10px] text-muted-foreground truncate">{order.Material_description}</span>
                           )}
@@ -261,7 +279,8 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
                       </div>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </section>

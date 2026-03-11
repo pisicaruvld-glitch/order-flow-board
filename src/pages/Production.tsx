@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Order, ProductionStatus, AreaModes } from '@/lib/types';
-import { getOrders, getProductionStatus, updateProductionStatus, moveOrder, getAreaModes, createShipment } from '@/lib/api';
+import { getOrders, getProductionStatus, updateProductionStatus, moveOrder, getAreaModes, createShipment, getAllOpenIssueCounts } from '@/lib/api';
 import { AppConfig } from '@/lib/types';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { StatusBadge } from '@/components/Badges';
@@ -9,7 +10,8 @@ import { MoveOrderDialog, DiscrepancyBadge, SourceBadge } from '@/components/Mov
 import { ProductionHandoverDialog } from '@/components/ProductionHandoverDialog';
 // Shipment API imported via line 3
 import { toast } from 'sonner';
-import { RefreshCw, Play, CheckCircle2, Clock, ArrowRight, ArrowLeft } from 'lucide-react';
+import { RefreshCw, Play, CheckCircle2, Clock, ArrowRight, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { OrderIssueIndicator } from '@/components/OrderIssueIndicator';
 import { cn } from '@/lib/utils';
 
 interface ProductionPageProps {
@@ -48,6 +50,11 @@ export default function ProductionPage({ config }: ProductionPageProps) {
   const [filterStatus, setFilterStatus] = useState<ProdStatus | ''>('');
   const [moveDialog, setMoveDialog] = useState<MoveDialogState>(null);
   const [handoverDialog, setHandoverDialog] = useState<HandoverDialogState>(null);
+
+  const { data: openIssueCounts } = useQuery({
+    queryKey: ['openIssueCounts'],
+    queryFn: getAllOpenIssueCounts,
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -202,10 +209,15 @@ export default function ProductionPage({ config }: ProductionPageProps) {
               const isUpdating = updating === order.Order;
               const cfg = prodStatus ? statusConfig[prodStatus.status] : statusConfig.PENDING;
               const isCompleted = prodStatus?.status === 'COMPLETED';
+              const issueCount = openIssueCounts?.[order.Order] ?? 0;
+              const hasOpenIssue = issueCount > 0;
               return (
                 <div
                   key={order.Order}
-                  className="bg-card border border-border rounded-lg p-4 flex items-center gap-4 hover:border-border/80 transition-colors"
+                  className={cn(
+                    'bg-card border border-border rounded-lg p-4 flex items-center gap-4 hover:border-border/80 transition-colors relative',
+                    hasOpenIssue && 'order-card-issue'
+                  )}
                 >
                   {/* Order Info */}
                   <div className="flex-1 min-w-0">
@@ -216,6 +228,12 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                         {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
                         {order.discrepancy && <DiscrepancyBadge sapArea={order.sap_area} />}
                         {order.source === 'manual' && <SourceBadge source={order.source} />}
+                        {hasOpenIssue && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-warning/15 text-warning border border-warning/30">
+                            <AlertTriangle size={10} />
+                            {issueCount} {issueCount === 1 ? 'Issue' : 'Issues'}
+                          </span>
+                        )}
                       </div>
                       <StatusBadge status={String(order?.System_Status ?? '')} size="sm" />
                       <span className={cn('inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full', cfg.color)}>
