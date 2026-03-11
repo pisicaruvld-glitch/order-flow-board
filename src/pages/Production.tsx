@@ -10,7 +10,8 @@ import { MoveOrderDialog, DiscrepancyBadge, SourceBadge } from '@/components/Mov
 import { ProductionHandoverDialog } from '@/components/ProductionHandoverDialog';
 // Shipment API imported via line 3
 import { toast } from 'sonner';
-import { RefreshCw, Play, CheckCircle2, Clock, ArrowRight, ArrowLeft } from 'lucide-react';
+import { RefreshCw, Play, CheckCircle2, Clock, ArrowRight, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { OrderIssueIndicator } from '@/components/OrderIssueIndicator';
 import { cn } from '@/lib/utils';
 
 interface ProductionPageProps {
