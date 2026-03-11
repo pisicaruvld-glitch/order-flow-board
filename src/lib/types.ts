@@ -32,8 +32,13 @@ export interface Order {
   prod_delivered_qty?: number;
   prod_scrap_qty?: number;
   log_received_qty?: number;
+  log_shipped_qty?: number;
   finished_qty?: number; // derived: prod_delivered_qty - prod_scrap_qty
+  finished_qty_total?: number;
   remaining_qty?: number; // Order_quantity - prod_delivered_qty
+  available_in_logistics_qty?: number; // log_received_qty - log_shipped_qty
+  pending_receive_qty?: number;
+  logistics_worklist?: boolean;
 }
 
 export interface Shipment {
