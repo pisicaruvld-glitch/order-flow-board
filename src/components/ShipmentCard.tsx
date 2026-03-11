@@ -8,6 +8,8 @@ interface ShipmentCardProps {
 }
 
 export function ShipmentCard({ shipment, order, onReceive }: ShipmentCardProps) {
+  const remaining = shipment.remaining_to_receive_qty ?? (shipment.finished_qty_delta - (shipment.received_qty_delta ?? 0));
+  const isFullyReceived = remaining <= 0;
   const isReceived = shipment.received_qty_delta != null && shipment.received_qty_delta > 0;
 
   // Use embedded order info from incoming-shipments endpoint, or fallback to order prop
