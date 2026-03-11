@@ -101,21 +101,12 @@ export default function ProductionPage({ config }: ProductionPageProps) {
 
   const handleHandoverConfirm = async (data: { delivered_qty_delta: number; scrap_qty_delta: number; reported_by: string }) => {
     if (!handoverDialog) return;
-    // 1) Create shipment (partial delivery)
-    const result = await createShipment(handoverDialog.orderId, {
+    // Create shipment (partial delivery) — do NOT auto-move to Logistics
+    await createShipment(handoverDialog.orderId, {
       delivered_qty_delta: data.delivered_qty_delta,
       scrap_qty_delta: data.scrap_qty_delta,
       reported_by: data.reported_by,
     });
-    // 2) If remaining == 0, move order to Logistics
-    if (result.remaining_qty <= 0) {
-      await moveOrder({
-        order_id: handoverDialog.orderId,
-        target_area: 'Logistics',
-        justification: 'prod->logistics complete',
-        moved_by: data.reported_by,
-      });
-    }
     setHandoverDialog(null);
     await load(); // refresh
   };

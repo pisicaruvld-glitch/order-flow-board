@@ -474,6 +474,14 @@ export async function getIncomingShipments(): Promise<Shipment[]> {
 }
 
 // ============================================================
+// LOGISTICS ORDERS WORKLIST
+// ============================================================
+export async function getLogisticsOrdersWorklist(): Promise<Order[]> {
+  if (isDemo()) return [];
+  return apiFetch<Order[]>("/logistics/orders-worklist");
+}
+
+// ============================================================
 // CUSTOMER SHIPMENTS (L2C)
 // ============================================================
 export interface CreateCustomerShipmentPayload {

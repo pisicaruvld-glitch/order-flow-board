@@ -8,6 +8,8 @@ interface ShipmentCardProps {
 }
 
 export function ShipmentCard({ shipment, order, onReceive }: ShipmentCardProps) {
+  const remaining = shipment.remaining_to_receive_qty ?? (shipment.finished_qty_delta - (shipment.received_qty_delta ?? 0));
+  const isFullyReceived = remaining <= 0;
   const isReceived = shipment.received_qty_delta != null && shipment.received_qty_delta > 0;
 
   // Use embedded order info from incoming-shipments endpoint, or fallback to order prop
@@ -35,6 +37,11 @@ export function ShipmentCard({ shipment, order, onReceive }: ShipmentCardProps) 
             <span className="text-muted-foreground">
               Received: <strong className="text-foreground">{shipment.received_qty_delta ?? '—'}</strong>
             </span>
+            {remaining > 0 && (
+              <span className="text-muted-foreground">
+                Remaining: <strong className="text-warning">{remaining}</strong>
+              </span>
+            )}
           </div>
 
           {/* Cumulative totals if available */}

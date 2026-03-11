@@ -160,19 +160,12 @@ export default function Dashboard({ config }: DashboardProps) {
 
   const handleHandoverConfirm = async (data: { delivered_qty_delta: number; scrap_qty_delta: number; reported_by: string }) => {
     if (!handoverDialog) return;
-    const result = await createShipment(handoverDialog.orderId, {
+    // Create shipment — do NOT auto-move to Logistics
+    await createShipment(handoverDialog.orderId, {
       delivered_qty_delta: data.delivered_qty_delta,
       scrap_qty_delta: data.scrap_qty_delta,
       reported_by: data.reported_by,
     });
-    if (result.remaining_qty <= 0) {
-      await moveOrder({
-        order_id: handoverDialog.orderId,
-        target_area: 'Logistics',
-        justification: 'prod->logistics complete',
-        moved_by: data.reported_by,
-      });
-    }
     setHandoverDialog(null);
     await load();
   };
