@@ -279,7 +279,8 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
                       </div>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </section>
