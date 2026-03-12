@@ -39,6 +39,7 @@ export default function WarehousePage({ config }: WarehousePageProps) {
   const [markingReady, setMarkingReady] = useState(false);
   const [moveDialog, setMoveDialog] = useState<MoveDialogState>(null);
   const [openIssueCounts, setOpenIssueCounts] = useState<Record<string, number>>({});
+  const [prepareDialog, setPrepareDialog] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
