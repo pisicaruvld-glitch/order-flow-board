@@ -193,7 +193,19 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                       <TableCell>
                         <p className="text-xs text-muted-foreground line-clamp-1">{issue.comment}</p>
                       </TableCell>
-                      <TableCell><IssueBadge status={issue.status} /></TableCell>
+                      <TableCell>
+                        <select
+                          value={issue.status}
+                          onChange={e => handleInlineStatusChange(issue.id, e.target.value as 'OPEN' | 'CLOSED')}
+                          className={cn(
+                            'text-xs border rounded px-2 py-1 bg-card focus:outline-none focus:ring-1 focus:ring-ring',
+                            issue.status === 'OPEN' ? 'border-destructive/30 text-destructive' : 'border-success/30 text-success',
+                          )}
+                        >
+                          <option value="OPEN">OPEN</option>
+                          <option value="CLOSED">CLOSED</option>
+                        </select>
+                      </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {new Date(issue.created_at).toLocaleDateString()}{' '}
                         {new Date(issue.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
