@@ -17,6 +17,7 @@ export default function UsersManagement() {
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<OperationalUser | null>(null);
+  const [deletingUser, setDeletingUser] = useState<OperationalUser | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
