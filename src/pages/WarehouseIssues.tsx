@@ -211,16 +211,26 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                         {new Date(issue.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant={isExpanded ? 'secondary' : 'ghost'}
-                          size="sm"
-                          className="text-xs gap-1"
-                          onClick={() => toggleExpand(issue.id)}
-                        >
-                          <MessageSquarePlus size={14} />
-                          Feedback
-                          {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                        </Button>
+                        <div className="flex items-center gap-1.5">
+                          {issue.has_purchasing_feedback ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded" title={issue.last_feedback_text ? `${issue.last_feedback_by}: ${issue.last_feedback_text}` : 'Has feedback'}>
+                              <CheckCircle2 size={10} /> Feedback
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
+                              No feedback
+                            </span>
+                          )}
+                          <Button
+                            variant={isExpanded ? 'secondary' : 'ghost'}
+                            size="sm"
+                            className="text-xs gap-1 h-7"
+                            onClick={() => toggleExpand(issue.id)}
+                          >
+                            <MessageSquarePlus size={14} />
+                            {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                     {isExpanded && (
