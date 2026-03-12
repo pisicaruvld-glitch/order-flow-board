@@ -123,6 +123,10 @@ export default function WarehousePage({ config }: WarehousePageProps) {
 
   const handlePrepareSuccess = async () => {
     if (!selectedOrder) return;
+    // Refresh preparation info display
+    getWarehousePrepareInfo(selectedOrder.Order).then(info => {
+      if (info && (info as any).prepared) setPrepareInfo(info);
+    });
     // After preparation, mark the order ready (move to Production)
     setMarkingReady(true);
     try {
