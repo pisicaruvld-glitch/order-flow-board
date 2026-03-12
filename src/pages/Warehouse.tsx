@@ -115,12 +115,6 @@ export default function WarehousePage({ config }: WarehousePageProps) {
     setShowHistoryId(issueId);
   };
 
-  const handleMarkReady = async () => {
-    if (!selectedOrder) return;
-    // Open prepare dialog instead of directly marking ready
-    setPrepareDialog(selectedOrder.Order);
-  };
-
   const handlePrepareSuccess = async () => {
     if (!selectedOrder) return;
     // Refresh preparation info display
@@ -140,12 +134,8 @@ export default function WarehousePage({ config }: WarehousePageProps) {
 
   const openNextStep = () => {
     if (!selectedOrder) return;
-    const openCount = issues.filter(i => i.status === 'OPEN').length;
-    setMoveDialog({
-      orderId: selectedOrder.Order,
-      isNextStep: true,
-      overrideMode: openCount > 0,
-    });
+    // Always open prepare dialog for Warehouse → Production
+    setPrepareDialog(selectedOrder.Order);
   };
 
   const openMoveBack = () => {
@@ -248,18 +238,6 @@ export default function WarehousePage({ config }: WarehousePageProps) {
                   <span className="text-xs text-muted-foreground">{String(order?.Plant ?? '')}</span>
                   <span className="text-xs font-medium">{Number(order?.Order_quantity ?? 0)} units</span>
                 </div>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedOrder(order);
-                  loadIssues(order.Order);
-                  setPrepareDialog(order.Order);
-                }}
-                className="mt-2 w-full py-1.5 bg-success text-success-foreground text-xs font-medium rounded-md hover:bg-success/90 transition-colors flex items-center justify-center gap-1.5"
-              >
-                <CheckCircle2 size={13} />
-                Mark Ready
               </button>
             </div>
           ))}
@@ -432,10 +410,10 @@ export default function WarehousePage({ config }: WarehousePageProps) {
                     </div>
                   )}
 
-                  {/* AUTO mode: Mark Ready (opens override dialog if issues exist) */}
+                  {/* AUTO mode: Mark Ready (opens prepare dialog) */}
                   {!isManualMode && (
                     <button
-                      onClick={openIssues.length > 0 ? openNextStep : handleMarkReady}
+                      onClick={openNextStep}
                       disabled={markingReady}
                       className={cn(
                         'w-full py-2 rounded-md text-sm font-medium transition-colors',

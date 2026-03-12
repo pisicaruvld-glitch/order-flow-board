@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getUsers, createUser, updateUser, OperationalUser, UserArea, CreateUserPayload, UpdateUserPayload } from '@/lib/usersApi';
+import { getUsers, createUser, updateUser, deleteUser, OperationalUser, UserArea, CreateUserPayload, UpdateUserPayload } from '@/lib/usersApi';
 import { LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Pencil, Users, Loader2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Plus, Pencil, Trash2, Users, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -16,6 +17,7 @@ export default function UsersManagement() {
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<OperationalUser | null>(null);
+  const [deletingUser, setDeletingUser] = useState<OperationalUser | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -47,6 +49,18 @@ export default function UsersManagement() {
       await load();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to save user');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingUser) return;
+    try {
+      await deleteUser(deletingUser.id);
+      toast.success('User deleted successfully');
+      setDeletingUser(null);
+      await load();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to delete user');
     }
   };
 
@@ -103,9 +117,21 @@ export default function UsersManagement() {
                     </span>
                   </td>
                   <td className="px-4 py-2.5">
-                    <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={() => openEdit(u)}>
-                      <Pencil size={12} /> Edit
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={() => openEdit(u)}>
+                        <Pencil size={12} /> Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-1 text-xs text-destructive hover:text-destructive"
+                        onClick={() => setDeletingUser(u)}
+                        disabled={u.username === 'admin'}
+                        title={u.username === 'admin' ? 'Cannot delete admin user' : 'Delete user'}
+                      >
+                        <Trash2 size={12} /> Delete
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -126,6 +152,23 @@ export default function UsersManagement() {
           />
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deletingUser} onOpenChange={open => { if (!open) setDeletingUser(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete user</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete user <strong>{deletingUser?.username}</strong>? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
