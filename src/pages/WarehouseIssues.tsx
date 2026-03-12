@@ -82,6 +82,16 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
     setExpandedIssueId(prev => prev === issueId ? null : issueId);
   };
 
+  const handleInlineStatusChange = async (issueId: string, newStatus: 'OPEN' | 'CLOSED') => {
+    try {
+      const updated = await patchIssue(issueId, { status: newStatus });
+      setIssues(prev => prev.map(i => i.id === issueId ? { ...i, ...updated } : i));
+      toast({ title: 'Status updated', description: `Issue ${newStatus === 'CLOSED' ? 'closed' : 'reopened'}` });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' });
+    }
+  };
+
   return (
     <PageContainer>
       <div className="flex items-start justify-between mb-6">
