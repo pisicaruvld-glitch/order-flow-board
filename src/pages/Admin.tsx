@@ -575,6 +575,10 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
           </>
         )}
       </div>
+      {/* Users Management */}
+      <div className="mb-6">
+        <UsersManagement />
+      </div>
     </PageContainer>
   );
 }

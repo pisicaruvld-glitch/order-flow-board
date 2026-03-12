@@ -347,6 +347,16 @@ export default function ProductionPage({ config }: ProductionPageProps) {
           onCancel={() => setHandoverDialog(null)}
         />
       )}
+
+      {/* Raise Complaint Dialog */}
+      {complaintDialog && (
+        <RaiseComplaintDialog
+          orderId={complaintDialog.orderId}
+          open={!!complaintDialog}
+          onOpenChange={open => { if (!open) setComplaintDialog(null); }}
+          onSuccess={load}
+        />
+      )}
     </PageContainer>
   );
 }
