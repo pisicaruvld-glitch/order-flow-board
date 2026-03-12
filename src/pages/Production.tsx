@@ -222,10 +222,10 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                       {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
                         {order.discrepancy && <DiscrepancyBadge sapArea={order.sap_area} />}
                         {order.source === 'manual' && <SourceBadge source={order.source} />}
-                        {(order as any).has_open_complaint && (
+                        {order.has_open_complaint && (
                           <ComplaintBadge
-                            count={(order as any).open_complaints_count ?? 1}
-                            severity={(order as any).latest_complaint_severity}
+                            count={order.open_complaints_count ?? 1}
+                            severity={order.latest_complaint_severity}
                           />
                         )}
                         {hasOpenIssue && (

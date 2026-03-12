@@ -207,10 +207,10 @@ export function OrderDetailPanel({ order, onClose, children }: OrderDetailPanelP
           <div>
           <div className="flex items-center gap-2">
               <p className="font-mono font-bold text-sm">{String(order?.Order ?? '')}</p>
-              {(order as any).has_open_complaint && (
+              {order.has_open_complaint && (
                 <ComplaintBadge
-                  count={(order as any).open_complaints_count ?? 1}
-                  severity={(order as any).latest_complaint_severity}
+                  count={order.open_complaints_count ?? 1}
+                  severity={order.latest_complaint_severity}
                 />
               )}
               {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
