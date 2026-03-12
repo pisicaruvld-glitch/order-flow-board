@@ -239,18 +239,6 @@ export default function WarehousePage({ config }: WarehousePageProps) {
                   <span className="text-xs font-medium">{Number(order?.Order_quantity ?? 0)} units</span>
                 </div>
               </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedOrder(order);
-                  loadIssues(order.Order);
-                  setPrepareDialog(order.Order);
-                }}
-                className="mt-2 w-full py-1.5 bg-success text-success-foreground text-xs font-medium rounded-md hover:bg-success/90 transition-colors flex items-center justify-center gap-1.5"
-              >
-                <CheckCircle2 size={13} />
-                Mark Ready
-              </button>
             </div>
           ))}
           {!loading && orders.length === 0 && (
