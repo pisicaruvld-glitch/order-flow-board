@@ -219,9 +219,15 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                     <div className="flex items-center gap-1.5">
                         <PriorityIcon priority={order.Priority} />
                         <span className="font-mono text-sm font-bold">{String(order?.Order ?? '')}</span>
-                        {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
+                      {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
                         {order.discrepancy && <DiscrepancyBadge sapArea={order.sap_area} />}
                         {order.source === 'manual' && <SourceBadge source={order.source} />}
+                        {(order as any).has_open_complaint && (
+                          <ComplaintBadge
+                            count={(order as any).open_complaints_count ?? 1}
+                            severity={(order as any).latest_complaint_severity}
+                          />
+                        )}
                         {hasOpenIssue && (
                           <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-warning/15 text-warning border border-warning/30">
                             <AlertTriangle size={10} />
