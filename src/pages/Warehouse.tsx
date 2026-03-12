@@ -41,6 +41,7 @@ export default function WarehousePage({ config }: WarehousePageProps) {
   const [moveDialog, setMoveDialog] = useState<MoveDialogState>(null);
   const [openIssueCounts, setOpenIssueCounts] = useState<Record<string, number>>({});
   const [prepareDialog, setPrepareDialog] = useState<string | null>(null);
+  const [prepareInfo, setPrepareInfo] = useState<WarehousePrepareResult | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
