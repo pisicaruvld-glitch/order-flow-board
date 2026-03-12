@@ -457,6 +457,16 @@ export default function WarehousePage({ config }: WarehousePageProps) {
           onCancel={() => setMoveDialog(null)}
         />
       )}
+
+      {/* Warehouse Prepare Dialog */}
+      {prepareDialog && (
+        <WarehousePrepareDialog
+          orderId={prepareDialog}
+          open={!!prepareDialog}
+          onOpenChange={open => { if (!open) setPrepareDialog(null); }}
+          onSuccess={handlePrepareSuccess}
+        />
+      )}
     </PageContainer>
   );
 }
