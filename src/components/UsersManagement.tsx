@@ -117,9 +117,21 @@ export default function UsersManagement() {
                     </span>
                   </td>
                   <td className="px-4 py-2.5">
-                    <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={() => openEdit(u)}>
-                      <Pencil size={12} /> Edit
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={() => openEdit(u)}>
+                        <Pencil size={12} /> Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-1 text-xs text-destructive hover:text-destructive"
+                        onClick={() => setDeletingUser(u)}
+                        disabled={u.username === 'admin'}
+                        title={u.username === 'admin' ? 'Cannot delete admin user' : 'Delete user'}
+                      >
+                        <Trash2 size={12} /> Delete
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
