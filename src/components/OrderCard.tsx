@@ -1,5 +1,6 @@
 import { Order, Area } from '@/lib/types';
 import { AreaBadge, StatusBadge } from './Badges';
+import { ComplaintBadge } from './ComplaintBadge';
 import { cn } from '@/lib/utils';
 import { Slash, Circle, X, GitCompareArrows } from 'lucide-react';
 
