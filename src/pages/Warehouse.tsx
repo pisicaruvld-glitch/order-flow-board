@@ -115,12 +115,6 @@ export default function WarehousePage({ config }: WarehousePageProps) {
     setShowHistoryId(issueId);
   };
 
-  const handleMarkReady = async () => {
-    if (!selectedOrder) return;
-    // Open prepare dialog instead of directly marking ready
-    setPrepareDialog(selectedOrder.Order);
-  };
-
   const handlePrepareSuccess = async () => {
     if (!selectedOrder) return;
     // Refresh preparation info display
@@ -140,12 +134,8 @@ export default function WarehousePage({ config }: WarehousePageProps) {
 
   const openNextStep = () => {
     if (!selectedOrder) return;
-    const openCount = issues.filter(i => i.status === 'OPEN').length;
-    setMoveDialog({
-      orderId: selectedOrder.Order,
-      isNextStep: true,
-      overrideMode: openCount > 0,
-    });
+    // Always open prepare dialog for Warehouse → Production
+    setPrepareDialog(selectedOrder.Order);
   };
 
   const openMoveBack = () => {
