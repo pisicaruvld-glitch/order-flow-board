@@ -115,10 +115,10 @@ export function OrderCard({ order, compact = false, onClick, selected, tv, hasOp
             <span className="font-mono text-xs font-semibold text-foreground truncate">{String(order?.Order ?? '')}</span>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            {(order as any).has_open_complaint && (
+            {order.has_open_complaint && (
               <ComplaintBadge
-                count={(order as any).open_complaints_count ?? 1}
-                severity={(order as any).latest_complaint_severity}
+                count={order.open_complaints_count ?? 1}
+                severity={order.latest_complaint_severity}
               />
             )}
             {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
