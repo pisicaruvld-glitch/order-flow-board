@@ -8,9 +8,10 @@ import { StatusBadge } from '@/components/Badges';
 import { PriorityIcon, ChangedBadge } from '@/components/OrderCard';
 import { MoveOrderDialog, DiscrepancyBadge, SourceBadge } from '@/components/MoveOrderDialog';
 import { ProductionHandoverDialog } from '@/components/ProductionHandoverDialog';
-// Shipment API imported via line 3
+import { RaiseComplaintDialog } from '@/components/RaiseComplaintDialog';
+import { ComplaintBadge } from '@/components/ComplaintBadge';
 import { toast } from 'sonner';
-import { RefreshCw, Play, CheckCircle2, Clock, ArrowRight, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Play, CheckCircle2, Clock, ArrowRight, ArrowLeft, AlertTriangle, MessageSquareWarning } from 'lucide-react';
 import { OrderIssueIndicator } from '@/components/OrderIssueIndicator';
 import { cn } from '@/lib/utils';
 
@@ -21,6 +22,7 @@ interface ProductionPageProps {
 type ProdStatus = ProductionStatus['status'];
 type MoveDialogState = { orderId: string; isNextStep: boolean; blockedReason?: string } | null;
 type HandoverDialogState = { orderId: string; orderQty?: number; remainingQty?: number } | null;
+type ComplaintDialogState = { orderId: string } | null;
 
 const statusConfig: Record<ProdStatus, { label: string; color: string; icon: React.ReactNode }> = {
   PENDING: {
@@ -50,6 +52,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
   const [filterStatus, setFilterStatus] = useState<ProdStatus | ''>('');
   const [moveDialog, setMoveDialog] = useState<MoveDialogState>(null);
   const [handoverDialog, setHandoverDialog] = useState<HandoverDialogState>(null);
+  const [complaintDialog, setComplaintDialog] = useState<ComplaintDialogState>(null);
 
   const { data: openIssueCounts } = useQuery({
     queryKey: ['openIssueCounts'],
@@ -216,9 +219,15 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                     <div className="flex items-center gap-1.5">
                         <PriorityIcon priority={order.Priority} />
                         <span className="font-mono text-sm font-bold">{String(order?.Order ?? '')}</span>
-                        {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
+                      {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
                         {order.discrepancy && <DiscrepancyBadge sapArea={order.sap_area} />}
                         {order.source === 'manual' && <SourceBadge source={order.source} />}
+                        {order.has_open_complaint && (
+                          <ComplaintBadge
+                            count={order.open_complaints_count ?? 1}
+                            severity={order.latest_complaint_severity}
+                          />
+                        )}
                         {hasOpenIssue && (
                           <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-warning/15 text-warning border border-warning/30">
                             <AlertTriangle size={10} />
@@ -252,6 +261,14 @@ export default function ProductionPage({ config }: ProductionPageProps) {
 
                   {/* Status Actions */}
                   <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                    {/* Raise Complaint */}
+                    <button
+                      onClick={() => setComplaintDialog({ orderId: order.Order })}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/10 text-destructive text-xs font-medium rounded hover:bg-destructive/20 transition-colors"
+                    >
+                      <MessageSquareWarning size={12} />
+                      Complaint
+                    </button>
                     {prodStatus?.status !== 'IN_PROGRESS' && prodStatus?.status !== 'COMPLETED' && (
                       <button
                         onClick={() => handleStatusChange(order.Order, 'IN_PROGRESS')}
@@ -328,6 +345,16 @@ export default function ProductionPage({ config }: ProductionPageProps) {
           remainingQty={handoverDialog.remainingQty}
           onConfirm={handleHandoverConfirm}
           onCancel={() => setHandoverDialog(null)}
+        />
+      )}
+
+      {/* Raise Complaint Dialog */}
+      {complaintDialog && (
+        <RaiseComplaintDialog
+          orderId={complaintDialog.orderId}
+          open={!!complaintDialog}
+          onOpenChange={open => { if (!open) setComplaintDialog(null); }}
+          onSuccess={load}
         />
       )}
     </PageContainer>

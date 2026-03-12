@@ -1,5 +1,6 @@
 import { Order, Area } from '@/lib/types';
 import { AreaBadge, StatusBadge } from './Badges';
+import { ComplaintBadge } from './ComplaintBadge';
 import { cn } from '@/lib/utils';
 import { Slash, Circle, X, GitCompareArrows } from 'lucide-react';
 
@@ -114,6 +115,12 @@ export function OrderCard({ order, compact = false, onClick, selected, tv, hasOp
             <span className="font-mono text-xs font-semibold text-foreground truncate">{String(order?.Order ?? '')}</span>
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            {order.has_open_complaint && (
+              <ComplaintBadge
+                count={order.open_complaints_count ?? 1}
+                severity={order.latest_complaint_severity}
+              />
+            )}
             {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
             <StatusBadge status={order.System_Status} size="sm" />
           </div>
@@ -198,8 +205,14 @@ export function OrderDetailPanel({ order, onClose, children }: OrderDetailPanelP
         <div className="flex items-center gap-2">
           <PriorityIcon priority={order.Priority} />
           <div>
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
               <p className="font-mono font-bold text-sm">{String(order?.Order ?? '')}</p>
+              {order.has_open_complaint && (
+                <ComplaintBadge
+                  count={order.open_complaints_count ?? 1}
+                  severity={order.latest_complaint_severity}
+                />
+              )}
               {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
             </div>
             <AreaBadge area={order.current_area} size="sm" />

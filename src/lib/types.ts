@@ -39,6 +39,10 @@ export interface Order {
   available_in_logistics_qty?: number; // log_received_qty - log_shipped_qty
   pending_receive_qty?: number;
   logistics_worklist?: boolean;
+  // Complaint fields
+  has_open_complaint?: boolean;
+  open_complaints_count?: number;
+  latest_complaint_severity?: string;
 }
 
 export interface Shipment {

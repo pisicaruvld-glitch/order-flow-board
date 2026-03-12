@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Issue, IssueHistoryEntry, ISSUE_TYPES } from '@/lib/types';
-import { getWarehouseIssues, getIssueHistory, addIssueFeedback } from '@/lib/api';
+import { getWarehouseIssues, getIssueHistory, addIssueFeedback, patchIssue } from '@/lib/api';
 import { PageContainer, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { IssueBadge } from '@/components/Badges';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
-import { Search, AlertTriangle, AlertOctagon, RefreshCw, MessageSquarePlus, ChevronDown, ChevronUp, Loader2, Send } from 'lucide-react';
+import { Search, AlertTriangle, AlertOctagon, RefreshCw, MessageSquarePlus, ChevronDown, ChevronUp, Loader2, Send, CheckCircle2, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import type { AppConfig } from '@/lib/types';
@@ -37,7 +37,7 @@ function getSeverity(issueType: string): 'ERROR' | 'WARNING' {
 
 export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps) {
   const navigate = useNavigate();
-  const [issues, setIssues] = useState<Issue[]>([]);
+  const [issues, setIssues] = useState<(Issue & { has_purchasing_feedback?: boolean; purchasing_feedback_status?: string; last_feedback_at?: string; last_feedback_by?: string; last_feedback_text?: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,6 +80,16 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
 
   const toggleExpand = (issueId: string) => {
     setExpandedIssueId(prev => prev === issueId ? null : issueId);
+  };
+
+  const handleInlineStatusChange = async (issueId: string, newStatus: 'OPEN' | 'CLOSED') => {
+    try {
+      const updated = await patchIssue(issueId, { status: newStatus });
+      setIssues(prev => prev.map(i => i.id === issueId ? { ...i, ...updated } : i));
+      toast({ title: 'Status updated', description: `Issue ${newStatus === 'CLOSED' ? 'closed' : 'reopened'}` });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' });
+    }
   };
 
   return (
@@ -183,22 +193,44 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                       <TableCell>
                         <p className="text-xs text-muted-foreground line-clamp-1">{issue.comment}</p>
                       </TableCell>
-                      <TableCell><IssueBadge status={issue.status} /></TableCell>
+                      <TableCell>
+                        <select
+                          value={issue.status}
+                          onChange={e => handleInlineStatusChange(issue.id, e.target.value as 'OPEN' | 'CLOSED')}
+                          className={cn(
+                            'text-xs border rounded px-2 py-1 bg-card focus:outline-none focus:ring-1 focus:ring-ring',
+                            issue.status === 'OPEN' ? 'border-destructive/30 text-destructive' : 'border-success/30 text-success',
+                          )}
+                        >
+                          <option value="OPEN">OPEN</option>
+                          <option value="CLOSED">CLOSED</option>
+                        </select>
+                      </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {new Date(issue.created_at).toLocaleDateString()}{' '}
                         {new Date(issue.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant={isExpanded ? 'secondary' : 'ghost'}
-                          size="sm"
-                          className="text-xs gap-1"
-                          onClick={() => toggleExpand(issue.id)}
-                        >
-                          <MessageSquarePlus size={14} />
-                          Feedback
-                          {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                        </Button>
+                        <div className="flex items-center gap-1.5">
+                          {issue.has_purchasing_feedback ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded" title={issue.last_feedback_text ? `${issue.last_feedback_by}: ${issue.last_feedback_text}` : 'Has feedback'}>
+                              <CheckCircle2 size={10} /> Feedback
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
+                              No feedback
+                            </span>
+                          )}
+                          <Button
+                            variant={isExpanded ? 'secondary' : 'ghost'}
+                            size="sm"
+                            className="text-xs gap-1 h-7"
+                            onClick={() => toggleExpand(issue.id)}
+                          >
+                            <MessageSquarePlus size={14} />
+                            {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                     {isExpanded && (

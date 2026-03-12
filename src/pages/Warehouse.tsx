@@ -6,6 +6,7 @@ import { PageContainer, LoadingSpinner, ErrorMessage } from '@/components/Layout
 import { StatusBadge, IssueBadge } from '@/components/Badges';
 import { OrderDetailPanel, PriorityIcon, ChangedBadge } from '@/components/OrderCard';
 import { MoveOrderDialog, DiscrepancyBadge, SourceBadge } from '@/components/MoveOrderDialog';
+import { WarehousePrepareDialog } from '@/components/WarehousePrepareDialog';
 import { GanttTimeline } from '@/components/GanttTimeline';
 import { Plus, CheckCircle2, AlertTriangle, RefreshCw, History, ArrowRight, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -38,6 +39,7 @@ export default function WarehousePage({ config }: WarehousePageProps) {
   const [markingReady, setMarkingReady] = useState(false);
   const [moveDialog, setMoveDialog] = useState<MoveDialogState>(null);
   const [openIssueCounts, setOpenIssueCounts] = useState<Record<string, number>>({});
+  const [prepareDialog, setPrepareDialog] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -108,6 +110,13 @@ export default function WarehousePage({ config }: WarehousePageProps) {
 
   const handleMarkReady = async () => {
     if (!selectedOrder) return;
+    // Open prepare dialog instead of directly marking ready
+    setPrepareDialog(selectedOrder.Order);
+  };
+
+  const handlePrepareSuccess = async () => {
+    if (!selectedOrder) return;
+    // After preparation, mark the order ready (move to Production)
     setMarkingReady(true);
     try {
       await markOrderReady(selectedOrder.Order);
@@ -446,6 +455,16 @@ export default function WarehousePage({ config }: WarehousePageProps) {
           overrideMode={moveDialog.overrideMode}
           onConfirm={handleMoveConfirm}
           onCancel={() => setMoveDialog(null)}
+        />
+      )}
+
+      {/* Warehouse Prepare Dialog */}
+      {prepareDialog && (
+        <WarehousePrepareDialog
+          orderId={prepareDialog}
+          open={!!prepareDialog}
+          onOpenChange={open => { if (!open) setPrepareDialog(null); }}
+          onSuccess={handlePrepareSuccess}
         />
       )}
     </PageContainer>
