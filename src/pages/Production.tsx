@@ -261,6 +261,14 @@ export default function ProductionPage({ config }: ProductionPageProps) {
 
                   {/* Status Actions */}
                   <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                    {/* Raise Complaint */}
+                    <button
+                      onClick={() => setComplaintDialog({ orderId: order.Order })}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive/10 text-destructive text-xs font-medium rounded hover:bg-destructive/20 transition-colors"
+                    >
+                      <MessageSquareWarning size={12} />
+                      Complaint
+                    </button>
                     {prodStatus?.status !== 'IN_PROGRESS' && prodStatus?.status !== 'COMPLETED' && (
                       <button
                         onClick={() => handleStatusChange(order.Order, 'IN_PROGRESS')}
