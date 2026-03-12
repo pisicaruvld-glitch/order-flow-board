@@ -37,7 +37,7 @@ export default function UsersManagement() {
   const handleSave = async (data: CreateUserPayload) => {
     try {
       if (editingUser) {
-        await updateUser(editingUser.user_id, data as UpdateUserPayload);
+        await updateUser(editingUser.id, data as UpdateUserPayload);
         toast.success('User updated');
       } else {
         await createUser(data);
