@@ -37,7 +37,7 @@ function getSeverity(issueType: string): 'ERROR' | 'WARNING' {
 
 export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps) {
   const navigate = useNavigate();
-  const [issues, setIssues] = useState<Issue[]>([]);
+  const [issues, setIssues] = useState<(Issue & { has_purchasing_feedback?: boolean; purchasing_feedback_status?: string; last_feedback_at?: string; last_feedback_by?: string; last_feedback_text?: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
