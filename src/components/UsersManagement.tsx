@@ -52,6 +52,18 @@ export default function UsersManagement() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!deletingUser) return;
+    try {
+      await deleteUser(deletingUser.id);
+      toast.success('User deleted successfully');
+      setDeletingUser(null);
+      await load();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to delete user');
+    }
+  };
+
   return (
     <div className="bg-card border border-border rounded-lg">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
