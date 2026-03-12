@@ -256,6 +256,19 @@ export default function WarehousePage({ config }: WarehousePageProps) {
             </div>
           ) : (
             <OrderDetailPanel order={selectedOrder}>
+              {/* Preparation Info */}
+              {prepareInfo && prepareInfo.prepared_by_username && (
+                <div className="mx-4 mt-3 flex items-center gap-2 text-xs bg-success/10 text-success border border-success/20 rounded-md px-3 py-2">
+                  <UserCheck size={13} className="shrink-0" />
+                  <span>Prepared by <strong>{prepareInfo.prepared_by_username}</strong></span>
+                  {prepareInfo.prepared_at && (
+                    <span className="text-muted-foreground ml-1">· {new Date(prepareInfo.prepared_at).toLocaleString()}</span>
+                  )}
+                  {prepareInfo.comment && (
+                    <span className="text-muted-foreground ml-1">— {prepareInfo.comment}</span>
+                  )}
+                </div>
+              )}
               {/* Issues Section */}
               <div className="p-4">
                 <div className="flex items-center justify-between mb-3">
