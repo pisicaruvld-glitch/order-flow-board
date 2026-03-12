@@ -74,8 +74,8 @@ export function RaiseComplaintDialog({ orderId, open, onOpenChange, onSuccess }:
                 className="w-full mt-1 px-3 py-2 text-sm border border-border rounded-md bg-card focus:outline-none focus:ring-1 focus:ring-ring"
               >
                 <option value="">Select user…</option>
-                {users.filter(u => u.is_active).map(u => (
-                  <option key={u.user_id} value={u.user_id}>{u.username}</option>
+                {users.map(u => (
+                  <option key={u.id} value={u.id}>{u.username}</option>
                 ))}
               </select>
             )}

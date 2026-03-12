@@ -37,7 +37,7 @@ export default function UsersManagement() {
   const handleSave = async (data: CreateUserPayload) => {
     try {
       if (editingUser) {
-        await updateUser(editingUser.user_id, data as UpdateUserPayload);
+        await updateUser(editingUser.id, data as UpdateUserPayload);
         toast.success('User updated');
       } else {
         await createUser(data);
@@ -82,8 +82,8 @@ export default function UsersManagement() {
                 <tr><td colSpan={5} className="text-center text-muted-foreground py-8 text-xs">No users found</td></tr>
               )}
               {users.map(u => (
-                <tr key={u.user_id} className={cn('border-b border-border hover:bg-muted/40', !u.is_active && 'opacity-50')}>
-                  <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{u.user_id}</td>
+                <tr key={u.id} className={cn('border-b border-border hover:bg-muted/40', !u.is_active && 'opacity-50')}>
+                  <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{u.id}</td>
                   <td className="px-4 py-2.5 font-medium">{u.username}</td>
                   <td className="px-4 py-2.5">
                     <div className="flex flex-wrap gap-1">

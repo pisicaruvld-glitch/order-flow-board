@@ -6,11 +6,12 @@ import { loadConfig } from './appConfig';
 export type UserArea = 'Orders' | 'Warehouse' | 'Production' | 'Logistics';
 
 export interface OperationalUser {
-  user_id: number;
+  id: number;
   username: string;
   password_text?: string;
-  is_active: number; // 0 or 1
-  areas: UserArea[];
+  is_active?: number;
+  areas?: UserArea[];
+  area?: UserArea;
   created_at?: string;
   updated_at?: string;
 }
