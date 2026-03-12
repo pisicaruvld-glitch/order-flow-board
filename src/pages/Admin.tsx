@@ -19,6 +19,7 @@ import { getStatusMappings, updateStatusMappings, applyStatusMappings, checkHeal
 import { loadConfig, updateConfig } from '@/lib/appConfig';
 import { AppConfig } from '@/lib/types';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
+import UsersManagement from '@/components/UsersManagement';
 import { AreaBadge } from '@/components/Badges';
 import {
   Save, RefreshCw, Settings2, Link2, Database, ShieldCheck,
