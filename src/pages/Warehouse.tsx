@@ -81,6 +81,11 @@ export default function WarehousePage({ config }: WarehousePageProps) {
     loadIssues(order.Order);
     setAddingIssue(false);
     setShowHistoryId(null);
+    // Load preparation info
+    setPrepareInfo(null);
+    getWarehousePrepareInfo(order.Order).then(info => {
+      if (info && (info as any).prepared) setPrepareInfo(info);
+    });
   };
 
   const handleAddIssue = async () => {
