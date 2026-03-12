@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Issue, IssueHistoryEntry, ISSUE_TYPES } from '@/lib/types';
-import { getWarehouseIssues, getIssueHistory, addIssueFeedback } from '@/lib/api';
+import { getWarehouseIssues, getIssueHistory, addIssueFeedback, patchIssue } from '@/lib/api';
 import { PageContainer, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { IssueBadge } from '@/components/Badges';
 import { Input } from '@/components/ui/input';
