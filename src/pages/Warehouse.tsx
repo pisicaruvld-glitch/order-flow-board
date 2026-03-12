@@ -483,14 +483,12 @@ export default function WarehousePage({ config }: WarehousePageProps) {
       )}
 
       {/* Warehouse Prepare Dialog */}
-      {prepareDialog && (
-        <WarehousePrepareDialog
-          orderId={prepareDialog}
-          open={!!prepareDialog}
-          onOpenChange={open => { if (!open) setPrepareDialog(null); }}
-          onSuccess={handlePrepareSuccess}
-        />
-      )}
+      <WarehousePrepareDialog
+        orderId={prepareDialog ?? ''}
+        open={!!prepareDialog}
+        onOpenChange={open => { if (!open) setPrepareDialog(null); }}
+        onSuccess={handlePrepareSuccess}
+      />
     </PageContainer>
   );
 }
