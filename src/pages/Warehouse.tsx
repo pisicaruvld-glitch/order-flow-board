@@ -221,31 +221,47 @@ export default function WarehousePage({ config }: WarehousePageProps) {
           {loading && <LoadingSpinner label="Loading queue…" />}
           {error && <ErrorMessage message={error} onRetry={load} />}
           {!loading && !error && orders.map(order => (
-            <button
+            <div
               key={order.Order}
-              onClick={() => selectOrder(order)}
               className={cn(
                 'w-full text-left px-4 py-3 border-b border-border hover:bg-muted/60 transition-colors',
                 selectedOrder?.Order === order.Order && 'bg-primary-subtle border-l-2 border-l-primary',
                 (openIssueCounts[order.Order] ?? 0) > 0 && 'order-card-issue'
               )}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <PriorityIcon priority={order.Priority} />
-                  <span className="font-mono text-xs font-semibold">{String(order?.Order ?? '')}</span>
-                  {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
-                  {order.discrepancy && <DiscrepancyBadge sapArea={order.sap_area} />}
-                  {order.source === 'manual' && <SourceBadge source={order.source} />}
+              <button
+                onClick={() => selectOrder(order)}
+                className="w-full text-left"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <PriorityIcon priority={order.Priority} />
+                    <span className="font-mono text-xs font-semibold">{String(order?.Order ?? '')}</span>
+                    {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
+                    {order.discrepancy && <DiscrepancyBadge sapArea={order.sap_area} />}
+                    {order.source === 'manual' && <SourceBadge source={order.source} />}
+                  </div>
+                  <StatusBadge status={String(order?.System_Status ?? '')} size="sm" />
                 </div>
-                <StatusBadge status={String(order?.System_Status ?? '')} size="sm" />
-              </div>
-              <p className="text-xs text-muted-foreground mt-0.5 truncate">{String(order?.Material_description ?? '')}</p>
-              <div className="flex items-center justify-between mt-1">
-                <span className="text-xs text-muted-foreground">{String(order?.Plant ?? '')}</span>
-                <span className="text-xs font-medium">{Number(order?.Order_quantity ?? 0)} units</span>
-              </div>
-            </button>
+                <p className="text-xs text-muted-foreground mt-0.5 truncate">{String(order?.Material_description ?? '')}</p>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-xs text-muted-foreground">{String(order?.Plant ?? '')}</span>
+                  <span className="text-xs font-medium">{Number(order?.Order_quantity ?? 0)} units</span>
+                </div>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedOrder(order);
+                  loadIssues(order.Order);
+                  setPrepareDialog(order.Order);
+                }}
+                className="mt-2 w-full py-1.5 bg-success text-success-foreground text-xs font-medium rounded-md hover:bg-success/90 transition-colors flex items-center justify-center gap-1.5"
+              >
+                <CheckCircle2 size={13} />
+                Mark Ready
+              </button>
+            </div>
           ))}
           {!loading && orders.length === 0 && (
             <p className="text-xs text-muted-foreground text-center py-8">No orders in warehouse</p>
