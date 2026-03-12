@@ -34,6 +34,7 @@ const navItems = [
   { path: '/logistics/transports', label: 'Transports', icon: PackageCheck },
   { path: '/errors', label: 'Errors', icon: AlertOctagon },
   { path: '/warehouse-issues', label: 'WH Issues', icon: AlertTriangle },
+  { path: '/warehouse-complaints', label: 'Complaints', icon: AlertTriangle },
   { path: '/history', label: 'History', icon: History },
 ];
 
