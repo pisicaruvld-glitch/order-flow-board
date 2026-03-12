@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getUsers, createUser, updateUser, OperationalUser, UserArea, CreateUserPayload, UpdateUserPayload } from '@/lib/usersApi';
+import { getUsers, createUser, updateUser, deleteUser, OperationalUser, UserArea, CreateUserPayload, UpdateUserPayload } from '@/lib/usersApi';
 import { LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Pencil, Users, Loader2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Plus, Pencil, Trash2, Users, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
