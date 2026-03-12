@@ -6,6 +6,7 @@ import { PageContainer, LoadingSpinner, ErrorMessage } from '@/components/Layout
 import { StatusBadge, IssueBadge } from '@/components/Badges';
 import { OrderDetailPanel, PriorityIcon, ChangedBadge } from '@/components/OrderCard';
 import { MoveOrderDialog, DiscrepancyBadge, SourceBadge } from '@/components/MoveOrderDialog';
+import { WarehousePrepareDialog } from '@/components/WarehousePrepareDialog';
 import { GanttTimeline } from '@/components/GanttTimeline';
 import { Plus, CheckCircle2, AlertTriangle, RefreshCw, History, ArrowRight, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
