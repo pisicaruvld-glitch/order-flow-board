@@ -110,6 +110,13 @@ export default function WarehousePage({ config }: WarehousePageProps) {
 
   const handleMarkReady = async () => {
     if (!selectedOrder) return;
+    // Open prepare dialog instead of directly marking ready
+    setPrepareDialog(selectedOrder.Order);
+  };
+
+  const handlePrepareSuccess = async () => {
+    if (!selectedOrder) return;
+    // After preparation, mark the order ready (move to Production)
     setMarkingReady(true);
     try {
       await markOrderReady(selectedOrder.Order);
