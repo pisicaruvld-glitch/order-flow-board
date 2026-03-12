@@ -77,6 +77,13 @@ export async function updateUser(userId: number, payload: UpdateUserPayload): Pr
 }
 
 // ============================================================
+// Delete User
+// ============================================================
+export async function deleteUser(userId: number): Promise<void> {
+  await apiFetch<unknown>(`/admin/users/${userId}`, { method: 'DELETE' });
+}
+
+// ============================================================
 // Users by Area
 // ============================================================
 export async function getUsersByArea(area: UserArea): Promise<OperationalUser[]> {

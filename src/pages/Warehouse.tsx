@@ -410,10 +410,10 @@ export default function WarehousePage({ config }: WarehousePageProps) {
                     </div>
                   )}
 
-                  {/* AUTO mode: Mark Ready (opens override dialog if issues exist) */}
+                  {/* AUTO mode: Mark Ready (opens prepare dialog) */}
                   {!isManualMode && (
                     <button
-                      onClick={openIssues.length > 0 ? openNextStep : handleMarkReady}
+                      onClick={openNextStep}
                       disabled={markingReady}
                       className={cn(
                         'w-full py-2 rounded-md text-sm font-medium transition-colors',
