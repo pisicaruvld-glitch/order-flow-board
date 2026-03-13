@@ -237,6 +237,12 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                         )}
                       </div>
                       <StatusBadge status={String(order?.System_Status ?? '')} size="sm" />
+                      {order.is_prepared && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-success/15 text-success border border-success/30">
+                          <CheckCircle2 size={10} />
+                          WH READY
+                        </span>
+                      )}
                       <span className={cn('inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full', cfg.color)}>
                         {cfg.icon}
                         {cfg.label}

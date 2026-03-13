@@ -43,6 +43,12 @@ export interface Order {
   has_open_complaint?: boolean;
   open_complaints_count?: number;
   latest_complaint_severity?: string;
+  // Warehouse preparation fields
+  is_prepared?: boolean;
+  prepared_by_username?: string;
+  prepared_by_user_id?: string;
+  prepared_at?: string;
+  prepared_comment?: string;
 }
 
 export interface Shipment {
