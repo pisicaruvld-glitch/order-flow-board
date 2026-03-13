@@ -65,6 +65,7 @@ const EVENT_ICONS: Record<string, any> = {
   CUSTOMER_SHIP: ShoppingCart,
   SHIPMENT: Truck,
   PALLET: Box,
+  WAREHOUSE_PREPARE: WarehouseIcon,
 };
 
 const EVENT_COLORS: Record<string, string> = {
@@ -79,6 +80,7 @@ const EVENT_COLORS: Record<string, string> = {
   CUSTOMER_SHIP: "bg-[hsl(var(--status-orders))] text-white",
   SHIPMENT: "bg-[hsl(var(--status-warehouse))] text-white",
   PALLET: "bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))]",
+  WAREHOUSE_PREPARE: "bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))]",
 };
 
 function AreaBadge({ area }: { area?: string | null }) {

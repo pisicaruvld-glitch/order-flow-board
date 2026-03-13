@@ -11,7 +11,8 @@ import { ProductionHandoverDialog } from '@/components/ProductionHandoverDialog'
 import { RaiseComplaintDialog } from '@/components/RaiseComplaintDialog';
 import { ComplaintBadge } from '@/components/ComplaintBadge';
 import { toast } from 'sonner';
-import { RefreshCw, Play, CheckCircle2, Clock, ArrowRight, ArrowLeft, AlertTriangle, MessageSquareWarning } from 'lucide-react';
+import { RefreshCw, Play, CheckCircle2, Clock, ArrowRight, ArrowLeft, AlertTriangle, MessageSquareWarning, Warehouse } from 'lucide-react';
+import { format } from 'date-fns';
 import { OrderIssueIndicator } from '@/components/OrderIssueIndicator';
 import { cn } from '@/lib/utils';
 
@@ -236,12 +237,30 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                         )}
                       </div>
                       <StatusBadge status={String(order?.System_Status ?? '')} size="sm" />
+                      {order.is_prepared && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-success/15 text-success border border-success/30">
+                          <CheckCircle2 size={10} />
+                          WH READY
+                        </span>
+                      )}
                       <span className={cn('inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full', cfg.color)}>
                         {cfg.icon}
                         {cfg.label}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1 truncate">{String(order?.Material_description ?? '')}</p>
+                    {/* Warehouse preparation info */}
+                    {order.is_prepared && (
+                      <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
+                        <span className="inline-flex items-center gap-1"><Warehouse size={10} />Prepared by: <strong className="text-foreground">{order.prepared_by_username}</strong></span>
+                        {order.prepared_at && (
+                          <span>at: <strong className="text-foreground">{(() => { try { return format(new Date(order.prepared_at), 'HH:mm'); } catch { return order.prepared_at; } })()}</strong></span>
+                        )}
+                        {order.prepared_comment && (
+                          <span className="italic">"{order.prepared_comment}"</span>
+                        )}
+                      </div>
+                    )}
                     <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
                       <span>{String(order?.Plant ?? '')}</span>
                       <span>Qty: <strong className="text-foreground">{Number(order?.Order_quantity ?? 0)}</strong></span>
