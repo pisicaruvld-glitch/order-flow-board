@@ -243,6 +243,18 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1 truncate">{String(order?.Material_description ?? '')}</p>
+                    {/* Warehouse preparation info */}
+                    {order.is_prepared && (
+                      <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
+                        <span className="inline-flex items-center gap-1"><Warehouse size={10} />Prepared by: <strong className="text-foreground">{order.prepared_by_username}</strong></span>
+                        {order.prepared_at && (
+                          <span>at: <strong className="text-foreground">{(() => { try { return format(new Date(order.prepared_at), 'HH:mm'); } catch { return order.prepared_at; } })()}</strong></span>
+                        )}
+                        {order.prepared_comment && (
+                          <span className="italic">"{order.prepared_comment}"</span>
+                        )}
+                      </div>
+                    )}
                     <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
                       <span>{String(order?.Plant ?? '')}</span>
                       <span>Qty: <strong className="text-foreground">{Number(order?.Order_quantity ?? 0)}</strong></span>
