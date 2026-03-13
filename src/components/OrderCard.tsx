@@ -245,6 +245,25 @@ export function OrderDetailPanel({ order, onClose, children }: OrderDetailPanelP
         {order.Priority && <Field label="Priority" value={order.Priority} mono />}
       </div>
 
+      {/* Warehouse Preparation */}
+      {order.is_prepared && (
+        <div className="p-4 border-b border-border">
+          <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+            <Warehouse size={12} />
+            Warehouse Preparation
+          </p>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <Field label="Prepared by" value={order.prepared_by_username ?? '—'} />
+            <Field label="Prepared at" value={order.prepared_at ? (() => { try { return format(new Date(order.prepared_at), 'dd MMM yyyy HH:mm'); } catch { return order.prepared_at; } })() : '—'} />
+            {order.prepared_comment && (
+              <div className="col-span-2">
+                <Field label="Comment" value={order.prepared_comment} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Slot for extra content (issues, etc.) */}
       <div className="flex-1 overflow-auto">{children}</div>
     </div>
