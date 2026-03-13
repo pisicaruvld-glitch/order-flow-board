@@ -65,6 +65,7 @@ const EVENT_ICONS: Record<string, any> = {
   CUSTOMER_SHIP: ShoppingCart,
   SHIPMENT: Truck,
   PALLET: Box,
+  WAREHOUSE_PREPARE: WarehouseIcon,
 };
 
 const EVENT_COLORS: Record<string, string> = {
