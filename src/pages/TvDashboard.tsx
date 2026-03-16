@@ -315,10 +315,14 @@ function TvOrderRow({ order, openIssueCount, severity }: { order: Order; openIss
   const isWarning = severity === 'WARNING';
   const hasOpenIssue = (openIssueCount ?? 0) > 0;
 
+  const isSfg = isSFG(order);
+  const showSfgStyle = isSfg && order.current_area === 'Production';
+
   return (
     <div className={cn(
       'flex items-center gap-3 px-3 py-2 rounded-md mb-1 text-sm relative',
       hasOpenIssue && 'order-card-issue',
+      showSfgStyle && 'border border-info',
       // Left border: overdue=red 6px, error=red 6px, warning=yellow 4px
       overdue || isError
         ? 'border-l-[6px] border-l-[hsl(0,72%,51%)]'
