@@ -385,8 +385,6 @@ export default function ProductionPage({ config }: ProductionPageProps) {
             })}
           </div>
         </>
-      )}
-
       {/* Move Back Dialog */}
       {moveDialog && (
         <MoveOrderDialog
