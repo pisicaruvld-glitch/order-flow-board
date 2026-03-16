@@ -118,6 +118,14 @@ export default function ProductionPage({ config }: ProductionPageProps) {
     await load(); // refresh
   };
 
+  const handleSfgFinishConfirm = async (data: { finished_qty_delta: number; scrap_qty_delta: number; reported_by: string; auto_complete: boolean }) => {
+    if (!sfgFinishDialog) return;
+    await productionFinish(sfgFinishDialog.order.Order, data);
+    setSfgFinishDialog(null);
+    toast.success('Production quantities reported');
+    await load();
+  };
+
   const openMoveBack = (order: Order) => {
     setMoveDialog({ orderId: order.Order, isNextStep: false });
   };
