@@ -378,14 +378,13 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                         Report Finished
                       </button>
                     )}
-                    )}
                   </div>
                 </div>
               );
             })}
           </div>
         </>
-      {/* Move Back Dialog */}
+      )}
       {moveDialog && (
         <MoveOrderDialog
           orderId={moveDialog.orderId}
