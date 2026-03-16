@@ -417,6 +417,18 @@ export default function ProductionPage({ config }: ProductionPageProps) {
           onSuccess={load}
         />
       )}
+
+      {/* SFG Finish Dialog */}
+      {sfgFinishDialog && (
+        <SfgFinishDialog
+          orderId={sfgFinishDialog.order.Order}
+          orderQty={sfgFinishDialog.order.Order_quantity}
+          currentFinished={getSfgFinishedQty(sfgFinishDialog.order)}
+          currentScrap={sfgFinishDialog.order.prod_scrap_qty ?? 0}
+          onConfirm={handleSfgFinishConfirm}
+          onCancel={() => setSfgFinishDialog(null)}
+        />
+      )}
     </PageContainer>
   );
 }
