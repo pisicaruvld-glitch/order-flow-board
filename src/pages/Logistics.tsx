@@ -136,7 +136,7 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
     <PageContainer>
       <PageHeader
         title="Logistics"
-        subtitle={`${worklistOrders.length} orders · ${pendingIncoming.length} incoming shipments`}
+        subtitle={`${filteredWorklist.length} orders · ${pendingIncoming.length} incoming shipments`}
         actions={
           <div className="flex items-center gap-3">
             <button
