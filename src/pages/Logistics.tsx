@@ -118,15 +118,18 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
 
   const isManualMode = areaModes.Logistics === 'MANUAL';
 
-  // Incoming: shipments with remaining qty to receive
+  // Incoming: shipments with remaining qty to receive — filter out SFG orders
   const pendingIncoming = incomingShipments.filter(s => {
     const remaining = s.remaining_to_receive_qty ?? (s.finished_qty_delta - (s.received_qty_delta ?? 0));
     return remaining > 0;
   });
 
+  // Filter out SFG orders from worklist
+  const filteredWorklist = worklistOrders.filter(o => o.product_type !== 'SFG');
+
   // KPI summary
-  const totalReceived = worklistOrders.reduce((s, o) => s + (o.log_received_qty ?? 0), 0);
-  const totalAvailable = worklistOrders.reduce((s, o) => s + (o.available_in_logistics_qty ?? 0), 0);
+  const totalReceived = filteredWorklist.reduce((s, o) => s + (o.log_received_qty ?? 0), 0);
+  const totalAvailable = filteredWorklist.reduce((s, o) => s + (o.available_in_logistics_qty ?? 0), 0);
   const pendingReceiveCount = pendingIncoming.length;
 
   return (
