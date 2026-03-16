@@ -277,11 +277,20 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                     <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
                       <span>{String(order?.Plant ?? '')}</span>
                       <span>Qty: <strong className="text-foreground">{Number(order?.Order_quantity ?? 0)}</strong></span>
-                      {isSFG(order) && <SfgProgress order={order} />}
-                      {(order.prod_delivered_qty != null && order.prod_delivered_qty > 0) && (
+                      {isSFG(order) ? (
                         <>
-                          <span>Delivered: <strong className="text-foreground">{order.prod_delivered_qty}</strong></span>
-                          <span>Remaining: <strong className="text-foreground">{order.remaining_qty ?? (order.Order_quantity - order.prod_delivered_qty)}</strong></span>
+                          <SfgProgress order={order} />
+                          <span>Scrap: <strong className="text-foreground">{order.prod_scrap_qty ?? 0}</strong></span>
+                          <span>Remaining: <strong className={cn('text-foreground', (order.Order_quantity - getSfgFinishedQty(order)) === 0 && 'text-success')}>{Math.max(0, order.Order_quantity - getSfgFinishedQty(order))}</strong></span>
+                        </>
+                      ) : (
+                        <>
+                          {(order.prod_delivered_qty != null && order.prod_delivered_qty > 0) && (
+                            <>
+                              <span>Delivered: <strong className="text-foreground">{order.prod_delivered_qty}</strong></span>
+                              <span>Remaining: <strong className="text-foreground">{order.remaining_qty ?? (order.Order_quantity - order.prod_delivered_qty)}</strong></span>
+                            </>
+                          )}
                         </>
                       )}
                       <span>Start: {order.Start_date_sched}</span>
