@@ -126,8 +126,12 @@ export default function Dashboard({ config }: DashboardProps) {
       setOverrideDialog({ orderId, fromArea: 'Warehouse', targetArea: 'Production' });
       return;
     }
-    // Production→Logistics: handover dialog
+    // Production→Logistics: block SFG, open handover for FG
     if (order?.current_area === 'Production' && area === 'Logistics') {
+      if (order.product_type === 'SFG') {
+        toast.error('Semifinished orders stop in Production. Use Report Finished.');
+        return;
+      }
       const remaining = order.remaining_qty ?? (order.Order_quantity - (order.prod_delivered_qty ?? 0));
       setHandoverDialog({ orderId, orderQty: order.Order_quantity, remainingQty: remaining });
       return;

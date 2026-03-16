@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Order, ProductionStatus, AreaModes } from '@/lib/types';
-import { getOrders, getProductionStatus, updateProductionStatus, moveOrder, getAreaModes, createShipment, getAllOpenIssueCounts } from '@/lib/api';
+import { getOrders, getProductionStatus, updateProductionStatus, moveOrder, getAreaModes, createShipment, getAllOpenIssueCounts, productionFinish } from '@/lib/api';
 import { AppConfig } from '@/lib/types';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { StatusBadge } from '@/components/Badges';
@@ -15,7 +15,8 @@ import { RefreshCw, Play, CheckCircle2, Clock, ArrowRight, ArrowLeft, AlertTrian
 import { format } from 'date-fns';
 import { OrderIssueIndicator } from '@/components/OrderIssueIndicator';
 import { cn } from '@/lib/utils';
-import { isSFG, SfgBadge, SfgProgress } from '@/components/SfgBadge';
+import { isSFG, SfgBadge, SfgProgress, getSfgFinishedQty } from '@/components/SfgBadge';
+import { SfgFinishDialog } from '@/components/SfgFinishDialog';
 
 interface ProductionPageProps {
   config: AppConfig;
@@ -25,6 +26,7 @@ type ProdStatus = ProductionStatus['status'];
 type MoveDialogState = { orderId: string; isNextStep: boolean; blockedReason?: string } | null;
 type HandoverDialogState = { orderId: string; orderQty?: number; remainingQty?: number } | null;
 type ComplaintDialogState = { orderId: string } | null;
+type SfgFinishDialogState = { order: Order } | null;
 
 const statusConfig: Record<ProdStatus, { label: string; color: string; icon: React.ReactNode }> = {
   PENDING: {
@@ -55,7 +57,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
   const [moveDialog, setMoveDialog] = useState<MoveDialogState>(null);
   const [handoverDialog, setHandoverDialog] = useState<HandoverDialogState>(null);
   const [complaintDialog, setComplaintDialog] = useState<ComplaintDialogState>(null);
-
+  const [sfgFinishDialog, setSfgFinishDialog] = useState<SfgFinishDialogState>(null);
   const { data: openIssueCounts } = useQuery({
     queryKey: ['openIssueCounts'],
     queryFn: getAllOpenIssueCounts,
@@ -114,6 +116,14 @@ export default function ProductionPage({ config }: ProductionPageProps) {
     });
     setHandoverDialog(null);
     await load(); // refresh
+  };
+
+  const handleSfgFinishConfirm = async (data: { finished_qty_delta: number; scrap_qty_delta: number; reported_by: string; auto_complete: boolean }) => {
+    if (!sfgFinishDialog) return;
+    await productionFinish(sfgFinishDialog.order.Order, data);
+    setSfgFinishDialog(null);
+    toast.success('Production quantities reported');
+    await load();
   };
 
   const openMoveBack = (order: Order) => {
@@ -246,6 +256,12 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                         </span>
                       )}
                       {isSFG(order) && <SfgBadge />}
+                      {isSFG(order) && getSfgFinishedQty(order) >= order.Order_quantity && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-success/15 text-success border border-success/30">
+                          <CheckCircle2 size={10} />
+                          Completed in Production
+                        </span>
+                      )}
                       <span className={cn('inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full', cfg.color)}>
                         {cfg.icon}
                         {cfg.label}
@@ -267,11 +283,20 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                     <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
                       <span>{String(order?.Plant ?? '')}</span>
                       <span>Qty: <strong className="text-foreground">{Number(order?.Order_quantity ?? 0)}</strong></span>
-                      {isSFG(order) && <SfgProgress order={order} />}
-                      {(order.prod_delivered_qty != null && order.prod_delivered_qty > 0) && (
+                      {isSFG(order) ? (
                         <>
-                          <span>Delivered: <strong className="text-foreground">{order.prod_delivered_qty}</strong></span>
-                          <span>Remaining: <strong className="text-foreground">{order.remaining_qty ?? (order.Order_quantity - order.prod_delivered_qty)}</strong></span>
+                          <SfgProgress order={order} />
+                          <span>Scrap: <strong className="text-foreground">{order.prod_scrap_qty ?? 0}</strong></span>
+                          <span>Remaining: <strong className={cn('text-foreground', (order.Order_quantity - getSfgFinishedQty(order)) === 0 && 'text-success')}>{Math.max(0, order.Order_quantity - getSfgFinishedQty(order))}</strong></span>
+                        </>
+                      ) : (
+                        <>
+                          {(order.prod_delivered_qty != null && order.prod_delivered_qty > 0) && (
+                            <>
+                              <span>Delivered: <strong className="text-foreground">{order.prod_delivered_qty}</strong></span>
+                              <span>Remaining: <strong className="text-foreground">{order.remaining_qty ?? (order.Order_quantity - order.prod_delivered_qty)}</strong></span>
+                            </>
+                          )}
                         </>
                       )}
                       <span>Start: {order.Start_date_sched}</span>
@@ -330,14 +355,34 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                           <ArrowLeft size={11} />
                           Move Back
                         </button>
-                        <button
-                          onClick={() => openNextStep(order)}
-                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors bg-success/10 text-success hover:bg-success/20"
-                        >
-                          <ArrowRight size={11} />
-                          Next Step
-                        </button>
+                        {isSFG(order) ? (
+                          <button
+                            onClick={() => setSfgFinishDialog({ order })}
+                            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors bg-info/10 text-info hover:bg-info/20"
+                          >
+                            <CheckCircle2 size={11} />
+                            Report Finished
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => openNextStep(order)}
+                            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors bg-success/10 text-success hover:bg-success/20"
+                          >
+                            <ArrowRight size={11} />
+                            Next Step
+                          </button>
+                        )}
                       </>
+                    )}
+                    {/* SFG Report Finished — also available outside MANUAL mode */}
+                    {!isManualMode && isSFG(order) && (
+                      <button
+                        onClick={() => setSfgFinishDialog({ order })}
+                        className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors bg-info/10 text-info hover:bg-info/20"
+                      >
+                        <CheckCircle2 size={11} />
+                        Report Finished
+                      </button>
                     )}
                   </div>
                 </div>
@@ -346,8 +391,6 @@ export default function ProductionPage({ config }: ProductionPageProps) {
           </div>
         </>
       )}
-
-      {/* Move Back Dialog */}
       {moveDialog && (
         <MoveOrderDialog
           orderId={moveDialog.orderId}
@@ -378,6 +421,18 @@ export default function ProductionPage({ config }: ProductionPageProps) {
           open={!!complaintDialog}
           onOpenChange={open => { if (!open) setComplaintDialog(null); }}
           onSuccess={load}
+        />
+      )}
+
+      {/* SFG Finish Dialog */}
+      {sfgFinishDialog && (
+        <SfgFinishDialog
+          orderId={sfgFinishDialog.order.Order}
+          orderQty={sfgFinishDialog.order.Order_quantity}
+          currentFinished={getSfgFinishedQty(sfgFinishDialog.order)}
+          currentScrap={sfgFinishDialog.order.prod_scrap_qty ?? 0}
+          onConfirm={handleSfgFinishConfirm}
+          onCancel={() => setSfgFinishDialog(null)}
         />
       )}
     </PageContainer>

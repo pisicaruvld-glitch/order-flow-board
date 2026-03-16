@@ -60,7 +60,7 @@ export default function DeliveryPreparationPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const logisticsOrders = orders.filter(o => (o.available_in_logistics_qty ?? 0) > 0);
+  const logisticsOrders = orders.filter(o => (o.available_in_logistics_qty ?? 0) > 0 && o.product_type !== 'SFG');
 
   const handleCreate = async () => {
     if (!newPalletNo.trim()) { toast.error('Pallet number is required'); return; }
