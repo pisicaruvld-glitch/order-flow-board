@@ -349,14 +349,35 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                           <ArrowLeft size={11} />
                           Move Back
                         </button>
-                        <button
-                          onClick={() => openNextStep(order)}
-                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors bg-success/10 text-success hover:bg-success/20"
-                        >
-                          <ArrowRight size={11} />
-                          Next Step
-                        </button>
+                        {isSFG(order) ? (
+                          <button
+                            onClick={() => setSfgFinishDialog({ order })}
+                            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors bg-info/10 text-info hover:bg-info/20"
+                          >
+                            <CheckCircle2 size={11} />
+                            Report Finished
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => openNextStep(order)}
+                            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors bg-success/10 text-success hover:bg-success/20"
+                          >
+                            <ArrowRight size={11} />
+                            Next Step
+                          </button>
+                        )}
                       </>
+                    )}
+                    {/* SFG Report Finished — also available outside MANUAL mode */}
+                    {!isManualMode && isSFG(order) && (
+                      <button
+                        onClick={() => setSfgFinishDialog({ order })}
+                        className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors bg-info/10 text-info hover:bg-info/20"
+                      >
+                        <CheckCircle2 size={11} />
+                        Report Finished
+                      </button>
+                    )}
                     )}
                   </div>
                 </div>
