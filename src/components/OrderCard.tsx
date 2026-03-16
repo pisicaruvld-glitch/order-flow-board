@@ -96,11 +96,14 @@ export function OrderCard({ order, compact = false, onClick, selected, tv, hasOp
   const progress = orderQty > 0 ? Math.round((deliveredQty / orderQty) * 100) : 0;
   const showLiquid = LIQUID_AREAS.includes(order.current_area);
 
+  const isSfg = isSFG(order);
+  const showSfgStyle = isSfg && (order.current_area === 'Production');
+
   return (
     <div
       className={cn(
         'bg-card rounded-lg border cursor-pointer order-card p-3 relative',
-        selected ? 'border-primary ring-1 ring-primary' : 'border-border hover:border-primary/40',
+        selected ? 'border-primary ring-1 ring-primary' : showSfgStyle ? 'border-info border-2' : 'border-border hover:border-primary/40',
         compact && 'p-2',
         tv && showLiquid && 'tv-liquid',
         hasOpenIssue && 'order-card-issue'
