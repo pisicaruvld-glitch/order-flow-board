@@ -120,7 +120,8 @@ export function OrderCard({ order, compact = false, onClick, selected, tv, hasOp
             <PriorityIcon priority={order.Priority} />
             <span className="font-mono text-xs font-semibold text-foreground truncate">{String(order?.Order ?? '')}</span>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1 shrink-0 flex-wrap">
+            {showSfgStyle && <SfgBadge />}
             {order.has_open_complaint && (
               <ComplaintBadge
                 count={order.open_complaints_count ?? 1}
