@@ -267,6 +267,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                     <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
                       <span>{String(order?.Plant ?? '')}</span>
                       <span>Qty: <strong className="text-foreground">{Number(order?.Order_quantity ?? 0)}</strong></span>
+                      {isSFG(order) && <SfgProgress order={order} />}
                       {(order.prod_delivered_qty != null && order.prod_delivered_qty > 0) && (
                         <>
                           <span>Delivered: <strong className="text-foreground">{order.prod_delivered_qty}</strong></span>
