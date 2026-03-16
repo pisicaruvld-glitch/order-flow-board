@@ -245,6 +245,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                           WH READY
                         </span>
                       )}
+                      {isSFG(order) && <SfgBadge />}
                       <span className={cn('inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full', cfg.color)}>
                         {cfg.icon}
                         {cfg.label}
