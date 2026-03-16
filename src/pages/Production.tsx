@@ -15,6 +15,7 @@ import { RefreshCw, Play, CheckCircle2, Clock, ArrowRight, ArrowLeft, AlertTrian
 import { format } from 'date-fns';
 import { OrderIssueIndicator } from '@/components/OrderIssueIndicator';
 import { cn } from '@/lib/utils';
+import { isSFG, SfgBadge, SfgProgress } from '@/components/SfgBadge';
 
 interface ProductionPageProps {
   config: AppConfig;
@@ -210,7 +211,8 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                 <div
                   key={order.Order}
                   className={cn(
-                    'bg-card border border-border rounded-lg p-4 flex items-center gap-4 hover:border-border/80 transition-colors relative',
+                    'bg-card border rounded-lg p-4 flex items-center gap-4 hover:border-border/80 transition-colors relative',
+                    isSFG(order) ? 'border-info border-2' : 'border-border',
                     hasOpenIssue && 'order-card-issue'
                   )}
                 >
@@ -243,6 +245,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                           WH READY
                         </span>
                       )}
+                      {isSFG(order) && <SfgBadge />}
                       <span className={cn('inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full', cfg.color)}>
                         {cfg.icon}
                         {cfg.label}
@@ -264,6 +267,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                     <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
                       <span>{String(order?.Plant ?? '')}</span>
                       <span>Qty: <strong className="text-foreground">{Number(order?.Order_quantity ?? 0)}</strong></span>
+                      {isSFG(order) && <SfgProgress order={order} />}
                       {(order.prod_delivered_qty != null && order.prod_delivered_qty > 0) && (
                         <>
                           <span>Delivered: <strong className="text-foreground">{order.prod_delivered_qty}</strong></span>

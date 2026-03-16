@@ -6,6 +6,7 @@ import { Radio, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
 import { cn, loadKwFilter, saveKwFilter } from '@/lib/utils';
 import { OrderIssueIndicator } from '@/components/OrderIssueIndicator';
 import { WeekFilter, filterByWeek, WeekBadge } from '@/components/WeekFilter';
+import { isSFG, SfgBadge, SfgProgress } from '@/components/SfgBadge';
 // ============================================================
 // Helpers
 // ============================================================
@@ -313,10 +314,14 @@ function TvOrderRow({ order, openIssueCount, severity }: { order: Order; openIss
   const isWarning = severity === 'WARNING';
   const hasOpenIssue = (openIssueCount ?? 0) > 0;
 
+  const isSfg = isSFG(order);
+  const showSfgStyle = isSfg && order.current_area === 'Production';
+
   return (
     <div className={cn(
       'flex items-center gap-3 px-3 py-2 rounded-md mb-1 text-sm relative',
       hasOpenIssue && 'order-card-issue',
+      showSfgStyle && 'border border-info',
       // Left border: overdue=red 6px, error=red 6px, warning=yellow 4px
       overdue || isError
         ? 'border-l-[6px] border-l-[hsl(0,72%,51%)]'
@@ -378,6 +383,13 @@ function TvOrderRow({ order, openIssueCount, severity }: { order: Order; openIss
         <span className="bg-warning text-warning-foreground text-[10px] font-bold px-1.5 py-0.5 rounded">
           CHG
         </span>
+      )}
+      {/* SFG badge + progress */}
+      {showSfgStyle && (
+        <>
+          <SfgBadge />
+          <SfgProgress order={order} />
+        </>
       )}
     </div>
   );

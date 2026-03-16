@@ -4,6 +4,7 @@ import { ComplaintBadge } from './ComplaintBadge';
 import { cn } from '@/lib/utils';
 import { Slash, Circle, X, GitCompareArrows, Warehouse, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { isSFG, SfgBadge, SfgProgress } from './SfgBadge';
 
 // ============================================================
 // Priority Icon
@@ -94,11 +95,14 @@ export function OrderCard({ order, compact = false, onClick, selected, tv, hasOp
   const progress = orderQty > 0 ? Math.round((deliveredQty / orderQty) * 100) : 0;
   const showLiquid = LIQUID_AREAS.includes(order.current_area);
 
+  const isSfg = isSFG(order);
+  const showSfgStyle = isSfg && (order.current_area === 'Production');
+
   return (
     <div
       className={cn(
         'bg-card rounded-lg border cursor-pointer order-card p-3 relative',
-        selected ? 'border-primary ring-1 ring-primary' : 'border-border hover:border-primary/40',
+        selected ? 'border-primary ring-1 ring-primary' : showSfgStyle ? 'border-info border-2' : 'border-border hover:border-primary/40',
         compact && 'p-2',
         tv && showLiquid && 'tv-liquid',
         hasOpenIssue && 'order-card-issue'
@@ -115,7 +119,8 @@ export function OrderCard({ order, compact = false, onClick, selected, tv, hasOp
             <PriorityIcon priority={order.Priority} />
             <span className="font-mono text-xs font-semibold text-foreground truncate">{String(order?.Order ?? '')}</span>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1 shrink-0 flex-wrap">
+            {showSfgStyle && <SfgBadge />}
             {order.has_open_complaint && (
               <ComplaintBadge
                 count={order.open_complaints_count ?? 1}
@@ -152,6 +157,11 @@ export function OrderCard({ order, compact = false, onClick, selected, tv, hasOp
                 {order.prod_scrap_qty != null && <span>Scrap: <strong className="text-foreground">{order.prod_scrap_qty}</strong></span>}
                 {order.finished_qty != null && <span>Fin: <strong className="text-foreground">{order.finished_qty}</strong></span>}
                 {order.log_received_qty != null && <span>Rcvd: <strong className="text-foreground">{order.log_received_qty}</strong></span>}
+              </div>
+            )}
+            {showSfgStyle && (
+              <div className="mt-1">
+                <SfgProgress order={order} />
               </div>
             )}
           </div>

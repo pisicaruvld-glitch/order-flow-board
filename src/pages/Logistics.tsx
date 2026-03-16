@@ -118,22 +118,25 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
 
   const isManualMode = areaModes.Logistics === 'MANUAL';
 
-  // Incoming: shipments with remaining qty to receive
+  // Incoming: shipments with remaining qty to receive — filter out SFG orders
   const pendingIncoming = incomingShipments.filter(s => {
     const remaining = s.remaining_to_receive_qty ?? (s.finished_qty_delta - (s.received_qty_delta ?? 0));
     return remaining > 0;
   });
 
+  // Filter out SFG orders from worklist
+  const filteredWorklist = worklistOrders.filter(o => o.product_type !== 'SFG');
+
   // KPI summary
-  const totalReceived = worklistOrders.reduce((s, o) => s + (o.log_received_qty ?? 0), 0);
-  const totalAvailable = worklistOrders.reduce((s, o) => s + (o.available_in_logistics_qty ?? 0), 0);
+  const totalReceived = filteredWorklist.reduce((s, o) => s + (o.log_received_qty ?? 0), 0);
+  const totalAvailable = filteredWorklist.reduce((s, o) => s + (o.available_in_logistics_qty ?? 0), 0);
   const pendingReceiveCount = pendingIncoming.length;
 
   return (
     <PageContainer>
       <PageHeader
         title="Logistics"
-        subtitle={`${worklistOrders.length} orders · ${pendingIncoming.length} incoming shipments`}
+        subtitle={`${filteredWorklist.length} orders · ${pendingIncoming.length} incoming shipments`}
         actions={
           <div className="flex items-center gap-3">
             <button
@@ -198,12 +201,12 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
 
           {/* Section 2: Orders in Logistics (from worklist endpoint) */}
           <section>
-            <h2 className="text-sm font-semibold text-foreground mb-2">Orders in Logistics ({worklistOrders.length})</h2>
-            {worklistOrders.length === 0 ? (
+            <h2 className="text-sm font-semibold text-foreground mb-2">Orders in Logistics ({filteredWorklist.length})</h2>
+            {filteredWorklist.length === 0 ? (
               <p className="text-xs text-muted-foreground py-4">No orders with stock in Logistics.</p>
             ) : (
               <div className="space-y-2">
-                {worklistOrders.map(order => {
+                {filteredWorklist.map(order => {
                   const issueCount = openIssueCounts?.[String(order.Order)] ?? 0;
                   const hasOpenIssue = issueCount > 0;
                   return (
