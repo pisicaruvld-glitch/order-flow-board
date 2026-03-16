@@ -160,6 +160,11 @@ export function OrderCard({ order, compact = false, onClick, selected, tv, hasOp
                 {order.log_received_qty != null && <span>Rcvd: <strong className="text-foreground">{order.log_received_qty}</strong></span>}
               </div>
             )}
+            {showSfgStyle && (
+              <div className="mt-1">
+                <SfgProgress order={order} />
+              </div>
+            )}
           </div>
         )}
 

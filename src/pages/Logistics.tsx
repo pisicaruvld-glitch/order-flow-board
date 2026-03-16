@@ -201,12 +201,12 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
 
           {/* Section 2: Orders in Logistics (from worklist endpoint) */}
           <section>
-            <h2 className="text-sm font-semibold text-foreground mb-2">Orders in Logistics ({worklistOrders.length})</h2>
-            {worklistOrders.length === 0 ? (
+            <h2 className="text-sm font-semibold text-foreground mb-2">Orders in Logistics ({filteredWorklist.length})</h2>
+            {filteredWorklist.length === 0 ? (
               <p className="text-xs text-muted-foreground py-4">No orders with stock in Logistics.</p>
             ) : (
               <div className="space-y-2">
-                {worklistOrders.map(order => {
+                {filteredWorklist.map(order => {
                   const issueCount = openIssueCounts?.[String(order.Order)] ?? 0;
                   const hasOpenIssue = issueCount > 0;
                   return (

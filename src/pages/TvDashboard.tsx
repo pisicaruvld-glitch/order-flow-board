@@ -385,6 +385,13 @@ function TvOrderRow({ order, openIssueCount, severity }: { order: Order; openIss
           CHG
         </span>
       )}
+      {/* SFG badge + progress */}
+      {showSfgStyle && (
+        <>
+          <SfgBadge />
+          <SfgProgress order={order} />
+        </>
+      )}
     </div>
   );
 }
