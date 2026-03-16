@@ -211,7 +211,8 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                 <div
                   key={order.Order}
                   className={cn(
-                    'bg-card border border-border rounded-lg p-4 flex items-center gap-4 hover:border-border/80 transition-colors relative',
+                    'bg-card border rounded-lg p-4 flex items-center gap-4 hover:border-border/80 transition-colors relative',
+                    isSFG(order) ? 'border-info border-2' : 'border-border',
                     hasOpenIssue && 'order-card-issue'
                   )}
                 >
