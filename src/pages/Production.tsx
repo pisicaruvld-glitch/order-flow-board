@@ -15,7 +15,8 @@ import { RefreshCw, Play, CheckCircle2, Clock, ArrowRight, ArrowLeft, AlertTrian
 import { format } from 'date-fns';
 import { OrderIssueIndicator } from '@/components/OrderIssueIndicator';
 import { cn } from '@/lib/utils';
-import { isSFG, SfgBadge, SfgProgress } from '@/components/SfgBadge';
+import { isSFG, SfgBadge, SfgProgress, getSfgFinishedQty } from '@/components/SfgBadge';
+import { SfgFinishDialog } from '@/components/SfgFinishDialog';
 
 interface ProductionPageProps {
   config: AppConfig;

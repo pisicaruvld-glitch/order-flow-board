@@ -410,6 +410,36 @@ export async function updateLogisticsStatus(
 }
 
 // ============================================================
+// PRODUCTION FINISH (SFG only)
+// ============================================================
+export interface ProductionFinishPayload {
+  finished_qty_delta: number;
+  scrap_qty_delta: number;
+  reported_by: string;
+  auto_complete?: boolean;
+}
+
+export async function productionFinish(orderId: string, payload: ProductionFinishPayload): Promise<Order> {
+  if (isDemo()) {
+    const idx = _orders.findIndex(o => o.Order === orderId);
+    if (idx === -1) throw new Error("Order not found");
+    const o = _orders[idx];
+    const newFinished = (o.finished_qty ?? 0) + payload.finished_qty_delta;
+    const newScrap = (o.prod_scrap_qty ?? 0) + payload.scrap_qty_delta;
+    _orders = _orders.map((ord, i) =>
+      i === idx
+        ? { ...ord, finished_qty: newFinished, prod_scrap_qty: newScrap, prod_delivered_qty: newFinished }
+        : ord
+    );
+    return _orders[idx];
+  }
+  return apiFetch<Order>(`/orders/${orderId}/production-finish`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+// ============================================================
 // SHIPMENTS API
 // ============================================================
 export interface CreateShipmentPayload {
