@@ -6,6 +6,8 @@ import { Radio, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
 import { cn, loadKwFilter, saveKwFilter } from '@/lib/utils';
 import { OrderIssueIndicator } from '@/components/OrderIssueIndicator';
 import { WeekFilter, filterByWeek, WeekBadge } from '@/components/WeekFilter';
+import { isSFG, SfgBadge, SfgProgress } from '@/components/SfgBadge';
+import { WeekFilter, filterByWeek, WeekBadge } from '@/components/WeekFilter';
 // ============================================================
 // Helpers
 // ============================================================
