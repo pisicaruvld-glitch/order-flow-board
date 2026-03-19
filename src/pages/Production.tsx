@@ -10,13 +10,13 @@ import { MoveOrderDialog, DiscrepancyBadge, SourceBadge } from '@/components/Mov
 import { ProductionHandoverDialog } from '@/components/ProductionHandoverDialog';
 import { RaiseComplaintDialog } from '@/components/RaiseComplaintDialog';
 import { ComplaintBadge } from '@/components/ComplaintBadge';
+import { SfgCompleteDialog } from '@/components/SfgCompleteDialog';
 import { toast } from 'sonner';
-import { RefreshCw, Play, CheckCircle2, Clock, ArrowRight, ArrowLeft, AlertTriangle, MessageSquareWarning, Warehouse } from 'lucide-react';
+import { RefreshCw, Play, CheckCircle2, Clock, ArrowRight, ArrowLeft, AlertTriangle, MessageSquareWarning, Warehouse, PackageCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { OrderIssueIndicator } from '@/components/OrderIssueIndicator';
 import { cn } from '@/lib/utils';
-import { isSFG, SfgBadge, SfgProgress, getSfgFinishedQty } from '@/components/SfgBadge';
-import { SfgFinishDialog } from '@/components/SfgFinishDialog';
+import { isSFG, SfgBadge, SfgProductionQty } from '@/components/SfgBadge';
 
 interface ProductionPageProps {
   config: AppConfig;
@@ -26,7 +26,7 @@ type ProdStatus = ProductionStatus['status'];
 type MoveDialogState = { orderId: string; isNextStep: boolean; blockedReason?: string } | null;
 type HandoverDialogState = { orderId: string; orderQty?: number; remainingQty?: number } | null;
 type ComplaintDialogState = { orderId: string } | null;
-type SfgFinishDialogState = { order: Order } | null;
+type SfgCompleteDialogState = { order: Order } | null;
 
 const statusConfig: Record<ProdStatus, { label: string; color: string; icon: React.ReactNode }> = {
   PENDING: {
@@ -57,7 +57,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
   const [moveDialog, setMoveDialog] = useState<MoveDialogState>(null);
   const [handoverDialog, setHandoverDialog] = useState<HandoverDialogState>(null);
   const [complaintDialog, setComplaintDialog] = useState<ComplaintDialogState>(null);
-  const [sfgFinishDialog, setSfgFinishDialog] = useState<SfgFinishDialogState>(null);
+  const [sfgCompleteDialog, setSfgCompleteDialog] = useState<SfgCompleteDialogState>(null);
   const { data: openIssueCounts } = useQuery({
     queryKey: ['openIssueCounts'],
     queryFn: getAllOpenIssueCounts,
@@ -91,11 +91,62 @@ export default function ProductionPage({ config }: ProductionPageProps) {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleStatusChange = async (orderId: string, newStatus: ProdStatus) => {
+  // ── SFG: In Progress (no qty)
+  const handleSfgInProgress = async (orderId: string) => {
     setUpdating(orderId);
     try {
-      const updated = await updateProductionStatus(orderId, newStatus);
+      const updated = await updateProductionStatus(orderId, { status: 'IN_PROGRESS' });
       setStatuses(prev => ({ ...prev, [orderId]: updated }));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to update status');
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  // ── SFG: Complete (opens qty dialog)
+  const handleSfgCompleteConfirm = async (data: { gross_finished_qty: number; scrap_qty: number; updated_by: string }) => {
+    if (!sfgCompleteDialog) return;
+    const orderId = sfgCompleteDialog.order.Order;
+    try {
+      const updated = await updateProductionStatus(orderId, {
+        status: 'COMPLETED',
+        gross_finished_qty: data.gross_finished_qty,
+        scrap_qty: data.scrap_qty,
+        updated_by: data.updated_by,
+      });
+      setStatuses(prev => ({ ...prev, [orderId]: updated }));
+      setSfgCompleteDialog(null);
+      toast.success('Production quantities reported');
+      await load(); // refresh to get updated order data
+    } catch (e: unknown) {
+      // Re-throw so dialog can display error
+      throw e;
+    }
+  };
+
+  // ── SFG: Report Finished (final close, no qty)
+  const handleSfgReportFinished = async (order: Order) => {
+    setUpdating(order.Order);
+    try {
+      await productionFinish(order.Order, { reported_by: 'current_user' });
+      toast.success('Order finalized and hidden from board');
+      await load();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to finalize');
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  // ── FG: Status change (simple)
+  const handleFgStatusChange = async (orderId: string, newStatus: ProdStatus) => {
+    setUpdating(orderId);
+    try {
+      const updated = await updateProductionStatus(orderId, { status: newStatus });
+      setStatuses(prev => ({ ...prev, [orderId]: updated }));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to update status');
     } finally {
       setUpdating(null);
     }
@@ -108,21 +159,12 @@ export default function ProductionPage({ config }: ProductionPageProps) {
 
   const handleHandoverConfirm = async (data: { delivered_qty_delta: number; scrap_qty_delta: number; reported_by: string }) => {
     if (!handoverDialog) return;
-    // Create shipment (partial delivery) — do NOT auto-move to Logistics
     await createShipment(handoverDialog.orderId, {
       delivered_qty_delta: data.delivered_qty_delta,
       scrap_qty_delta: data.scrap_qty_delta,
       reported_by: data.reported_by,
     });
     setHandoverDialog(null);
-    await load(); // refresh
-  };
-
-  const handleSfgFinishConfirm = async (data: { finished_qty_delta: number; scrap_qty_delta: number; reported_by: string; auto_complete: boolean }) => {
-    if (!sfgFinishDialog) return;
-    await productionFinish(sfgFinishDialog.order.Order, data);
-    setSfgFinishDialog(null);
-    toast.success('Production quantities reported');
     await load();
   };
 
@@ -214,25 +256,27 @@ export default function ProductionPage({ config }: ProductionPageProps) {
               const prodStatus = statuses[order.Order];
               const isUpdating = updating === order.Order;
               const cfg = prodStatus ? statusConfig[prodStatus.status] : statusConfig.PENDING;
-              const isCompleted = prodStatus?.status === 'COMPLETED';
               const issueCount = openIssueCounts?.[order.Order] ?? 0;
               const hasOpenIssue = issueCount > 0;
+              const sfg = isSFG(order);
+              const reportFinishedReady = prodStatus?.report_finished_ready === true;
+
               return (
                 <div
                   key={order.Order}
                   className={cn(
                     'bg-card border rounded-lg p-4 flex items-center gap-4 hover:border-border/80 transition-colors relative',
-                    isSFG(order) ? 'border-info border-2' : 'border-border',
+                    sfg ? 'border-info border-2' : 'border-border',
                     hasOpenIssue && 'order-card-issue'
                   )}
                 >
                   {/* Order Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5">
                         <PriorityIcon priority={order.Priority} />
                         <span className="font-mono text-sm font-bold">{String(order?.Order ?? '')}</span>
-                      {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
+                        {order.has_changes && <ChangedBadge fields={order.changed_fields} />}
                         {order.discrepancy && <DiscrepancyBadge sapArea={order.sap_area} />}
                         {order.source === 'manual' && <SourceBadge source={order.source} />}
                         {order.has_open_complaint && (
@@ -255,8 +299,8 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                           WH READY
                         </span>
                       )}
-                      {isSFG(order) && <SfgBadge />}
-                      {isSFG(order) && getSfgFinishedQty(order) >= order.Order_quantity && (
+                      {sfg && <SfgBadge />}
+                      {sfg && reportFinishedReady && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-success/15 text-success border border-success/30">
                           <CheckCircle2 size={10} />
                           Completed in Production
@@ -283,12 +327,8 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                     <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
                       <span>{String(order?.Plant ?? '')}</span>
                       <span>Qty: <strong className="text-foreground">{Number(order?.Order_quantity ?? 0)}</strong></span>
-                      {isSFG(order) ? (
-                        <>
-                          <SfgProgress order={order} />
-                          <span>Scrap: <strong className="text-foreground">{order.prod_scrap_qty ?? 0}</strong></span>
-                          <span>Remaining: <strong className={cn('text-foreground', (order.Order_quantity - getSfgFinishedQty(order)) === 0 && 'text-success')}>{Math.max(0, order.Order_quantity - getSfgFinishedQty(order))}</strong></span>
-                        </>
+                      {sfg ? (
+                        <SfgProductionQty prodStatus={prodStatus} orderQty={order.Order_quantity} />
                       ) : (
                         <>
                           {(order.prod_delivered_qty != null && order.prod_delivered_qty > 0) && (
@@ -317,32 +357,76 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                       <MessageSquareWarning size={12} />
                       Complaint
                     </button>
-                    {prodStatus?.status !== 'IN_PROGRESS' && prodStatus?.status !== 'COMPLETED' && (
-                      <button
-                        onClick={() => handleStatusChange(order.Order, 'IN_PROGRESS')}
-                        disabled={isUpdating}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-warning/10 text-warning text-xs font-medium rounded hover:bg-warning/20 transition-colors disabled:opacity-50"
-                      >
-                        <Play size={12} />
-                        In Progress
-                      </button>
+
+                    {sfg ? (
+                      /* ── SFG action buttons ── */
+                      <>
+                        {/* In Progress: available when not yet IN_PROGRESS or COMPLETED */}
+                        {prodStatus?.status !== 'IN_PROGRESS' && prodStatus?.status !== 'COMPLETED' && (
+                          <button
+                            onClick={() => handleSfgInProgress(order.Order)}
+                            disabled={isUpdating}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-warning/10 text-warning text-xs font-medium rounded hover:bg-warning/20 transition-colors disabled:opacity-50"
+                          >
+                            <Play size={12} />
+                            In Progress
+                          </button>
+                        )}
+                        {/* Complete: opens qty modal, available when IN_PROGRESS */}
+                        {prodStatus?.status === 'IN_PROGRESS' && (
+                          <button
+                            onClick={() => setSfgCompleteDialog({ order })}
+                            disabled={isUpdating}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-info/10 text-info text-xs font-medium rounded hover:bg-info/20 transition-colors disabled:opacity-50"
+                          >
+                            <CheckCircle2 size={12} />
+                            Complete
+                          </button>
+                        )}
+                        {/* Report Finished: only when backend says ready */}
+                        {reportFinishedReady && (
+                          <button
+                            onClick={() => handleSfgReportFinished(order)}
+                            disabled={isUpdating}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-success/10 text-success text-xs font-medium rounded hover:bg-success/20 transition-colors disabled:opacity-50"
+                          >
+                            <PackageCheck size={12} />
+                            {isUpdating ? 'Finishing…' : 'Report Finished'}
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      /* ── FG action buttons ── */
+                      <>
+                        {prodStatus?.status !== 'IN_PROGRESS' && prodStatus?.status !== 'COMPLETED' && (
+                          <button
+                            onClick={() => handleFgStatusChange(order.Order, 'IN_PROGRESS')}
+                            disabled={isUpdating}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-warning/10 text-warning text-xs font-medium rounded hover:bg-warning/20 transition-colors disabled:opacity-50"
+                          >
+                            <Play size={12} />
+                            In Progress
+                          </button>
+                        )}
+                        {prodStatus?.status === 'IN_PROGRESS' && (
+                          <button
+                            onClick={() => handleFgStatusChange(order.Order, 'COMPLETED')}
+                            disabled={isUpdating}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-success/10 text-success text-xs font-medium rounded hover:bg-success/20 transition-colors disabled:opacity-50"
+                          >
+                            <CheckCircle2 size={12} />
+                            Complete
+                          </button>
+                        )}
+                        {prodStatus?.status === 'COMPLETED' && (
+                          <span className="flex items-center gap-1 text-xs text-success font-medium">
+                            <CheckCircle2 size={12} />
+                            Done
+                          </span>
+                        )}
+                      </>
                     )}
-                    {prodStatus?.status === 'IN_PROGRESS' && (
-                      <button
-                        onClick={() => handleStatusChange(order.Order, 'COMPLETED')}
-                        disabled={isUpdating}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-success/10 text-success text-xs font-medium rounded hover:bg-success/20 transition-colors disabled:opacity-50"
-                      >
-                        <CheckCircle2 size={12} />
-                        Complete
-                      </button>
-                    )}
-                    {prodStatus?.status === 'COMPLETED' && (
-                      <span className="flex items-center gap-1 text-xs text-success font-medium">
-                        <CheckCircle2 size={12} />
-                        Done
-                      </span>
-                    )}
+
                     {isUpdating && <RefreshCw size={14} className="animate-spin text-muted-foreground" />}
 
                     {/* MANUAL mode flow buttons */}
@@ -355,15 +439,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                           <ArrowLeft size={11} />
                           Move Back
                         </button>
-                        {isSFG(order) ? (
-                          <button
-                            onClick={() => setSfgFinishDialog({ order })}
-                            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors bg-info/10 text-info hover:bg-info/20"
-                          >
-                            <CheckCircle2 size={11} />
-                            Report Finished
-                          </button>
-                        ) : (
+                        {!sfg && (
                           <button
                             onClick={() => openNextStep(order)}
                             className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors bg-success/10 text-success hover:bg-success/20"
@@ -373,16 +449,6 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                           </button>
                         )}
                       </>
-                    )}
-                    {/* SFG Report Finished — also available outside MANUAL mode */}
-                    {!isManualMode && isSFG(order) && (
-                      <button
-                        onClick={() => setSfgFinishDialog({ order })}
-                        className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded transition-colors bg-info/10 text-info hover:bg-info/20"
-                      >
-                        <CheckCircle2 size={11} />
-                        Report Finished
-                      </button>
                     )}
                   </div>
                 </div>
@@ -403,7 +469,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
         />
       )}
 
-      {/* Production→Logistics Handover Dialog */}
+      {/* Production→Logistics Handover Dialog (FG only) */}
       {handoverDialog && (
         <ProductionHandoverDialog
           orderId={handoverDialog.orderId}
@@ -424,15 +490,13 @@ export default function ProductionPage({ config }: ProductionPageProps) {
         />
       )}
 
-      {/* SFG Finish Dialog */}
-      {sfgFinishDialog && (
-        <SfgFinishDialog
-          orderId={sfgFinishDialog.order.Order}
-          orderQty={sfgFinishDialog.order.Order_quantity}
-          currentFinished={getSfgFinishedQty(sfgFinishDialog.order)}
-          currentScrap={sfgFinishDialog.order.prod_scrap_qty ?? 0}
-          onConfirm={handleSfgFinishConfirm}
-          onCancel={() => setSfgFinishDialog(null)}
+      {/* SFG Complete Dialog (qty confirmation) */}
+      {sfgCompleteDialog && (
+        <SfgCompleteDialog
+          orderId={sfgCompleteDialog.order.Order}
+          orderQty={sfgCompleteDialog.order.Order_quantity}
+          onConfirm={handleSfgCompleteConfirm}
+          onCancel={() => setSfgCompleteDialog(null)}
         />
       )}
     </PageContainer>
