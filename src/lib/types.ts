@@ -144,6 +144,12 @@ export interface ProductionStatus {
   status: "PENDING" | "IN_PROGRESS" | "COMPLETED";
   updated_at: string;
   updated_by: string;
+  // SFG production qty fields (from GET /production-status)
+  gross_finished_qty?: number;
+  scrap_qty?: number;
+  good_finished_qty?: number;
+  remaining_qty?: number;
+  report_finished_ready?: boolean;
 }
 
 export interface LogisticsStatus {

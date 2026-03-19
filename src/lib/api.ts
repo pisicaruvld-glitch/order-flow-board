@@ -410,26 +410,19 @@ export async function updateLogisticsStatus(
 }
 
 // ============================================================
-// PRODUCTION FINISH (SFG only)
+// PRODUCTION FINISH (SFG only — final close, no qty)
 // ============================================================
 export interface ProductionFinishPayload {
-  finished_qty_delta: number;
-  scrap_qty_delta: number;
   reported_by: string;
-  auto_complete?: boolean;
 }
 
 export async function productionFinish(orderId: string, payload: ProductionFinishPayload): Promise<Order> {
   if (isDemo()) {
     const idx = _orders.findIndex(o => o.Order === orderId);
     if (idx === -1) throw new Error("Order not found");
-    const o = _orders[idx];
-    const newFinished = (o.finished_qty ?? 0) + payload.finished_qty_delta;
-    const newScrap = (o.prod_scrap_qty ?? 0) + payload.scrap_qty_delta;
+    // In demo, just hide the order
     _orders = _orders.map((ord, i) =>
-      i === idx
-        ? { ...ord, finished_qty: newFinished, prod_scrap_qty: newScrap, prod_delivered_qty: newFinished }
-        : ord
+      i === idx ? { ...ord, current_area: 'HIDDEN' as any } : ord
     );
     return _orders[idx];
   }
@@ -903,23 +896,35 @@ export async function getProductionStatus(orderId: string): Promise<ProductionSt
   return apiFetch<ProductionStatus>(`${ep().ordersPath}/${orderId}/production-status`);
 }
 
+export interface UpdateProductionStatusPayload {
+  status: ProductionStatus["status"];
+  updated_by?: string;
+  gross_finished_qty?: number;
+  scrap_qty?: number;
+}
+
 export async function updateProductionStatus(
   orderId: string,
-  status: ProductionStatus["status"],
+  payload: UpdateProductionStatusPayload,
 ): Promise<ProductionStatus> {
   const updated: ProductionStatus = {
     order_id: orderId,
-    status,
+    status: payload.status,
     updated_at: new Date().toISOString(),
-    updated_by: "current_user",
+    updated_by: payload.updated_by ?? "current_user",
   };
   if (isDemo()) {
+    if (payload.status === 'COMPLETED' && payload.gross_finished_qty != null) {
+      updated.gross_finished_qty = payload.gross_finished_qty;
+      updated.scrap_qty = payload.scrap_qty ?? 0;
+      updated.good_finished_qty = payload.gross_finished_qty - (payload.scrap_qty ?? 0);
+    }
     _productionStatus = { ..._productionStatus, [orderId]: updated };
     return updated;
   }
   return apiFetch<ProductionStatus>(`${ep().ordersPath}/${orderId}/production-status`, {
     method: "PUT",
-    body: JSON.stringify({ status }),
+    body: JSON.stringify(payload),
   });
 }
 
