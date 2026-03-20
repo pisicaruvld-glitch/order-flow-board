@@ -410,20 +410,23 @@ interface OrderCardRowProps {
 }
 
 function OrderCardRow({ order, expanded, setExpanded, onSelect, onMove, movingOrder, area, allAreas, openIssueCount }: OrderCardRowProps) {
+  const cardKey = order.card_key ?? order.Order;
+  const isSplit = order.split_view === true;
   return (
-    <div key={order.Order} className="relative">
+    <div key={cardKey} className="relative">
       {(openIssueCount ?? 0) > 0 && <OrderIssueIndicator count={openIssueCount!} />}
       <OrderCard
         order={order}
         compact
-        selected={expanded?.Order === order.Order}
+        selected={expanded?.Order === order.Order && (expanded?.card_key ?? expanded?.Order) === cardKey}
         hasOpenIssue={(openIssueCount ?? 0) > 0}
         onClick={() => {
-          setExpanded(expanded?.Order === order.Order ? null : order);
+          const isExpanded = (expanded?.card_key ?? expanded?.Order) === cardKey;
+          setExpanded(isExpanded ? null : order);
           onSelect(order);
         }}
       />
-      {expanded?.Order === order.Order && (
+      {(expanded?.card_key ?? expanded?.Order) === cardKey && (
         <div className="bg-muted rounded-b-md px-3 py-2 border border-t-0 border-border text-xs animate-fade-in">
           {(order.discrepancy || order.source === 'manual') && (
             <div className="flex items-center gap-2 mb-1.5">
@@ -434,20 +437,25 @@ function OrderCardRow({ order, expanded, setExpanded, onSelect, onMove, movingOr
               )}
             </div>
           )}
-          <div className="flex items-center gap-2 flex-wrap mb-1.5">
-            <span className="text-muted-foreground">Move to:</span>
-            {onMove && allAreas.filter(a => a !== area).map(a => (
-              <button
-                key={a}
-                onClick={() => onMove(order.Order, a)}
-                disabled={movingOrder === order.Order}
-                className="flex items-center gap-1 text-[10px] bg-card border border-border rounded px-2 py-0.5 hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
-              >
-                <ArrowRight size={10} />
-                {a}
-              </button>
-            ))}
-          </div>
+          {!isSplit && (
+            <div className="flex items-center gap-2 flex-wrap mb-1.5">
+              <span className="text-muted-foreground">Move to:</span>
+              {onMove && allAreas.filter(a => a !== area).map(a => (
+                <button
+                  key={a}
+                  onClick={() => onMove(order.Order, a)}
+                  disabled={movingOrder === order.Order}
+                  className="flex items-center gap-1 text-[10px] bg-card border border-border rounded px-2 py-0.5 hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
+                >
+                  <ArrowRight size={10} />
+                  {a}
+                </button>
+              ))}
+            </div>
+          )}
+          {isSplit && (
+            <p className="text-[10px] text-muted-foreground mb-1.5">Split view card — move actions disabled.</p>
+          )}
           <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-muted-foreground">
             <span>Plant: <strong className="text-foreground">{order.Plant}</strong></span>
             <span>Qty: <strong className="text-foreground">{order.Order_quantity}</strong></span>
