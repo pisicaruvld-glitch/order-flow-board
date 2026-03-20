@@ -391,6 +391,13 @@ function TvOrderRow({ order, openIssueCount, severity }: { order: Order; openIss
           <SfgProgress order={order} />
         </>
       )}
+      {/* Split view badge + qty */}
+      {order.split_view && order.virtual_card_type === 'PROD' && (
+        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-success/15 text-success border border-success/30 shrink-0">PROD {order.display_qty != null ? order.display_qty : ''}</span>
+      )}
+      {order.split_view && order.virtual_card_type === 'LOG' && (
+        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-accent/15 text-accent-foreground border border-accent/30 shrink-0">LOG {order.display_qty != null ? order.display_qty : ''}</span>
+      )}
     </div>
   );
 }
