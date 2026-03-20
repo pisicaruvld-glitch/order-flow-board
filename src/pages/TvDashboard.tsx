@@ -293,7 +293,7 @@ function AreaColumn({ area, orders, topN, openIssueCounts, severityMap }: { area
           <p className="text-sm text-muted-foreground text-center py-8">No orders</p>
         )}
         {top.map(o => (
-          <TvOrderRow key={o.Order} order={o} openIssueCount={openIssueCounts?.[o.Order] ?? 0} severity={severityMap[o.Order]} />
+          <TvOrderRow key={o.card_key ?? o.Order} order={o} openIssueCount={openIssueCounts?.[o.Order] ?? 0} severity={severityMap[o.Order]} />
         ))}
         {orders.length > topN && (
           <p className="text-xs text-muted-foreground text-center py-2">

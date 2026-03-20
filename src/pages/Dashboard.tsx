@@ -494,7 +494,7 @@ function SubLane({ label, orders, expanded, setExpanded, onSelect, onMove, movin
         <div className="flex flex-col gap-1.5">
           {orders.map(order => (
             <OrderCardRow
-              key={order.Order}
+              key={order.card_key ?? order.Order}
               order={order}
               expanded={expanded}
               setExpanded={setExpanded}
