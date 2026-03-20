@@ -376,7 +376,7 @@ function AreaColumn({
         ) : (
           orders.map(order => (
             <OrderCardRow
-              key={order.Order}
+              key={order.card_key ?? order.Order}
               order={order}
               expanded={expanded}
               setExpanded={setExpanded}
