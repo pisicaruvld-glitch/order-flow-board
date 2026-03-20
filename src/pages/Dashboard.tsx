@@ -120,7 +120,12 @@ export default function Dashboard({ config }: DashboardProps) {
 
   const handleMove = async (orderId: string, area: Area) => {
     if (config.mode !== 'DEMO') return;
-    const order = orders.find(o => o.Order === orderId);
+    const order = orders.find(o => (o.card_key ?? o.Order) === orderId || o.Order === orderId);
+    // Block move for virtual split cards
+    if (order?.split_view) {
+      toast.error('Split view cards cannot be moved. Use the physical order actions.');
+      return;
+    }
     // Warehouse→Production with open issues: override dialog
     if (order?.current_area === 'Warehouse' && area === 'Production' && (openIssueCounts[orderId] ?? 0) > 0) {
       setOverrideDialog({ orderId, fromArea: 'Warehouse', targetArea: 'Production' });
