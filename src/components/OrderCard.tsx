@@ -120,6 +120,12 @@ export function OrderCard({ order, compact = false, onClick, selected, tv, hasOp
             <span className="font-mono text-xs font-semibold text-foreground truncate">{String(order?.Order ?? '')}</span>
           </div>
           <div className="flex items-center gap-1 shrink-0 flex-wrap">
+            {order.split_view && order.virtual_card_type === 'PROD' && (
+              <span className="inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded bg-area-production/15 text-success border border-success/30 leading-none">PROD</span>
+            )}
+            {order.split_view && order.virtual_card_type === 'LOG' && (
+              <span className="inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded bg-area-logistics/15 text-accent-foreground border border-accent/30 leading-none">LOG</span>
+            )}
             {showSfgStyle && <SfgBadge />}
             {order.has_open_complaint && (
               <ComplaintBadge
@@ -131,6 +137,12 @@ export function OrderCard({ order, compact = false, onClick, selected, tv, hasOp
             <StatusBadge status={order.System_Status} size="sm" />
           </div>
         </div>
+        {/* Split card display qty */}
+        {order.split_view && order.display_qty != null && (
+          <div className="mt-0.5 text-[10px] font-semibold text-foreground">
+            {order.virtual_card_type === 'PROD' ? 'Remaining' : 'In Logistics'}: <span className="font-mono">{order.display_qty.toLocaleString()}</span>
+          </div>
+        )}
 
         {compact && (
           <div className="mt-1 min-w-0">

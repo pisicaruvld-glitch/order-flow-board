@@ -49,6 +49,14 @@ export interface Order {
   prepared_by_user_id?: string;
   prepared_at?: string;
   prepared_comment?: string;
+  // Virtual split card fields
+  card_key?: string;
+  virtual_card_type?: "BASE" | "PROD" | "LOG";
+  virtual_parent_order?: string;
+  split_view?: boolean;
+  display_qty?: number;
+  remaining_in_production_qty?: number;
+  qty_in_logistics?: number;
 }
 
 export interface Shipment {
