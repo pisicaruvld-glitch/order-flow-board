@@ -167,7 +167,10 @@ export default function ProductionPage({ config }: ProductionPageProps) {
       });
       setStatuses(prev => ({ ...prev, [orderId]: updated }));
       setFgCompleteDialog(null);
-      toast.success('Production completed — shipment created automatically');
+      const isFullyCompleted = updated.status === 'COMPLETED';
+      toast.success(isFullyCompleted
+        ? 'Production completed — order fully closed'
+        : 'Partial qty reported — shipment created, order stays in progress');
       await load();
     } catch (e: unknown) {
       throw e; // re-throw so dialog can display error
