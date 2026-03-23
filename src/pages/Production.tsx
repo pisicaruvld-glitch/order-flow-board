@@ -59,6 +59,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
   const [handoverDialog, setHandoverDialog] = useState<HandoverDialogState>(null);
   const [complaintDialog, setComplaintDialog] = useState<ComplaintDialogState>(null);
   const [sfgCompleteDialog, setSfgCompleteDialog] = useState<SfgCompleteDialogState>(null);
+  const [fgCompleteDialog, setFgCompleteDialog] = useState<FgCompleteDialogState>(null);
   const { data: openIssueCounts } = useQuery({
     queryKey: ['openIssueCounts'],
     queryFn: getAllOpenIssueCounts,
