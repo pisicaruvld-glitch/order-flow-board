@@ -212,7 +212,7 @@ export default function WarehousePage({ config }: WarehousePageProps) {
           {error && <ErrorMessage message={error} onRetry={load} />}
           {!loading && !error && orders.map(order => (
             <div
-              key={order.Order}
+              key={order.card_key ?? order.Order}
               className={cn(
                 'w-full text-left px-4 py-3 border-b border-border hover:bg-muted/60 transition-colors',
                 selectedOrder?.Order === order.Order && 'bg-primary-subtle border-l-2 border-l-primary',

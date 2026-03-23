@@ -298,7 +298,7 @@ export default function OrdersPage({ config }: OrdersPageProps) {
                     <tbody>
                       {filtered.map((o, i) => (
                         <tr
-                          key={o.Order}
+                          key={o.card_key ?? o.Order}
                           onClick={() => setSelectedOrderId(selectedOrderId === o.Order ? null : o.Order)}
                           className={cn(
                             'border-b border-border hover:bg-muted/40 transition-colors cursor-pointer',
