@@ -435,7 +435,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                         )}
                         {prodStatus?.status === 'IN_PROGRESS' && (
                           <button
-                            onClick={() => handleFgStatusChange(order.Order, 'COMPLETED')}
+                            onClick={() => setFgCompleteDialog({ order })}
                             disabled={isUpdating}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-success/10 text-success text-xs font-medium rounded hover:bg-success/20 transition-colors disabled:opacity-50"
                           >
