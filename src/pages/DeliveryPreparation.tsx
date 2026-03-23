@@ -250,7 +250,7 @@ export default function DeliveryPreparationPage() {
                 {logisticsOrders.map(o => {
                   const maxQty = o.available_in_logistics_qty ?? 0;
                   return (
-                    <div key={o.Order} className="flex items-center gap-2 text-xs">
+                    <div key={o.card_key ?? o.Order} className="flex items-center gap-2 text-xs">
                       <input
                         type="checkbox"
                         checked={!!selectedOrders[o.Order]}
