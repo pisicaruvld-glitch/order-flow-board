@@ -161,9 +161,8 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                 const isOpen = issue.status === 'OPEN';
                 const isExpanded = expandedIssueId === issue.id;
                 return (
-                  <>
+                  <React.Fragment key={issue.id}>
                     <TableRow
-                      key={issue.id}
                       className={cn(
                         'transition-colors',
                         severity === 'ERROR' && 'bg-destructive/5',
