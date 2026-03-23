@@ -23,10 +23,11 @@ interface ProductionPageProps {
 }
 
 type ProdStatus = ProductionStatus['status'];
-type MoveDialogState = { orderId: string; isNextStep: boolean; blockedReason?: string } | null;
+type MoveDialogState = { orderId: string; cardKey: string; isNextStep: boolean; blockedReason?: string } | null;
 type HandoverDialogState = { orderId: string; orderQty?: number; remainingQty?: number } | null;
 type ComplaintDialogState = { orderId: string } | null;
 type SfgCompleteDialogState = { order: Order } | null;
+type FgCompleteDialogState = { order: Order } | null;
 
 const statusConfig: Record<ProdStatus, { label: string; color: string; icon: React.ReactNode }> = {
   PENDING: {
@@ -58,6 +59,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
   const [handoverDialog, setHandoverDialog] = useState<HandoverDialogState>(null);
   const [complaintDialog, setComplaintDialog] = useState<ComplaintDialogState>(null);
   const [sfgCompleteDialog, setSfgCompleteDialog] = useState<SfgCompleteDialogState>(null);
+  const [fgCompleteDialog, setFgCompleteDialog] = useState<FgCompleteDialogState>(null);
   const { data: openIssueCounts } = useQuery({
     queryKey: ['openIssueCounts'],
     queryFn: getAllOpenIssueCounts,
@@ -139,7 +141,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
     }
   };
 
-  // ── FG: Status change (simple)
+  // ── FG: Status change (simple — only for In Progress)
   const handleFgStatusChange = async (orderId: string, newStatus: ProdStatus) => {
     setUpdating(orderId);
     try {
@@ -149,6 +151,26 @@ export default function ProductionPage({ config }: ProductionPageProps) {
       toast.error(e instanceof Error ? e.message : 'Failed to update status');
     } finally {
       setUpdating(null);
+    }
+  };
+
+  // ── FG: Complete with qty (backend auto-creates P2L shipment)
+  const handleFgCompleteConfirm = async (data: { gross_finished_qty: number; scrap_qty: number; updated_by: string }) => {
+    if (!fgCompleteDialog) return;
+    const orderId = fgCompleteDialog.order.Order;
+    try {
+      const updated = await updateProductionStatus(orderId, {
+        status: 'COMPLETED',
+        gross_finished_qty: data.gross_finished_qty,
+        scrap_qty: data.scrap_qty,
+        updated_by: data.updated_by,
+      });
+      setStatuses(prev => ({ ...prev, [orderId]: updated }));
+      setFgCompleteDialog(null);
+      toast.success('Production completed — shipment created automatically');
+      await load();
+    } catch (e: unknown) {
+      throw e; // re-throw so dialog can display error
     }
   };
 
@@ -169,7 +191,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
   };
 
   const openMoveBack = (order: Order) => {
-    setMoveDialog({ orderId: order.Order, isNextStep: false });
+    setMoveDialog({ orderId: order.Order, cardKey: order.card_key ?? order.Order, isNextStep: false });
   };
 
   const handleMoveConfirm = async (justification?: string) => {
@@ -180,7 +202,9 @@ export default function ProductionPage({ config }: ProductionPageProps) {
       target_area: target,
       justification,
     });
-    setOrders(prev => prev.filter(o => o.Order !== moveDialog.orderId));
+    // Remove by card_key to avoid removing sibling split cards
+    const cardKey = moveDialog.cardKey;
+    setOrders(prev => prev.filter(o => (o.card_key ?? o.Order) !== cardKey));
     setMoveDialog(null);
   };
 
@@ -253,17 +277,18 @@ export default function ProductionPage({ config }: ProductionPageProps) {
           )}
           <div className="space-y-2">
             {filteredOrders.map(order => {
+              const cardKey = order.card_key ?? order.Order;
               const prodStatus = statuses[order.Order];
               const isUpdating = updating === order.Order;
               const cfg = prodStatus ? statusConfig[prodStatus.status] : statusConfig.PENDING;
-              const issueCount = openIssueCounts?.[order.Order] ?? 0;
+              const issueCount = openIssueCounts?.[String(order.Order)] ?? 0;
               const hasOpenIssue = issueCount > 0;
               const sfg = isSFG(order);
               const reportFinishedReady = prodStatus?.report_finished_ready === true;
 
               return (
                 <div
-                  key={order.Order}
+                  key={cardKey}
                   className={cn(
                     'bg-card border rounded-lg p-4 flex items-center gap-4 hover:border-border/80 transition-colors relative',
                     sfg ? 'border-info border-2' : 'border-border',
@@ -410,7 +435,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
                         )}
                         {prodStatus?.status === 'IN_PROGRESS' && (
                           <button
-                            onClick={() => handleFgStatusChange(order.Order, 'COMPLETED')}
+                            onClick={() => setFgCompleteDialog({ order })}
                             disabled={isUpdating}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-success/10 text-success text-xs font-medium rounded hover:bg-success/20 transition-colors disabled:opacity-50"
                           >
@@ -497,6 +522,16 @@ export default function ProductionPage({ config }: ProductionPageProps) {
           orderQty={sfgCompleteDialog.order.Order_quantity}
           onConfirm={handleSfgCompleteConfirm}
           onCancel={() => setSfgCompleteDialog(null)}
+        />
+      )}
+
+      {/* FG Complete Dialog (qty confirmation — backend auto-creates P2L shipment) */}
+      {fgCompleteDialog && (
+        <SfgCompleteDialog
+          orderId={fgCompleteDialog.order.Order}
+          orderQty={fgCompleteDialog.order.Order_quantity}
+          onConfirm={handleFgCompleteConfirm}
+          onCancel={() => setFgCompleteDialog(null)}
         />
       )}
     </PageContainer>

@@ -210,7 +210,7 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
                   const issueCount = openIssueCounts?.[String(order.Order)] ?? 0;
                   const hasOpenIssue = issueCount > 0;
                   return (
-                  <div key={order.Order} className={cn(
+                  <div key={order.card_key ?? order.Order} className={cn(
                     'bg-card border border-border rounded-lg p-3 relative',
                     hasOpenIssue && 'order-card-issue'
                   )}>
