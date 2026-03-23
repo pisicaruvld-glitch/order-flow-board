@@ -141,7 +141,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
     }
   };
 
-  // ── FG: Status change (simple)
+  // ── FG: Status change (simple — only for In Progress)
   const handleFgStatusChange = async (orderId: string, newStatus: ProdStatus) => {
     setUpdating(orderId);
     try {
@@ -151,6 +151,26 @@ export default function ProductionPage({ config }: ProductionPageProps) {
       toast.error(e instanceof Error ? e.message : 'Failed to update status');
     } finally {
       setUpdating(null);
+    }
+  };
+
+  // ── FG: Complete with qty (backend auto-creates P2L shipment)
+  const handleFgCompleteConfirm = async (data: { gross_finished_qty: number; scrap_qty: number; updated_by: string }) => {
+    if (!fgCompleteDialog) return;
+    const orderId = fgCompleteDialog.order.Order;
+    try {
+      const updated = await updateProductionStatus(orderId, {
+        status: 'COMPLETED',
+        gross_finished_qty: data.gross_finished_qty,
+        scrap_qty: data.scrap_qty,
+        updated_by: data.updated_by,
+      });
+      setStatuses(prev => ({ ...prev, [orderId]: updated }));
+      setFgCompleteDialog(null);
+      toast.success('Production completed — shipment created automatically');
+      await load();
+    } catch (e: unknown) {
+      throw e; // re-throw so dialog can display error
     }
   };
 
