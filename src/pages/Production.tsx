@@ -277,17 +277,18 @@ export default function ProductionPage({ config }: ProductionPageProps) {
           )}
           <div className="space-y-2">
             {filteredOrders.map(order => {
+              const cardKey = order.card_key ?? order.Order;
               const prodStatus = statuses[order.Order];
               const isUpdating = updating === order.Order;
               const cfg = prodStatus ? statusConfig[prodStatus.status] : statusConfig.PENDING;
-              const issueCount = openIssueCounts?.[order.Order] ?? 0;
+              const issueCount = openIssueCounts?.[String(order.Order)] ?? 0;
               const hasOpenIssue = issueCount > 0;
               const sfg = isSFG(order);
               const reportFinishedReady = prodStatus?.report_finished_ready === true;
 
               return (
                 <div
-                  key={order.Order}
+                  key={cardKey}
                   className={cn(
                     'bg-card border rounded-lg p-4 flex items-center gap-4 hover:border-border/80 transition-colors relative',
                     sfg ? 'border-info border-2' : 'border-border',
