@@ -524,6 +524,16 @@ export default function ProductionPage({ config }: ProductionPageProps) {
           onCancel={() => setSfgCompleteDialog(null)}
         />
       )}
+
+      {/* FG Complete Dialog (qty confirmation — backend auto-creates P2L shipment) */}
+      {fgCompleteDialog && (
+        <SfgCompleteDialog
+          orderId={fgCompleteDialog.order.Order}
+          orderQty={fgCompleteDialog.order.Order_quantity}
+          onConfirm={handleFgCompleteConfirm}
+          onCancel={() => setFgCompleteDialog(null)}
+        />
+      )}
     </PageContainer>
   );
 }
