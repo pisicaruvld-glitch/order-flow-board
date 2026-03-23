@@ -239,7 +239,7 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </React.Fragment>
                 );
               })}
             </TableBody>
