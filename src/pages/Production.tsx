@@ -23,10 +23,11 @@ interface ProductionPageProps {
 }
 
 type ProdStatus = ProductionStatus['status'];
-type MoveDialogState = { orderId: string; isNextStep: boolean; blockedReason?: string } | null;
+type MoveDialogState = { orderId: string; cardKey: string; isNextStep: boolean; blockedReason?: string } | null;
 type HandoverDialogState = { orderId: string; orderQty?: number; remainingQty?: number } | null;
 type ComplaintDialogState = { orderId: string } | null;
 type SfgCompleteDialogState = { order: Order } | null;
+type FgCompleteDialogState = { order: Order } | null;
 
 const statusConfig: Record<ProdStatus, { label: string; color: string; icon: React.ReactNode }> = {
   PENDING: {
