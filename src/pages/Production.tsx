@@ -191,7 +191,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
   };
 
   const openMoveBack = (order: Order) => {
-    setMoveDialog({ orderId: order.Order, isNextStep: false });
+    setMoveDialog({ orderId: order.Order, cardKey: order.card_key ?? order.Order, isNextStep: false });
   };
 
   const handleMoveConfirm = async (justification?: string) => {
@@ -202,7 +202,9 @@ export default function ProductionPage({ config }: ProductionPageProps) {
       target_area: target,
       justification,
     });
-    setOrders(prev => prev.filter(o => o.Order !== moveDialog.orderId));
+    // Remove by card_key to avoid removing sibling split cards
+    const cardKey = moveDialog.cardKey;
+    setOrders(prev => prev.filter(o => (o.card_key ?? o.Order) !== cardKey));
     setMoveDialog(null);
   };
 
