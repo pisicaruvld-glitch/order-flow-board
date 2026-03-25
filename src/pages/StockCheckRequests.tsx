@@ -117,6 +117,8 @@ export default function StockCheckRequestsPage() {
                 <TableHead className="w-20">Plant</TableHead>
                 <TableHead className="w-20 hidden md:table-cell">SLoc</TableHead>
                 <TableHead>Requested By</TableHead>
+                <TableHead className="hidden md:table-cell">Entered By</TableHead>
+                <TableHead className="hidden lg:table-cell">Updated By</TableHead>
                 <TableHead className="w-28">Status</TableHead>
                 <TableHead className="w-20 text-center">SAP Adj</TableHead>
                 <TableHead className="w-20 text-right">Diff HBL</TableHead>
@@ -138,6 +140,8 @@ export default function StockCheckRequestsPage() {
                   <TableCell className="text-xs">{r.plant || "—"}</TableCell>
                   <TableCell className="text-xs hidden md:table-cell">{r.sloc || "—"}</TableCell>
                   <TableCell className="text-xs">{r.requested_by}</TableCell>
+                  <TableCell className="text-xs hidden md:table-cell font-medium">{r.entered_by || "—"}</TableCell>
+                  <TableCell className="text-xs hidden lg:table-cell font-medium">{r.updated_by || "—"}</TableCell>
                   <TableCell>
                     <Badge className={`text-[10px] ${statusColor(r.status)}`}>{r.status.replace(/_/g, " ")}</Badge>
                   </TableCell>

@@ -49,6 +49,7 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
   const [qtyOpenOrders, setQtyOpenOrders] = useState(0);
   const [comment, setComment] = useState("");
   const [rootCause, setRootCause] = useState("");
+  const [updatedBy, setUpdatedBy] = useState("");
 
   // SAP adjustment
   const [sapAdjDoc, setSapAdjDoc] = useState("");
@@ -76,6 +77,7 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
       setQtyOpenOrders(r.qty_open_orders);
       setComment(r.comment ?? "");
       setRootCause(r.root_cause ?? "");
+      setUpdatedBy(r.updated_by ?? "");
       setSapAdjDoc(r.sap_adjustment_doc ?? "");
       setClosureComment(r.closure_comment ?? "");
     } catch (e: any) {
@@ -92,6 +94,10 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
 
   const handleSave = async () => {
     if (!requestId) return;
+    if (!updatedBy.trim()) {
+      toast({ title: "Updated By is required", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
       await updateInventoryRequest(requestId, {
@@ -102,6 +108,7 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
         qty_open_orders: qtyOpenOrders,
         comment,
         root_cause: rootCause,
+        updated_by: updatedBy,
       });
       toast({ title: "Values saved" });
       await loadData();
@@ -191,6 +198,8 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
                     <InfoRow label="SLoc" value={req.sloc} />
                     <InfoRow label="Requested By" value={req.requested_by} />
                     <InfoRow label="Requested At" value={req.requested_at?.replace("T", " ").slice(0, 19)} />
+                    <InfoRow label="Entered By" value={req.entered_by} highlight />
+                    <InfoRow label="Updated By" value={req.updated_by} highlight />
                     <InfoRow label="Priority" value={req.priority} />
                     <InfoRow label="Reason" value={req.request_reason} />
                   </div>
@@ -217,9 +226,15 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
                     <Textarea value={rootCause} onChange={(e) => setRootCause(e.target.value)} rows={2} disabled={isClosed} />
                   </div>
                   {!isClosed && (
-                    <Button onClick={handleSave} disabled={saving} size="sm">
-                      {saving ? "Saving…" : "Save Values"}
-                    </Button>
+                    <div className="space-y-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold">Updated By *</Label>
+                        <Input value={updatedBy} onChange={(e) => setUpdatedBy(e.target.value)} placeholder="Your name" className="h-8 text-sm" />
+                      </div>
+                      <Button onClick={handleSave} disabled={saving} size="sm">
+                        {saving ? "Saving…" : "Save Values"}
+                      </Button>
+                    </div>
                   )}
                 </section>
 
@@ -303,11 +318,11 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
   );
 }
 
-function InfoRow({ label, value }: { label: string; value?: string | null }) {
+function InfoRow({ label, value, highlight }: { label: string; value?: string | null; highlight?: boolean }) {
   return (
     <div>
       <span className="text-muted-foreground">{label}: </span>
-      <span className="font-medium text-foreground">{value || "—"}</span>
+      <span className={`font-medium ${highlight && value ? "text-primary" : "text-foreground"}`}>{value || "—"}</span>
     </div>
   );
 }

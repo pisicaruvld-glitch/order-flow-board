@@ -37,6 +37,8 @@ export interface InventoryRequest {
   requested_at: string;
   status: string;
   priority: string;
+  entered_by?: string;
+  updated_by?: string;
   sap_hbl: number;
   sap_production: number;
   physical_hbl: number;
@@ -77,6 +79,7 @@ export interface CreateInventoryRequestPayload {
   sloc?: string;
   request_reason?: string;
   requested_by: string;
+  entered_by: string;
   priority?: string;
   comment?: string;
 }
@@ -90,6 +93,7 @@ export interface UpdateInventoryRequestPayload {
   comment?: string;
   root_cause?: string;
   counted_by?: string;
+  updated_by?: string;
 }
 
 // API functions
