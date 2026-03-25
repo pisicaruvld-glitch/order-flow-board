@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   Tv,
   History,
+  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -36,6 +37,7 @@ const navItems = [
   { path: '/warehouse-issues', label: 'WH Issues', icon: AlertTriangle },
   { path: '/warehouse-complaints', label: 'Complaints', icon: AlertTriangle },
   { path: '/history', label: 'History', icon: History },
+  { path: '/stock-checks', label: 'Stock Checks', icon: ClipboardList },
 ];
 
 export function Layout({ children, config }: LayoutProps) {
