@@ -131,6 +131,52 @@ export function Layout({ children, config }: LayoutProps) {
   );
 }
 
+function OtherDropdown() {
+  const location = useLocation();
+  const isOtherActive = otherNavItems.some(({ path }) =>
+    location.pathname.startsWith(path)
+  );
+  const activeItem = otherNavItems.find(({ path }) =>
+    location.pathname.startsWith(path)
+  );
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className={cn(
+          'flex items-center gap-1.5 px-3 py-2 rounded text-sm font-medium transition-colors outline-none',
+          isOtherActive
+            ? 'bg-primary text-primary-foreground'
+            : 'text-nav-fg hover:bg-nav-hover hover:text-[hsl(210_50%_98%)]'
+        )}
+      >
+        <MoreHorizontal size={15} />
+        {activeItem ? activeItem.label : 'Other'}
+        <ChevronDown size={12} />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-[180px]">
+        {otherNavItems.map(({ path, label, icon: Icon }) => {
+          const active = location.pathname.startsWith(path);
+          return (
+            <DropdownMenuItem key={path} asChild>
+              <Link
+                to={path}
+                className={cn(
+                  'flex items-center gap-2 w-full cursor-pointer',
+                  active && 'bg-accent font-semibold'
+                )}
+              >
+                <Icon size={14} />
+                {label}
+              </Link>
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function ModeBanner({ config }: { config: AppConfig }) {
   const isDemo = config.mode === 'DEMO';
   return (
