@@ -12,26 +12,37 @@ import {
   Radio,
   Server,
   ChevronRight,
+  ChevronDown,
   RefreshCw,
   AlertOctagon,
   AlertTriangle,
   Tv,
   History,
   ClipboardList,
+  MoreHorizontal,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface LayoutProps {
   children: ReactNode;
   config: AppConfig;
 }
 
-const navItems = [
+const mainNavItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/orders', label: 'Orders', icon: ShoppingCart },
   { path: '/warehouse', label: 'Warehouse', icon: Warehouse },
   { path: '/production', label: 'Production', icon: Factory },
   { path: '/logistics', label: 'Logistics', icon: Truck },
+];
+
+const otherNavItems = [
   { path: '/logistics/transports', label: 'Transports', icon: PackageCheck },
   { path: '/errors', label: 'Errors', icon: AlertOctagon },
   { path: '/warehouse-issues', label: 'WH Issues', icon: AlertTriangle },
@@ -62,7 +73,7 @@ export function Layout({ children, config }: LayoutProps) {
 
           {/* Nav links */}
           <nav className="flex items-center gap-1 flex-1">
-            {navItems.map(({ path, label, icon: Icon }) => {
+            {mainNavItems.map(({ path, label, icon: Icon }) => {
               const active = path === '/'
                 ? location.pathname === '/'
                 : location.pathname.startsWith(path);
@@ -82,6 +93,7 @@ export function Layout({ children, config }: LayoutProps) {
                 </Link>
               );
             })}
+            <OtherDropdown />
             <div className="flex items-center gap-1 ml-auto">
               <a
                 href="/tv"
@@ -116,6 +128,52 @@ export function Layout({ children, config }: LayoutProps) {
         {children}
       </main>
     </div>
+  );
+}
+
+function OtherDropdown() {
+  const location = useLocation();
+  const isOtherActive = otherNavItems.some(({ path }) =>
+    location.pathname.startsWith(path)
+  );
+  const activeItem = otherNavItems.find(({ path }) =>
+    location.pathname.startsWith(path)
+  );
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className={cn(
+          'flex items-center gap-1.5 px-3 py-2 rounded text-sm font-medium transition-colors outline-none',
+          isOtherActive
+            ? 'bg-primary text-primary-foreground'
+            : 'text-nav-fg hover:bg-nav-hover hover:text-[hsl(210_50%_98%)]'
+        )}
+      >
+        <MoreHorizontal size={15} />
+        {activeItem ? activeItem.label : 'Other'}
+        <ChevronDown size={12} />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-[180px]">
+        {otherNavItems.map(({ path, label, icon: Icon }) => {
+          const active = location.pathname.startsWith(path);
+          return (
+            <DropdownMenuItem key={path} asChild>
+              <Link
+                to={path}
+                className={cn(
+                  'flex items-center gap-2 w-full cursor-pointer',
+                  active && 'bg-accent font-semibold'
+                )}
+              >
+                <Icon size={14} />
+                {label}
+              </Link>
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
