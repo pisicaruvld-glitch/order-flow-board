@@ -73,7 +73,7 @@ export function Layout({ children, config }: LayoutProps) {
 
           {/* Nav links */}
           <nav className="flex items-center gap-1 flex-1">
-            {navItems.map(({ path, label, icon: Icon }) => {
+            {mainNavItems.map(({ path, label, icon: Icon }) => {
               const active = path === '/'
                 ? location.pathname === '/'
                 : location.pathname.startsWith(path);
@@ -93,6 +93,7 @@ export function Layout({ children, config }: LayoutProps) {
                 </Link>
               );
             })}
+            <OtherDropdown />
             <div className="flex items-center gap-1 ml-auto">
               <a
                 href="/tv"
