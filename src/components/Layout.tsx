@@ -12,26 +12,37 @@ import {
   Radio,
   Server,
   ChevronRight,
+  ChevronDown,
   RefreshCw,
   AlertOctagon,
   AlertTriangle,
   Tv,
   History,
   ClipboardList,
+  MoreHorizontal,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface LayoutProps {
   children: ReactNode;
   config: AppConfig;
 }
 
-const navItems = [
+const mainNavItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/orders', label: 'Orders', icon: ShoppingCart },
   { path: '/warehouse', label: 'Warehouse', icon: Warehouse },
   { path: '/production', label: 'Production', icon: Factory },
   { path: '/logistics', label: 'Logistics', icon: Truck },
+];
+
+const otherNavItems = [
   { path: '/logistics/transports', label: 'Transports', icon: PackageCheck },
   { path: '/errors', label: 'Errors', icon: AlertOctagon },
   { path: '/warehouse-issues', label: 'WH Issues', icon: AlertTriangle },
