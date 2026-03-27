@@ -61,7 +61,7 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleReceiveConfirm = async (data: { received_qty_delta: number; received_by: string }) => {
+  const handleReceiveConfirm = async (data: { received_qty_delta: number }) => {
     if (!receiveDialog) return;
     try {
       await receiveShipment(receiveDialog.shipment.id, data);
@@ -74,7 +74,7 @@ export default function LogisticsPage({ config }: LogisticsPageProps) {
     await load();
   };
 
-  const handleCustomerShipConfirm = async (data: { shipped_qty_delta: number; shipped_by: string; shipped_doc?: string }) => {
+  const handleCustomerShipConfirm = async (data: { shipped_qty_delta: number; shipped_doc?: string }) => {
     if (!customerShipDialog) return;
     try {
       await createCustomerShipment(customerShipDialog.orderId, data);

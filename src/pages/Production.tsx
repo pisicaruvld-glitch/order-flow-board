@@ -107,7 +107,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
   };
 
   // ── SFG: Complete (opens qty dialog)
-  const handleSfgCompleteConfirm = async (data: { gross_finished_qty: number; scrap_qty: number; updated_by: string }) => {
+  const handleSfgCompleteConfirm = async (data: { gross_finished_qty: number; scrap_qty: number }) => {
     if (!sfgCompleteDialog) return;
     const orderId = sfgCompleteDialog.order.Order;
     try {
@@ -115,7 +115,6 @@ export default function ProductionPage({ config }: ProductionPageProps) {
         status: 'COMPLETED',
         gross_finished_qty: data.gross_finished_qty,
         scrap_qty: data.scrap_qty,
-        updated_by: data.updated_by,
       });
       setStatuses(prev => ({ ...prev, [orderId]: updated }));
       setSfgCompleteDialog(null);
@@ -155,7 +154,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
   };
 
   // ── FG: Complete with qty (backend auto-creates P2L shipment)
-  const handleFgCompleteConfirm = async (data: { gross_finished_qty: number; scrap_qty: number; updated_by: string }) => {
+  const handleFgCompleteConfirm = async (data: { gross_finished_qty: number; scrap_qty: number }) => {
     if (!fgCompleteDialog) return;
     const orderId = fgCompleteDialog.order.Order;
     try {
@@ -163,7 +162,6 @@ export default function ProductionPage({ config }: ProductionPageProps) {
         status: 'COMPLETED',
         gross_finished_qty: data.gross_finished_qty,
         scrap_qty: data.scrap_qty,
-        updated_by: data.updated_by,
       });
       setStatuses(prev => ({ ...prev, [orderId]: updated }));
       setFgCompleteDialog(null);
