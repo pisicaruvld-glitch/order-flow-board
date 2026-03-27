@@ -77,7 +77,7 @@ export default function DeliveryPreparationPage() {
       setShowCreate(false);
       setNewPalletNo('');
       setNewWeightKg(0);
-      setNewCreatedBy('');
+      
       setSelectedOrders({});
       await load();
     } catch (e: unknown) {
@@ -164,7 +164,6 @@ export default function DeliveryPreparationPage() {
       });
       toast.success('Pallet shipped');
       setShippingPallet(null);
-      setShipBy('');
       setShipDoc('');
       await load();
     } catch (e: unknown) {
