@@ -110,6 +110,7 @@ export function Layout({ children, config }: LayoutProps) {
                 </Link>
               );
             })}
+            <InboxNavItems />
             <OtherDropdown />
             <div className="flex items-center gap-1 ml-auto">
               <a
