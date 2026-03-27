@@ -257,7 +257,6 @@ function FeedbackPanel({ issueId }: { issueId: string }) {
   const [history, setHistory] = useState<IssueHistoryEntry[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [feedback, setFeedback] = useState('');
-  const [name, setName] = useState('Purchasing');
   const [submitting, setSubmitting] = useState(false);
 
   const loadHistory = useCallback(async () => {
@@ -329,16 +328,8 @@ function FeedbackPanel({ issueId }: { issueId: string }) {
       {/* Feedback form */}
       <div className="border-t border-border pt-3">
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Add Feedback</h4>
-        <div className="flex flex-col gap-2">
-          <div className="flex gap-2">
-            <Input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Your name"
-              className="h-8 text-xs w-40"
-            />
-          </div>
-          <div className="flex gap-2">
+        <div className="flex gap-2">
+          <div className="flex gap-2 flex-1">
             <Textarea
               value={feedback}
               onChange={e => setFeedback(e.target.value)}
