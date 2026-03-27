@@ -501,7 +501,6 @@ export default function TransportsPage() {
             <p className="text-[11px] text-muted-foreground">
               This will ship <strong>{totalPallets}</strong> pallets with <strong>{totalQty}</strong> total qty. All pallets will be marked as SHIPPED.
             </p>
-            <Field label="Shipped by" value={shipBy} onChange={setShipBy} placeholder="Name" />
             <Field label="Shipping Doc (optional)" value={shipDoc} onChange={setShipDoc} placeholder="e.g. AWB-12345" />
             <div className="flex items-center gap-2 pt-1">
               <button onClick={handleShip} disabled={shipping} className="px-3 py-1.5 text-xs font-medium rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors">
