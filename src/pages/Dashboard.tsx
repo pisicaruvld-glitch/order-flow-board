@@ -178,7 +178,7 @@ export default function Dashboard({ config }: DashboardProps) {
     await load();
   };
 
-  const handleReceiveConfirm = async (_data: { received_qty_delta: number; received_by: string }) => {
+  const handleReceiveConfirm = async (_data: { received_qty_delta: number }) => {
     // Dashboard doesn't handle shipment-level receive; use Logistics page
     setReceiveDialog(null);
     await load();
