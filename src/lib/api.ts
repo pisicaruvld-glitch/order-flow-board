@@ -903,7 +903,6 @@ export async function getProductionStatus(orderId: string): Promise<ProductionSt
 
 export interface UpdateProductionStatusPayload {
   status: ProductionStatus["status"];
-  updated_by?: string;
   gross_finished_qty?: number;
   scrap_qty?: number;
 }
@@ -916,7 +915,7 @@ export async function updateProductionStatus(
     order_id: orderId,
     status: payload.status,
     updated_at: new Date().toISOString(),
-    updated_by: payload.updated_by ?? "current_user",
+    updated_by: "current_user",
   };
   if (isDemo()) {
     if (payload.status === 'COMPLETED' && payload.gross_finished_qty != null) {
