@@ -201,7 +201,7 @@ function ComplaintDetailDialog({ complaint, onClose, onStatusChange }: {
   const [history, setHistory] = useState<ComplaintHistoryEntry[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [statusComment, setStatusComment] = useState('');
-  const [changedBy, setChangedBy] = useState('');
+  const [_changedBy] = useState(''); // kept for reference; actor now from token
   const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
@@ -218,7 +218,6 @@ function ComplaintDetailDialog({ complaint, onClose, onStatusChange }: {
       await patchComplaint(complaint.complaint_id, {
         status: newStatus,
         comment: statusComment.trim() || undefined,
-        changed_by: changedBy.trim() || undefined,
       });
       onStatusChange(newStatus);
       toast.success(`Status updated to ${newStatus}`);
@@ -255,7 +254,6 @@ function ComplaintDetailDialog({ complaint, onClose, onStatusChange }: {
           {complaint.status !== 'CLOSED' && (
             <div className="border-t border-border pt-3 space-y-2">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase">Change Status</h4>
-              <Input value={changedBy} onChange={e => setChangedBy(e.target.value)} placeholder="Changed by" className="h-8 text-xs" />
               <Textarea value={statusComment} onChange={e => setStatusComment(e.target.value)} placeholder="Comment…" className="text-xs min-h-[50px]" />
               <div className="flex gap-2">
                 {complaint.status === 'OPEN' && (

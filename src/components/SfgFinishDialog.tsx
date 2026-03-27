@@ -10,14 +10,13 @@ interface SfgFinishDialogProps {
   orderQty: number;
   currentFinished: number;
   currentScrap: number;
-  onConfirm: (data: { finished_qty_delta: number; scrap_qty_delta: number; reported_by: string; auto_complete: boolean }) => Promise<void>;
+  onConfirm: (data: { finished_qty_delta: number; scrap_qty_delta: number; auto_complete: boolean }) => Promise<void>;
   onCancel: () => void;
 }
 
 export function SfgFinishDialog({ orderId, orderQty, currentFinished, currentScrap, onConfirm, onCancel }: SfgFinishDialogProps) {
   const [finishedDelta, setFinishedDelta] = useState(0);
   const [scrapDelta, setScrapDelta] = useState(0);
-  const [reportedBy, setReportedBy] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -30,9 +29,8 @@ export function SfgFinishDialog({ orderId, orderQty, currentFinished, currentScr
   const finishedValid = finishedDelta >= 0;
   const scrapValid = scrapDelta >= 0 && newScrap <= newFinished;
   const finishedNotExceed = newFinished <= orderQty;
-  const reportedByValid = reportedBy.trim().length > 0;
   const hasDelta = finishedDelta > 0 || scrapDelta > 0;
-  const canSubmit = finishedValid && scrapValid && finishedNotExceed && reportedByValid && hasDelta && !submitting;
+  const canSubmit = finishedValid && scrapValid && finishedNotExceed && hasDelta && !submitting;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -41,7 +39,6 @@ export function SfgFinishDialog({ orderId, orderQty, currentFinished, currentScr
       await onConfirm({
         finished_qty_delta: finishedDelta,
         scrap_qty_delta: scrapDelta,
-        reported_by: reportedBy.trim(),
         auto_complete: willComplete,
       });
       if (willComplete) {
@@ -124,15 +121,6 @@ export function SfgFinishDialog({ orderId, orderQty, currentFinished, currentScr
             {!scrapValid && (
               <p className="text-[10px] text-destructive mt-0.5">Total scrap ({newScrap}) cannot exceed total finished ({newFinished})</p>
             )}
-          </div>
-          <div>
-            <Label htmlFor="sfg-reporter">Reported By *</Label>
-            <Input
-              id="sfg-reporter"
-              value={reportedBy}
-              onChange={e => setReportedBy(e.target.value)}
-              placeholder="Name"
-            />
           </div>
         </div>
 

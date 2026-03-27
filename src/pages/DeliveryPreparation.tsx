@@ -23,7 +23,6 @@ export default function DeliveryPreparationPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [newPalletNo, setNewPalletNo] = useState('');
   const [newWeightKg, setNewWeightKg] = useState<number>(0);
-  const [newCreatedBy, setNewCreatedBy] = useState('');
   const [selectedOrders, setSelectedOrders] = useState<Record<string, number>>({});
   const [creating, setCreating] = useState(false);
 
@@ -41,7 +40,6 @@ export default function DeliveryPreparationPage() {
 
   // Ship dialog
   const [shippingPallet, setShippingPallet] = useState<number | null>(null);
-  const [shipBy, setShipBy] = useState('');
   const [shipDoc, setShipDoc] = useState('');
 
   const load = useCallback(async () => {
@@ -73,14 +71,13 @@ export default function DeliveryPreparationPage() {
       await createPallet({
         pallet_no: newPalletNo.trim(),
         pallet_weight_kg: newWeightKg,
-        created_by: newCreatedBy.trim() || 'current_user',
         lines,
       });
       toast.success('Pallet created');
       setShowCreate(false);
       setNewPalletNo('');
       setNewWeightKg(0);
-      setNewCreatedBy('');
+      
       setSelectedOrders({});
       await load();
     } catch (e: unknown) {
@@ -163,12 +160,10 @@ export default function DeliveryPreparationPage() {
     if (!shippingPallet) return;
     try {
       await shipPallet(shippingPallet, {
-        shipped_by: shipBy.trim() || 'current_user',
         shipped_doc: shipDoc.trim() || undefined,
       });
       toast.success('Pallet shipped');
       setShippingPallet(null);
-      setShipBy('');
       setShipDoc('');
       await load();
     } catch (e: unknown) {
@@ -227,15 +222,6 @@ export default function DeliveryPreparationPage() {
                 value={newWeightKg}
                 onChange={e => setNewWeightKg(Number(e.target.value))}
                 className="w-full mt-0.5 px-2 py-1.5 text-xs bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-muted-foreground font-medium">Created by</label>
-              <input
-                value={newCreatedBy}
-                onChange={e => setNewCreatedBy(e.target.value)}
-                className="w-full mt-0.5 px-2 py-1.5 text-xs bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
-                placeholder="Name"
               />
             </div>
           </div>
@@ -307,10 +293,6 @@ export default function DeliveryPreparationPage() {
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShippingPallet(null)}>
           <div className="bg-card border border-border rounded-lg p-5 w-full max-w-sm space-y-3" onClick={e => e.stopPropagation()}>
             <h3 className="text-sm font-semibold text-foreground">Ship Pallet</h3>
-            <div>
-              <label className="text-[10px] text-muted-foreground font-medium">Shipped by</label>
-              <input value={shipBy} onChange={e => setShipBy(e.target.value)} className="w-full mt-0.5 px-2 py-1.5 text-xs bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Name" />
-            </div>
             <div>
               <label className="text-[10px] text-muted-foreground font-medium">Document / Tracking (optional)</label>
               <input value={shipDoc} onChange={e => setShipDoc(e.target.value)} className="w-full mt-0.5 px-2 py-1.5 text-xs bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary" placeholder="e.g. AWB-12345" />

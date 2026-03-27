@@ -1,19 +1,17 @@
 import { useState } from 'react';
 import { AlertTriangle, ArrowRight, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface ProductionHandoverDialogProps {
   orderId: string;
   orderQty?: number;
   remainingQty?: number;
-  onConfirm: (data: { delivered_qty_delta: number; scrap_qty_delta: number; reported_by: string }) => Promise<void>;
+  onConfirm: (data: { delivered_qty_delta: number; scrap_qty_delta: number }) => Promise<void>;
   onCancel: () => void;
 }
 
 export function ProductionHandoverDialog({ orderId, orderQty, remainingQty, onConfirm, onCancel }: ProductionHandoverDialogProps) {
   const [deliveredQty, setDeliveredQty] = useState<string>('');
   const [scrapQty, setScrapQty] = useState<string>('0');
-  const [reportedBy, setReportedBy] = useState('Purchasing');
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -28,7 +26,7 @@ export function ProductionHandoverDialog({ orderId, orderQty, remainingQty, onCo
     setSubmitting(true);
     setApiError(null);
     try {
-      await onConfirm({ delivered_qty_delta: delivered, scrap_qty_delta: scrap, reported_by: reportedBy.trim() || 'current_user' });
+      await onConfirm({ delivered_qty_delta: delivered, scrap_qty_delta: scrap });
     } catch (e: unknown) {
       setApiError(e instanceof Error ? e.message : 'Failed to save');
       setSubmitting(false);
@@ -103,18 +101,6 @@ export function ProductionHandoverDialog({ orderId, orderQty, remainingQty, onCo
                 <AlertTriangle size={10} /> Scrap exceeds delivered qty
               </p>
             )}
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-              Name <span className="text-muted-foreground font-normal">(optional)</span>
-            </label>
-            <input
-              value={reportedBy}
-              onChange={e => setReportedBy(e.target.value)}
-              placeholder="Your name"
-              className="w-full px-3 py-2 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-            />
           </div>
 
           {delivered > 0 && (

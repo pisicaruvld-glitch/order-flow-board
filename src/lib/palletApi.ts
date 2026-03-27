@@ -8,10 +8,19 @@ function apiBase() {
   return loadConfig().apiBaseUrl;
 }
 
+function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  try {
+    const token = localStorage.getItem('vsro_auth_token');
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+  } catch { /* ignore */ }
+  return headers;
+}
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${apiBase()}${path}`;
   const res = await fetch(url, {
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders(),
     ...options,
   });
   if (!res.ok) {
@@ -155,7 +164,6 @@ function normalizePalletDetail(raw: BackendPalletDetailResponse): Pallet {
 export interface CreatePalletPayload {
   pallet_no: string;
   pallet_weight_kg: number;
-  created_by: string;
   lines: { order_id: string; qty_on_pallet: number }[];
 }
 
@@ -174,7 +182,6 @@ export interface UpdatePalletLinePayload {
 }
 
 export interface ShipPalletPayload {
-  shipped_by: string;
   shipped_doc?: string;
 }
 

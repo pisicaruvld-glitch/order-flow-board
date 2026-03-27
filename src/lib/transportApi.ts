@@ -8,10 +8,19 @@ function apiBase() {
   return loadConfig().apiBaseUrl;
 }
 
+function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  try {
+    const token = localStorage.getItem('vsro_auth_token');
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+  } catch { /* ignore */ }
+  return headers;
+}
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${apiBase()}${path}`;
   const res = await fetch(url, {
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders(),
     ...options,
   });
   if (!res.ok) {
@@ -89,7 +98,6 @@ export interface CreateTransportPayload {
   destination?: string;
   status?: TransportStatus;
   planned_ship_at?: string;
-  created_by?: string;
   shipping_doc?: string;
 }
 
@@ -104,7 +112,6 @@ export interface UpdateTransportPayload {
 }
 
 export interface ShipTransportPayload {
-  shipped_by?: string;
   shipping_doc?: string;
 }
 

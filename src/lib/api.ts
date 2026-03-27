@@ -377,7 +377,6 @@ const path = resolvePath(ep().moveOrderPath, { order_id: req.order_id });
     body: JSON.stringify({
       target_area: req.target_area,
       justification: req.justification,
-      moved_by: req.moved_by,
     }),
   });
 }
@@ -422,7 +421,7 @@ export async function updateLogisticsStatus(
 // PRODUCTION FINISH (SFG only — final close, no qty)
 // ============================================================
 export interface ProductionFinishPayload {
-  reported_by: string;
+  // actor resolved from token by backend
 }
 
 export async function productionFinish(orderId: string, payload: ProductionFinishPayload): Promise<Order> {
@@ -437,7 +436,7 @@ export async function productionFinish(orderId: string, payload: ProductionFinis
   }
   return apiFetch<Order>(`/orders/${orderId}/production-finish`, {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify({}),
   });
 }
 
@@ -447,7 +446,6 @@ export async function productionFinish(orderId: string, payload: ProductionFinis
 export interface CreateShipmentPayload {
   delivered_qty_delta: number;
   scrap_qty_delta: number;
-  reported_by: string;
 }
 
 export interface CreateShipmentResult {
@@ -486,7 +484,6 @@ export async function getShipments(orderId: string): Promise<Shipment[]> {
 
 export interface ReceiveShipmentPayload {
   received_qty_delta: number;
-  received_by: string;
 }
 
 export async function receiveShipment(shipmentId: number, payload: ReceiveShipmentPayload): Promise<unknown> {
@@ -518,7 +515,6 @@ export async function getLogisticsOrdersWorklist(): Promise<Order[]> {
 // ============================================================
 export interface CreateCustomerShipmentPayload {
   shipped_qty_delta: number;
-  shipped_by: string;
   shipped_doc?: string;
 }
 
@@ -877,14 +873,14 @@ export async function getIssueHistory(issueId: string): Promise<IssueHistoryEntr
 
 export async function addIssueFeedback(
   issueId: string,
-  data: { feedback: string; changed_by: string },
+  data: { feedback: string },
 ): Promise<IssueHistoryEntry> {
   if (isDemo()) {
     const entry: IssueHistoryEntry = {
       id: `H-${Date.now()}`,
       issue_id: issueId,
       action: "FEEDBACK",
-      changed_by: data.changed_by,
+      changed_by: "current_user",
       changed_at: new Date().toISOString(),
       details: data.feedback,
     };
@@ -907,7 +903,6 @@ export async function getProductionStatus(orderId: string): Promise<ProductionSt
 
 export interface UpdateProductionStatusPayload {
   status: ProductionStatus["status"];
-  updated_by?: string;
   gross_finished_qty?: number;
   scrap_qty?: number;
 }
@@ -920,7 +915,7 @@ export async function updateProductionStatus(
     order_id: orderId,
     status: payload.status,
     updated_at: new Date().toISOString(),
-    updated_by: payload.updated_by ?? "current_user",
+    updated_by: "current_user",
   };
   if (isDemo()) {
     if (payload.status === 'COMPLETED' && payload.gross_finished_qty != null) {

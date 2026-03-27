@@ -6,13 +6,12 @@ interface LogisticsReceiveDialogProps {
   orderId: string;
   finishedQtyDelta?: number;
   currentReceivedQty?: number | null;
-  onConfirm: (data: { received_qty_delta: number; received_by: string }) => Promise<void>;
+  onConfirm: (data: { received_qty_delta: number }) => Promise<void>;
   onCancel: () => void;
 }
 
 export function LogisticsReceiveDialog({ shipmentId, orderId, finishedQtyDelta, currentReceivedQty, onConfirm, onCancel }: LogisticsReceiveDialogProps) {
   const [receivedQty, setReceivedQty] = useState<string>(currentReceivedQty != null ? String(currentReceivedQty) : '');
-  const [receivedBy, setReceivedBy] = useState('Purchasing');
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -25,7 +24,7 @@ export function LogisticsReceiveDialog({ shipmentId, orderId, finishedQtyDelta, 
     setSubmitting(true);
     setApiError(null);
     try {
-      await onConfirm({ received_qty_delta: received, received_by: receivedBy.trim() || 'current_user' });
+      await onConfirm({ received_qty_delta: received });
     } catch (e: unknown) {
       setApiError(e instanceof Error ? e.message : 'Failed to save');
       setSubmitting(false);
@@ -83,18 +82,6 @@ export function LogisticsReceiveDialog({ shipmentId, orderId, finishedQtyDelta, 
                 <AlertTriangle size={10} /> Received qty exceeds finished qty ({finishedQtyDelta})
               </p>
             )}
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-              Name <span className="text-muted-foreground font-normal">(optional)</span>
-            </label>
-            <input
-              value={receivedBy}
-              onChange={e => setReceivedBy(e.target.value)}
-              placeholder="Your name"
-              className="w-full px-3 py-2 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-            />
           </div>
         </div>
 
