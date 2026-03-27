@@ -217,7 +217,7 @@ function InboxNavItems() {
     </>
   );
 }
-
+function OtherDropdown() {
   const location = useLocation();
   const isOtherActive = otherNavItems.some(({ path }) =>
     location.pathname.startsWith(path)
