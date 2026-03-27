@@ -201,7 +201,7 @@ function ComplaintDetailDialog({ complaint, onClose, onStatusChange }: {
   const [history, setHistory] = useState<ComplaintHistoryEntry[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [statusComment, setStatusComment] = useState('');
-  const [changedBy, setChangedBy] = useState('');
+  const [_changedBy] = useState(''); // kept for reference; actor now from token
   const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
@@ -218,7 +218,6 @@ function ComplaintDetailDialog({ complaint, onClose, onStatusChange }: {
       await patchComplaint(complaint.complaint_id, {
         status: newStatus,
         comment: statusComment.trim() || undefined,
-        changed_by: changedBy.trim() || undefined,
       });
       onStatusChange(newStatus);
       toast.success(`Status updated to ${newStatus}`);
