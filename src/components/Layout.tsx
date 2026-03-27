@@ -180,7 +180,44 @@ export function Layout({ children, config }: LayoutProps) {
   );
 }
 
-function OtherDropdown() {
+function InboxNavItems() {
+  const location = useLocation();
+  const { summary } = useInboxSummary();
+  const badgeMap: Record<string, number> = {
+    '/inbox': summary.my_open_tasks + summary.waiting_my_reply,
+    '/tasks': summary.my_open_tasks,
+    '/notifications': summary.unread_notifications,
+  };
+  return (
+    <>
+      {inboxNavItems.map(({ path, label, icon: Icon }) => {
+        const active = location.pathname.startsWith(path);
+        const count = badgeMap[path] ?? 0;
+        return (
+          <Link
+            key={path}
+            to={path}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-2 rounded text-sm font-medium transition-colors',
+              active
+                ? 'bg-primary text-primary-foreground'
+                : 'text-nav-fg hover:bg-nav-hover hover:text-[hsl(210_50%_98%)]'
+            )}
+          >
+            <Icon size={15} />
+            {label}
+            {count > 0 && (
+              <span className="ml-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[hsl(var(--destructive))] text-[hsl(var(--destructive-foreground))] text-[10px] font-bold px-1">
+                {count > 99 ? '99+' : count}
+              </span>
+            )}
+          </Link>
+        );
+      })}
+    </>
+  );
+}
+
   const location = useLocation();
   const isOtherActive = otherNavItems.some(({ path }) =>
     location.pathname.startsWith(path)
