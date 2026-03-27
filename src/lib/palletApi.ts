@@ -164,7 +164,6 @@ function normalizePalletDetail(raw: BackendPalletDetailResponse): Pallet {
 export interface CreatePalletPayload {
   pallet_no: string;
   pallet_weight_kg: number;
-  created_by: string;
   lines: { order_id: string; qty_on_pallet: number }[];
 }
 
@@ -183,7 +182,6 @@ export interface UpdatePalletLinePayload {
 }
 
 export interface ShipPalletPayload {
-  shipped_by: string;
   shipped_doc?: string;
 }
 

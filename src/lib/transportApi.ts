@@ -96,9 +96,7 @@ export interface CreateTransportPayload {
   carrier?: string;
   truck_no?: string;
   destination?: string;
-  status?: TransportStatus;
-  planned_ship_at?: string;
-  created_by?: string;
+  // created_by resolved from token by backend
   shipping_doc?: string;
 }
 
@@ -113,7 +111,6 @@ export interface UpdateTransportPayload {
 }
 
 export interface ShipTransportPayload {
-  shipped_by?: string;
   shipping_doc?: string;
 }
 
