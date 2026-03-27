@@ -163,7 +163,8 @@ export function Layout({ children, config }: LayoutProps) {
       <main className="flex-1 overflow-auto">
         {children}
       </main>
-    </div>
+
+      <ChangePasswordDialog open={changePwOpen} onOpenChange={setChangePwOpen} />
   );
 }
 
