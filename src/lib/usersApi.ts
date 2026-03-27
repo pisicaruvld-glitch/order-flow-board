@@ -39,8 +39,13 @@ function apiBase() {
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${apiBase()}${path}`;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  try {
+    const token = localStorage.getItem('vsro_auth_token');
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+  } catch { /* ignore */ }
   const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     ...options,
   });
   if (!res.ok) {
