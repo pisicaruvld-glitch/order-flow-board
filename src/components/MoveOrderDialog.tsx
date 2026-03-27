@@ -11,7 +11,7 @@ interface MoveOrderDialogProps {
   blockedReason?: string;
   /** When true, show override fields (reason + name) instead of blocking */
   overrideMode?: boolean;
-  onConfirm: (justification?: string, movedBy?: string) => Promise<void>;
+  onConfirm: (justification?: string) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -26,7 +26,7 @@ export function MoveOrderDialog({
   onCancel,
 }: MoveOrderDialogProps) {
   const [justification, setJustification] = useState('');
-  const [movedBy, setMovedBy] = useState('Purchasing');
+  const [movedBy] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -43,7 +43,6 @@ export function MoveOrderDialog({
     try {
       await onConfirm(
         requiresJustification ? justification.trim() : undefined,
-        overrideMode ? (movedBy.trim() || 'current_user') : undefined,
       );
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Move failed';
@@ -141,20 +140,6 @@ export function MoveOrderDialog({
             </div>
           )}
 
-          {/* Name field (override only) */}
-          {!blockedReason && overrideMode && (
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                Name <span className="text-muted-foreground font-normal">(optional)</span>
-              </label>
-              <input
-                value={movedBy}
-                onChange={e => setMovedBy(e.target.value)}
-                placeholder="Your name"
-                className="w-full px-3 py-2 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-            </div>
-          )}
 
           {/* Next step — no justification needed, just confirmation */}
           {!blockedReason && isNextStep && !overrideMode && (
