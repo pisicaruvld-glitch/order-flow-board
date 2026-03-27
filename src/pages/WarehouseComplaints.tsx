@@ -254,7 +254,6 @@ function ComplaintDetailDialog({ complaint, onClose, onStatusChange }: {
           {complaint.status !== 'CLOSED' && (
             <div className="border-t border-border pt-3 space-y-2">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase">Change Status</h4>
-              <Input value={changedBy} onChange={e => setChangedBy(e.target.value)} placeholder="Changed by" className="h-8 text-xs" />
               <Textarea value={statusComment} onChange={e => setStatusComment(e.target.value)} placeholder="Comment…" className="text-xs min-h-[50px]" />
               <div className="flex gap-2">
                 {complaint.status === 'OPEN' && (
