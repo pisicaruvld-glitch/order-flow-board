@@ -23,7 +23,6 @@ export default function DeliveryPreparationPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [newPalletNo, setNewPalletNo] = useState('');
   const [newWeightKg, setNewWeightKg] = useState<number>(0);
-  const [newCreatedBy, setNewCreatedBy] = useState('');
   const [selectedOrders, setSelectedOrders] = useState<Record<string, number>>({});
   const [creating, setCreating] = useState(false);
 
@@ -41,7 +40,6 @@ export default function DeliveryPreparationPage() {
 
   // Ship dialog
   const [shippingPallet, setShippingPallet] = useState<number | null>(null);
-  const [shipBy, setShipBy] = useState('');
   const [shipDoc, setShipDoc] = useState('');
 
   const load = useCallback(async () => {
