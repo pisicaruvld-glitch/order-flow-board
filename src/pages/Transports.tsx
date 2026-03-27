@@ -162,7 +162,6 @@ export default function TransportsPage() {
     setShipping(true);
     try {
       await shipTransport(selectedId, {
-        shipped_by: shipBy.trim() || undefined,
         shipping_doc: shipDoc.trim() || undefined,
       });
       toast.success("Transport shipped");

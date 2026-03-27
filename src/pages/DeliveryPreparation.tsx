@@ -73,7 +73,6 @@ export default function DeliveryPreparationPage() {
       await createPallet({
         pallet_no: newPalletNo.trim(),
         pallet_weight_kg: newWeightKg,
-        created_by: newCreatedBy.trim() || 'current_user',
         lines,
       });
       toast.success('Pallet created');
@@ -163,7 +162,6 @@ export default function DeliveryPreparationPage() {
     if (!shippingPallet) return;
     try {
       await shipPallet(shippingPallet, {
-        shipped_by: shipBy.trim() || 'current_user',
         shipped_doc: shipDoc.trim() || undefined,
       });
       toast.success('Pallet shipped');
