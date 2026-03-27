@@ -25,7 +25,11 @@ import {
   LogOut,
   KeyRound,
   User,
+  Inbox,
+  CheckSquare,
+  Bell,
 } from 'lucide-react';
+import { useInboxSummary } from '@/hooks/useInboxSummary';
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
@@ -46,6 +50,12 @@ const mainNavItems = [
   { path: '/warehouse', label: 'Warehouse', icon: Warehouse },
   { path: '/production', label: 'Production', icon: Factory },
   { path: '/logistics', label: 'Logistics', icon: Truck },
+];
+
+const inboxNavItems = [
+  { path: '/inbox', label: 'Inbox', icon: Inbox },
+  { path: '/tasks', label: 'My Tasks', icon: CheckSquare },
+  { path: '/notifications', label: 'Notifications', icon: Bell },
 ];
 
 const otherNavItems = [
