@@ -165,6 +165,7 @@ export function Layout({ children, config }: LayoutProps) {
       </main>
 
       <ChangePasswordDialog open={changePwOpen} onOpenChange={setChangePwOpen} />
+    </div>
   );
 }
 
