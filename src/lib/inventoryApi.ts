@@ -87,8 +87,6 @@ export interface CreateInventoryRequestPayload {
   plant?: string;
   sloc?: string;
   request_reason?: string;
-  requested_by: string;
-  entered_by: string;
   priority?: string;
   comment?: string;
 }
@@ -101,8 +99,6 @@ export interface UpdateInventoryRequestPayload {
   qty_open_orders?: number;
   comment?: string;
   root_cause?: string;
-  counted_by?: string;
-  updated_by?: string;
 }
 
 // API functions
@@ -130,21 +126,21 @@ export async function updateInventoryRequest(id: number, payload: UpdateInventor
   });
 }
 
-export async function reviewInventoryRequest(id: number, data: { reviewed_by: string }): Promise<InventoryRequest> {
+export async function reviewInventoryRequest(id: number): Promise<InventoryRequest> {
   return apiFetch<InventoryRequest>(`${BASE}/${id}/review`, {
     method: "POST",
-    body: JSON.stringify(data),
+    body: JSON.stringify({}),
   });
 }
 
-export async function markSapAdjusted(id: number, data: { sap_adjusted_by: string; sap_adjustment_doc?: string }): Promise<InventoryRequest> {
+export async function markSapAdjusted(id: number, data: { sap_adjustment_doc?: string }): Promise<InventoryRequest> {
   return apiFetch<InventoryRequest>(`${BASE}/${id}/sap-adjusted`, {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
-export async function closeInventoryRequest(id: number, data: { closed_by: string; closure_comment?: string }): Promise<InventoryRequest> {
+export async function closeInventoryRequest(id: number, data: { closure_comment?: string }): Promise<InventoryRequest> {
   return apiFetch<InventoryRequest>(`${BASE}/${id}/close`, {
     method: "POST",
     body: JSON.stringify(data),
