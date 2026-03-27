@@ -64,7 +64,6 @@ export interface CreateComplaintPayload {
 export interface PatchComplaintPayload {
   status: ComplaintStatus;
   comment?: string;
-  changed_by?: string;
 }
 
 // ============================================================
