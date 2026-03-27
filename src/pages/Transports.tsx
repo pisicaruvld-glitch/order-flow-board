@@ -62,7 +62,6 @@ export default function TransportsPage() {
 
   // Ship dialog
   const [showShipDialog, setShowShipDialog] = useState(false);
-  const [shipBy, setShipBy] = useState("");
   const [shipDoc, setShipDoc] = useState("");
   const [shipping, setShipping] = useState(false);
 
@@ -166,7 +165,6 @@ export default function TransportsPage() {
       });
       toast.success("Transport shipped");
       setShowShipDialog(false);
-      setShipBy("");
       setShipDoc("");
       refreshAll();
     } catch (e: unknown) {
