@@ -7,23 +7,21 @@ import { Label } from '@/components/ui/label';
 interface SfgCompleteDialogProps {
   orderId: string;
   orderQty: number;
-  onConfirm: (data: { gross_finished_qty: number; scrap_qty: number; updated_by: string }) => Promise<void>;
+  onConfirm: (data: { gross_finished_qty: number; scrap_qty: number }) => Promise<void>;
   onCancel: () => void;
 }
 
 export function SfgCompleteDialog({ orderId, orderQty, onConfirm, onCancel }: SfgCompleteDialogProps) {
   const [grossQty, setGrossQty] = useState(0);
   const [scrapQty, setScrapQty] = useState(0);
-  const [updatedBy, setUpdatedBy] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const grossValid = grossQty >= 0;
   const scrapValid = scrapQty >= 0 && scrapQty <= grossQty;
   const hasDelta = grossQty > 0 || scrapQty > 0;
-  const updatedByValid = updatedBy.trim().length > 0;
   const goodQty = grossQty - scrapQty;
-  const canSubmit = grossValid && scrapValid && hasDelta && updatedByValid && !submitting;
+  const canSubmit = grossValid && scrapValid && hasDelta && !submitting;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -33,7 +31,6 @@ export function SfgCompleteDialog({ orderId, orderQty, onConfirm, onCancel }: Sf
       await onConfirm({
         gross_finished_qty: grossQty,
         scrap_qty: scrapQty,
-        updated_by: updatedBy.trim(),
       });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Request failed');
@@ -82,15 +79,6 @@ export function SfgCompleteDialog({ orderId, orderQty, onConfirm, onCancel }: Sf
             {!scrapValid && (
               <p className="text-[10px] text-destructive mt-0.5">Scrap ({scrapQty}) cannot exceed gross finished ({grossQty})</p>
             )}
-          </div>
-          <div>
-            <Label htmlFor="sfg-updater">Updated By *</Label>
-            <Input
-              id="sfg-updater"
-              value={updatedBy}
-              onChange={e => setUpdatedBy(e.target.value)}
-              placeholder="Name"
-            />
           </div>
         </div>
 

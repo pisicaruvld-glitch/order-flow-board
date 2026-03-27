@@ -4,13 +4,12 @@ import { AlertTriangle, Truck, X } from 'lucide-react';
 interface CustomerShipmentDialogProps {
   orderId: string;
   availableToShip?: number;
-  onConfirm: (data: { shipped_qty_delta: number; shipped_by: string; shipped_doc?: string }) => Promise<void>;
+  onConfirm: (data: { shipped_qty_delta: number; shipped_doc?: string }) => Promise<void>;
   onCancel: () => void;
 }
 
 export function CustomerShipmentDialog({ orderId, availableToShip, onConfirm, onCancel }: CustomerShipmentDialogProps) {
   const [shippedQty, setShippedQty] = useState<string>('');
-  const [shippedBy, setShippedBy] = useState('Purchasing');
   const [shippedDoc, setShippedDoc] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -26,7 +25,6 @@ export function CustomerShipmentDialog({ orderId, availableToShip, onConfirm, on
     try {
       await onConfirm({
         shipped_qty_delta: shipped,
-        shipped_by: shippedBy.trim() || 'current_user',
         ...(shippedDoc.trim() ? { shipped_doc: shippedDoc.trim() } : {}),
       });
     } catch (e: unknown) {
@@ -83,18 +81,6 @@ export function CustomerShipmentDialog({ orderId, availableToShip, onConfirm, on
                 <AlertTriangle size={10} /> Exceeds available to ship ({availableToShip})
               </p>
             )}
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-              Name <span className="text-muted-foreground font-normal">(optional)</span>
-            </label>
-            <input
-              value={shippedBy}
-              onChange={e => setShippedBy(e.target.value)}
-              placeholder="Your name"
-              className="w-full px-3 py-2 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-            />
           </div>
 
           <div>
