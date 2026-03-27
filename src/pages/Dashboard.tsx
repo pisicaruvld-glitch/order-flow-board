@@ -167,13 +167,12 @@ export default function Dashboard({ config }: DashboardProps) {
     setOverrideDialog(null);
   };
 
-  const handleHandoverConfirm = async (data: { delivered_qty_delta: number; scrap_qty_delta: number; reported_by: string }) => {
+  const handleHandoverConfirm = async (data: { delivered_qty_delta: number; scrap_qty_delta: number }) => {
     if (!handoverDialog) return;
     // Create shipment — do NOT auto-move to Logistics
     await createShipment(handoverDialog.orderId, {
       delivered_qty_delta: data.delivered_qty_delta,
       scrap_qty_delta: data.scrap_qty_delta,
-      reported_by: data.reported_by,
     });
     setHandoverDialog(null);
     await load();

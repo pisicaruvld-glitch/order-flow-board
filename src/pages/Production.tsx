@@ -131,7 +131,7 @@ export default function ProductionPage({ config }: ProductionPageProps) {
   const handleSfgReportFinished = async (order: Order) => {
     setUpdating(order.Order);
     try {
-      await productionFinish(order.Order, { reported_by: 'current_user' });
+      await productionFinish(order.Order, {});
       toast.success('Order finalized and hidden from board');
       await load();
     } catch (e: unknown) {
@@ -182,12 +182,11 @@ export default function ProductionPage({ config }: ProductionPageProps) {
     setHandoverDialog({ orderId: order.Order, orderQty: order.Order_quantity, remainingQty: remaining });
   };
 
-  const handleHandoverConfirm = async (data: { delivered_qty_delta: number; scrap_qty_delta: number; reported_by: string }) => {
+  const handleHandoverConfirm = async (data: { delivered_qty_delta: number; scrap_qty_delta: number }) => {
     if (!handoverDialog) return;
     await createShipment(handoverDialog.orderId, {
       delivered_qty_delta: data.delivered_qty_delta,
       scrap_qty_delta: data.scrap_qty_delta,
-      reported_by: data.reported_by,
     });
     setHandoverDialog(null);
     await load();

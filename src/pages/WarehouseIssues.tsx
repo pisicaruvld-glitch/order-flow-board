@@ -278,7 +278,7 @@ function FeedbackPanel({ issueId }: { issueId: string }) {
     if (!feedback.trim()) return;
     setSubmitting(true);
     try {
-      await addIssueFeedback(issueId, { feedback: feedback.trim(), changed_by: name.trim() || 'Purchasing' });
+      await addIssueFeedback(issueId, { feedback: feedback.trim() });
       setFeedback('');
       await loadHistory();
       toast({ title: 'Feedback added', description: 'Your feedback has been recorded.' });

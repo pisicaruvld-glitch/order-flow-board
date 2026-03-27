@@ -880,7 +880,7 @@ export async function addIssueFeedback(
       id: `H-${Date.now()}`,
       issue_id: issueId,
       action: "FEEDBACK",
-      changed_by: data.changed_by,
+      changed_by: "current_user",
       changed_at: new Date().toISOString(),
       details: data.feedback,
     };
