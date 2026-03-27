@@ -49,7 +49,6 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
   const [qtyOpenOrders, setQtyOpenOrders] = useState(0);
   const [comment, setComment] = useState("");
   const [rootCause, setRootCause] = useState("");
-  const [updatedBy, setUpdatedBy] = useState("");
 
   // SAP adjustment
   const [sapAdjDoc, setSapAdjDoc] = useState("");
@@ -77,7 +76,6 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
       setQtyOpenOrders(r.qty_open_orders);
       setComment(r.comment ?? "");
       setRootCause(r.root_cause ?? "");
-      setUpdatedBy(r.updated_by ?? "");
       setSapAdjDoc(r.sap_adjustment_doc ?? "");
       setClosureComment(r.closure_comment ?? "");
     } catch (e: any) {
@@ -94,10 +92,6 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
 
   const handleSave = async () => {
     if (!requestId) return;
-    if (!updatedBy.trim()) {
-      toast({ title: "Updated By is required", variant: "destructive" });
-      return;
-    }
     setSaving(true);
     try {
       await updateInventoryRequest(requestId, {
@@ -108,7 +102,6 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
         qty_open_orders: qtyOpenOrders,
         comment,
         root_cause: rootCause,
-        updated_by: updatedBy,
       });
       toast({ title: "Values saved" });
       await loadData();
@@ -124,7 +117,7 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
     if (!requestId) return;
     setSaving(true);
     try {
-      await reviewInventoryRequest(requestId, { reviewed_by: "current_user" });
+      await reviewInventoryRequest(requestId);
       toast({ title: "Marked as reviewed" });
       await loadData();
       onUpdated();
@@ -139,7 +132,7 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
     if (!requestId) return;
     setSaving(true);
     try {
-      await markSapAdjusted(requestId, { sap_adjusted_by: "current_user", sap_adjustment_doc: sapAdjDoc || undefined });
+      await markSapAdjusted(requestId, { sap_adjustment_doc: sapAdjDoc || undefined });
       toast({ title: "SAP adjustment recorded" });
       await loadData();
       onUpdated();
@@ -154,7 +147,7 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
     if (!requestId) return;
     setSaving(true);
     try {
-      await closeInventoryRequest(requestId, { closed_by: "current_user", closure_comment: closureComment || undefined });
+      await closeInventoryRequest(requestId, { closure_comment: closureComment || undefined });
       toast({ title: "Request closed" });
       await loadData();
       onUpdated();
@@ -196,7 +189,7 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
                     <InfoRow label="Description" value={req.material_description} />
                     <InfoRow label="Plant" value={req.plant} />
                     <InfoRow label="SLoc" value={req.sloc} />
-                    <InfoRow label="Requested By" value={req.requested_by} />
+                    <InfoRow label="Requested By" value={req.requested_by} highlight />
                     <InfoRow label="Requested At" value={req.requested_at?.replace("T", " ").slice(0, 19)} />
                     <InfoRow label="Entered By" value={req.entered_by} highlight />
                     <InfoRow label="Updated By" value={req.updated_by} highlight />
@@ -226,15 +219,9 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
                     <Textarea value={rootCause} onChange={(e) => setRootCause(e.target.value)} rows={2} disabled={isClosed} />
                   </div>
                   {!isClosed && (
-                    <div className="space-y-2">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold">Updated By *</Label>
-                        <Input value={updatedBy} onChange={(e) => setUpdatedBy(e.target.value)} placeholder="Your name" className="h-8 text-sm" />
-                      </div>
-                      <Button onClick={handleSave} disabled={saving} size="sm">
-                        {saving ? "Saving…" : "Save Values"}
-                      </Button>
-                    </div>
+                    <Button onClick={handleSave} disabled={saving} size="sm">
+                      {saving ? "Saving…" : "Save Values"}
+                    </Button>
                   )}
                 </section>
 

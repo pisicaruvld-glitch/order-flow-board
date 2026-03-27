@@ -32,8 +32,6 @@ export function CreateInventoryRequestDialog({ onCreated }: Props) {
     plant: "",
     sloc: "",
     request_reason: "",
-    requested_by: "",
-    entered_by: "",
     priority: "NORMAL",
     comment: "",
   });
@@ -42,8 +40,8 @@ export function CreateInventoryRequestDialog({ onCreated }: Props) {
     setForm((p) => ({ ...p, [field]: val }));
 
   const handleSubmit = async () => {
-    if (!form.material.trim() || !form.requested_by.trim() || !form.entered_by.trim()) {
-      toast({ title: "Material, Requested By, and Entered By are required", variant: "destructive" });
+    if (!form.material.trim()) {
+      toast({ title: "Material is required", variant: "destructive" });
       return;
     }
     setSubmitting(true);
@@ -51,7 +49,7 @@ export function CreateInventoryRequestDialog({ onCreated }: Props) {
       await createInventoryRequest(form);
       toast({ title: "Stock check request created" });
       setOpen(false);
-      setForm({ material: "", material_description: "", plant: "", sloc: "", request_reason: "", requested_by: "", entered_by: "", priority: "NORMAL", comment: "" });
+      setForm({ material: "", material_description: "", plant: "", sloc: "", request_reason: "", priority: "NORMAL", comment: "" });
       onCreated();
     } catch (e: any) {
       toast({ title: "Error creating request", description: e.message, variant: "destructive" });
@@ -103,16 +101,6 @@ export function CreateInventoryRequestDialog({ onCreated }: Props) {
                   <SelectItem value="CRITICAL">Critical</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Requested By *</Label>
-              <Input value={form.requested_by} onChange={(e) => set("requested_by", e.target.value)} placeholder="Your name" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Entered By *</Label>
-              <Input value={form.entered_by} onChange={(e) => set("entered_by", e.target.value)} placeholder="Who enters the data" />
             </div>
           </div>
           <div className="space-y-1.5">
