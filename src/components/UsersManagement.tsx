@@ -1,23 +1,29 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getUsers, createUser, updateUser, deleteUser, OperationalUser, UserArea, CreateUserPayload, UpdateUserPayload } from '@/lib/usersApi';
+import { adminResetPassword } from '@/lib/authApi';
+import { useAuth } from '@/lib/AuthContext';
 import { LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, Pencil, Trash2, Users, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Users, Loader2, KeyRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 const ALL_AREAS: UserArea[] = ['Orders', 'Warehouse', 'Production', 'Logistics'];
 
 export default function UsersManagement() {
+  const { isAdmin } = useAuth();
   const [users, setUsers] = useState<OperationalUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<OperationalUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<OperationalUser | null>(null);
+  const [resetPwUser, setResetPwUser] = useState<OperationalUser | null>(null);
+  const [resetPwValue, setResetPwValue] = useState('');
+  const [resetPwLoading, setResetPwLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -64,6 +70,21 @@ export default function UsersManagement() {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!resetPwUser || !resetPwValue.trim()) return;
+    setResetPwLoading(true);
+    try {
+      await adminResetPassword(resetPwUser.id, { new_password: resetPwValue.trim() });
+      toast.success(`Password reset for ${resetPwUser.username}`);
+      setResetPwUser(null);
+      setResetPwValue('');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to reset password');
+    } finally {
+      setResetPwLoading(false);
+    }
+  };
+
   return (
     <div className="bg-card border border-border rounded-lg">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -72,9 +93,11 @@ export default function UsersManagement() {
           <h2 className="text-sm font-semibold">Users</h2>
           <span className="text-xs text-muted-foreground">({users.length})</span>
         </div>
-        <Button size="sm" className="gap-1.5 text-xs" onClick={openAdd}>
-          <Plus size={12} /> Add User
-        </Button>
+        {isAdmin && (
+          <Button size="sm" className="gap-1.5 text-xs" onClick={openAdd}>
+            <Plus size={12} /> Add User
+          </Button>
+        )}
       </div>
 
       {loading && <LoadingSpinner label="Loading users…" />}
@@ -86,19 +109,30 @@ export default function UsersManagement() {
               <tr className="bg-muted text-muted-foreground text-xs border-b border-border">
                 <th className="text-left px-4 py-2.5 font-medium">ID</th>
                 <th className="text-left px-4 py-2.5 font-medium">Username</th>
+                <th className="text-left px-4 py-2.5 font-medium">Role</th>
                 <th className="text-left px-4 py-2.5 font-medium">Areas</th>
                 <th className="text-left px-4 py-2.5 font-medium">Active</th>
-                <th className="text-left px-4 py-2.5 font-medium">Actions</th>
+                <th className="text-left px-4 py-2.5 font-medium">Last Login</th>
+                <th className="text-left px-4 py-2.5 font-medium">Reset Req.</th>
+                {isAdmin && <th className="text-left px-4 py-2.5 font-medium">Actions</th>}
               </tr>
             </thead>
             <tbody>
               {users.length === 0 && (
-                <tr><td colSpan={5} className="text-center text-muted-foreground py-8 text-xs">No users found</td></tr>
+                <tr><td colSpan={isAdmin ? 8 : 7} className="text-center text-muted-foreground py-8 text-xs">No users found</td></tr>
               )}
               {users.map(u => (
                 <tr key={u.id} className={cn('border-b border-border hover:bg-muted/40', !u.is_active && 'opacity-50')}>
                   <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{u.id}</td>
                   <td className="px-4 py-2.5 font-medium">{u.username}</td>
+                  <td className="px-4 py-2.5">
+                    <span className={cn(
+                      'text-[10px] font-medium px-1.5 py-0.5 rounded',
+                      (u as any).role === 'admin' ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'
+                    )}>
+                      {(u as any).role ?? 'basic'}
+                    </span>
+                  </td>
                   <td className="px-4 py-2.5">
                     <div className="flex flex-wrap gap-1">
                       {(u.areas ?? []).map(a => (
@@ -116,23 +150,38 @@ export default function UsersManagement() {
                       {u.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5">
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={() => openEdit(u)}>
-                        <Pencil size={12} /> Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="gap-1 text-xs text-destructive hover:text-destructive"
-                        onClick={() => setDeletingUser(u)}
-                        disabled={u.username === 'admin'}
-                        title={u.username === 'admin' ? 'Cannot delete admin user' : 'Delete user'}
-                      >
-                        <Trash2 size={12} /> Delete
-                      </Button>
-                    </div>
+                  <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                    {(u as any).last_login_at ? new Date((u as any).last_login_at).toLocaleString() : '—'}
                   </td>
+                  <td className="px-4 py-2.5 text-xs">
+                    {(u as any).reset_required ? (
+                      <span className="text-warning font-medium">Yes</span>
+                    ) : (
+                      <span className="text-muted-foreground">No</span>
+                    )}
+                  </td>
+                  {isAdmin && (
+                    <td className="px-4 py-2.5">
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={() => openEdit(u)}>
+                          <Pencil size={12} /> Edit
+                        </Button>
+                        <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={() => { setResetPwUser(u); setResetPwValue(''); }}>
+                          <KeyRound size={12} /> Reset PW
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1 text-xs text-destructive hover:text-destructive"
+                          onClick={() => setDeletingUser(u)}
+                          disabled={u.username === 'admin'}
+                          title={u.username === 'admin' ? 'Cannot delete admin user' : 'Delete user'}
+                        >
+                          <Trash2 size={12} /> Delete
+                        </Button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -140,6 +189,7 @@ export default function UsersManagement() {
         </div>
       )}
 
+      {/* Add/Edit User Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -149,10 +199,12 @@ export default function UsersManagement() {
             initial={editingUser}
             onSave={handleSave}
             onCancel={() => setDialogOpen(false)}
+            showRoleField={isAdmin}
           />
         </DialogContent>
       </Dialog>
 
+      {/* Delete Confirmation */}
       <AlertDialog open={!!deletingUser} onOpenChange={open => { if (!open) setDeletingUser(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -169,6 +221,38 @@ export default function UsersManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={!!resetPwUser} onOpenChange={open => { if (!open) { setResetPwUser(null); setResetPwValue(''); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound size={16} />
+              Reset Password
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Set a new password for <strong>{resetPwUser?.username}</strong>.
+          </p>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">New Password</label>
+            <Input
+              type="password"
+              value={resetPwValue}
+              onChange={e => setResetPwValue(e.target.value)}
+              placeholder="Enter new password"
+              className="mt-1"
+            />
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button onClick={handleResetPassword} className="flex-1 gap-1.5" disabled={resetPwLoading || !resetPwValue.trim()}>
+              {resetPwLoading && <Loader2 size={14} className="animate-spin" />}
+              Reset Password
+            </Button>
+            <Button variant="outline" onClick={() => { setResetPwUser(null); setResetPwValue(''); }}>Cancel</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -177,15 +261,18 @@ function UserForm({
   initial,
   onSave,
   onCancel,
+  showRoleField,
 }: {
   initial: OperationalUser | null;
   onSave: (data: CreateUserPayload) => Promise<void>;
   onCancel: () => void;
+  showRoleField: boolean;
 }) {
   const [username, setUsername] = useState(initial?.username ?? '');
   const [password, setPassword] = useState(initial?.password_text ?? '');
   const [isActive, setIsActive] = useState(initial?.is_active ?? 1);
   const [areas, setAreas] = useState<UserArea[]>(initial?.areas ?? []);
+  const [role, setRole] = useState<string>((initial as any)?.role ?? 'basic');
   const [saving, setSaving] = useState(false);
 
   const toggleArea = (area: UserArea) => {
@@ -196,7 +283,9 @@ function UserForm({
     if (!username.trim()) return;
     setSaving(true);
     try {
-      await onSave({ username: username.trim(), password_text: password, is_active: isActive, areas });
+      const payload: any = { username: username.trim(), password_text: password, is_active: isActive, areas };
+      if (showRoleField) payload.role = role;
+      await onSave(payload);
     } finally {
       setSaving(false);
     }
@@ -210,8 +299,30 @@ function UserForm({
       </div>
       <div>
         <label className="text-xs font-medium text-muted-foreground">Password</label>
-        <Input value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" className="mt-1" />
+        <Input value={password} onChange={e => setPassword(e.target.value)} placeholder={initial ? 'Leave empty to keep' : 'Password'} className="mt-1" />
       </div>
+      {showRoleField && (
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">Role</label>
+          <div className="flex gap-2 mt-1.5">
+            {['basic', 'admin'].map(r => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setRole(r)}
+                className={cn(
+                  'px-3 py-1.5 text-xs font-medium rounded border transition-colors capitalize',
+                  role === r
+                    ? r === 'admin' ? 'bg-primary/15 text-primary border-primary/40' : 'bg-secondary text-secondary-foreground border-border'
+                    : 'bg-card text-muted-foreground border-border hover:border-primary/50'
+                )}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div>
         <label className="text-xs font-medium text-muted-foreground">Areas</label>
         <div className="flex flex-wrap gap-2 mt-1.5">

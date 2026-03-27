@@ -1,6 +1,8 @@
 import { ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { AppConfig } from '@/lib/types';
+import { useAuth } from '@/lib/AuthContext';
+import ChangePasswordDialog from '@/components/ChangePasswordDialog';
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -20,12 +22,16 @@ import {
   History,
   ClipboardList,
   MoreHorizontal,
+  LogOut,
+  KeyRound,
+  User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
@@ -53,7 +59,8 @@ const otherNavItems = [
 
 export function Layout({ children, config }: LayoutProps) {
   const location = useLocation();
-  const isAdmin = config.userRole === 'admin';
+  const { user, isAdmin, logout } = useAuth();
+  const [changePwOpen, setChangePwOpen] = useState(false);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -118,6 +125,35 @@ export function Layout({ children, config }: LayoutProps) {
                   Admin
                 </Link>
               )}
+
+              {/* User menu */}
+              {user && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="flex items-center gap-1.5 px-3 py-2 rounded text-sm font-medium text-nav-fg hover:bg-nav-hover hover:text-[hsl(210_50%_98%)] transition-colors outline-none ml-2">
+                    <User size={15} />
+                    <span className="max-w-[120px] truncate">{user.username}</span>
+                    {user.role === 'admin' && (
+                      <span className="text-[10px] bg-primary/20 text-primary-foreground px-1.5 py-0.5 rounded font-medium">admin</span>
+                    )}
+                    <ChevronDown size={12} />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-[180px]">
+                    <div className="px-3 py-2 text-xs text-muted-foreground border-b border-border">
+                      Signed in as <span className="font-semibold text-foreground">{user.username}</span>
+                      <br />Role: <span className="font-medium">{user.role}</span>
+                    </div>
+                    <DropdownMenuItem onClick={() => setChangePwOpen(true)} className="gap-2 cursor-pointer">
+                      <KeyRound size={14} />
+                      Change Password
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={logout} className="gap-2 cursor-pointer text-destructive focus:text-destructive">
+                      <LogOut size={14} />
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </nav>
         </div>
@@ -127,6 +163,8 @@ export function Layout({ children, config }: LayoutProps) {
       <main className="flex-1 overflow-auto">
         {children}
       </main>
+
+      <ChangePasswordDialog open={changePwOpen} onOpenChange={setChangePwOpen} />
     </div>
   );
 }

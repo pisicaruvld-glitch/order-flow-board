@@ -274,19 +274,14 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
             )}
           </div>
 
-          {/* Role */}
+          {/* Role — now derived from auth, shown as read-only */}
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              User Role (dev override)
+              Current Role
             </label>
-            <select
-              value={localConfig.userRole}
-              onChange={e => setLocalConfig(p => ({ ...p, userRole: e.target.value as 'admin' | 'user' }))}
-              className="mt-1.5 px-3 py-2 text-sm border border-border rounded-md bg-card focus:outline-none focus:ring-1 focus:ring-ring"
-            >
-              <option value="admin">Admin</option>
-              <option value="user">User</option>
-            </select>
+            <div className="mt-1.5 px-3 py-2 text-sm border border-border rounded-md bg-muted text-muted-foreground">
+              {config.userRole === 'admin' ? 'Admin' : 'User'} <span className="text-xs opacity-70">(from auth)</span>
+            </div>
           </div>
 
           <button
