@@ -224,15 +224,6 @@ export default function DeliveryPreparationPage() {
                 className="w-full mt-0.5 px-2 py-1.5 text-xs bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
-            <div>
-              <label className="text-[10px] text-muted-foreground font-medium">Created by</label>
-              <input
-                value={newCreatedBy}
-                onChange={e => setNewCreatedBy(e.target.value)}
-                className="w-full mt-0.5 px-2 py-1.5 text-xs bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
-                placeholder="Name"
-              />
-            </div>
           </div>
 
           {/* Order selection */}
@@ -302,10 +293,6 @@ export default function DeliveryPreparationPage() {
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShippingPallet(null)}>
           <div className="bg-card border border-border rounded-lg p-5 w-full max-w-sm space-y-3" onClick={e => e.stopPropagation()}>
             <h3 className="text-sm font-semibold text-foreground">Ship Pallet</h3>
-            <div>
-              <label className="text-[10px] text-muted-foreground font-medium">Shipped by</label>
-              <input value={shipBy} onChange={e => setShipBy(e.target.value)} className="w-full mt-0.5 px-2 py-1.5 text-xs bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Name" />
-            </div>
             <div>
               <label className="text-[10px] text-muted-foreground font-medium">Document / Tracking (optional)</label>
               <input value={shipDoc} onChange={e => setShipDoc(e.target.value)} className="w-full mt-0.5 px-2 py-1.5 text-xs bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary" placeholder="e.g. AWB-12345" />
