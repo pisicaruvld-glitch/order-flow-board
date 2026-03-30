@@ -216,6 +216,19 @@ export async function addTaskComment(taskId: number, text: string): Promise<Task
   return mapComment(raw);
 }
 
+// ============================================================
+// Notifications
+// ============================================================
+export async function getNotifications(unreadOnly = false): Promise<Notification[]> {
+  const qs = unreadOnly ? '?unread_only=true' : '';
+  const raw = await apiFetch<any[]>(`/notifications${qs}`);
+  return raw.map(mapNotification);
+}
+
+export async function markNotificationRead(notificationId: number): Promise<void> {
+  await apiFetch<unknown>(`/notifications/${notificationId}/read`, { method: 'POST' });
+}
+
 export async function markAllNotificationsRead(): Promise<void> {
   await apiFetch<unknown>('/notifications/read-all', { method: 'POST' });
 }
