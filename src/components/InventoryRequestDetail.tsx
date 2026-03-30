@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/AuthContext";
 import {
   getInventoryRequest,
   updateInventoryRequest,
@@ -21,11 +22,12 @@ import {
   markSapAdjusted,
   closeInventoryRequest,
   getInventoryRequestHistory,
+  submitApprovalDecision,
   type InventoryRequest,
   type InventoryHistoryEntry,
 } from "@/lib/inventoryApi";
 import { statusColor, diffColor } from "@/pages/StockCheckRequests";
-import { RefreshCw, CheckCircle2, ClipboardCheck, FileCheck2, XCircle } from "lucide-react";
+import { RefreshCw, CheckCircle2, ClipboardCheck, FileCheck2, XCircle, ShieldCheck, ShieldX, AlertTriangle } from "lucide-react";
 
 interface Props {
   requestId: number | null;
@@ -34,12 +36,22 @@ interface Props {
   onUpdated: () => void;
 }
 
+function approvalStatusColor(status?: string) {
+  switch (status) {
+    case "APPROVED": return "bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))]";
+    case "REJECTED": return "bg-destructive text-destructive-foreground";
+    case "PENDING": return "bg-[hsl(var(--warning))] text-[hsl(var(--warning-foreground))]";
+    default: return "bg-muted text-muted-foreground";
+  }
+}
+
 export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdated }: Props) {
   const [req, setReq] = useState<InventoryRequest | null>(null);
   const [history, setHistory] = useState<InventoryHistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Editable count fields
   const [sapHbl, setSapHbl] = useState(0);
@@ -49,10 +61,14 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
   const [qtyOpenOrders, setQtyOpenOrders] = useState(0);
   const [comment, setComment] = useState("");
   const [rootCause, setRootCause] = useState("");
+  const [unitValueEur, setUnitValueEur] = useState(0);
 
   // SAP adjustment
   const [sapAdjDoc, setSapAdjDoc] = useState("");
   const [closureComment, setClosureComment] = useState("");
+
+  // Approval
+  const [approvalComment, setApprovalComment] = useState("");
 
   useEffect(() => {
     if (!requestId || !open) return;
@@ -78,6 +94,8 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
       setRootCause(r.root_cause ?? "");
       setSapAdjDoc(r.sap_adjustment_doc ?? "");
       setClosureComment(r.closure_comment ?? "");
+      setUnitValueEur(r.unit_value_eur ?? 0);
+      setApprovalComment("");
     } catch (e: any) {
       toast({ title: "Error loading request", description: e.message, variant: "destructive" });
     } finally {
@@ -89,6 +107,7 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
   const diffHbl = physicalHbl - sapHbl;
   const diffProduction = physicalProduction - qtyOpenOrders - sapProduction;
   const diffTotal = diffHbl + diffProduction;
+  const previewFinancialImpact = diffTotal * unitValueEur;
 
   const handleSave = async () => {
     if (!requestId) return;
@@ -102,6 +121,7 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
         qty_open_orders: qtyOpenOrders,
         comment,
         root_cause: rootCause,
+        unit_value_eur: unitValueEur,
       });
       toast({ title: "Values saved" });
       await loadData();
@@ -158,7 +178,25 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
     }
   };
 
+  const handleApproval = async (decision: "APPROVE" | "REJECT") => {
+    if (!requestId) return;
+    setSaving(true);
+    try {
+      await submitApprovalDecision(requestId, { decision, approval_comment: approvalComment || undefined });
+      toast({ title: decision === "APPROVE" ? "Approved" : "Rejected" });
+      await loadData();
+      onUpdated();
+    } catch (e: any) {
+      toast({ title: "Approval action failed", description: e.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const isClosed = req?.status === "CLOSED" || req?.status === "CANCELLED";
+  const canApprove = user && (user.username === "george.dumitrache" || user.role === "admin");
+  const approvalPending = req?.approval_required && req?.approval_status === "PENDING";
+  const approvalBlocked = req?.approval_required && req?.approval_status !== "APPROVED";
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -166,9 +204,14 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
         <ScrollArea className="h-full">
           <div className="p-6 space-y-6">
             <SheetHeader>
-              <SheetTitle className="flex items-center gap-2">
+              <SheetTitle className="flex items-center gap-2 flex-wrap">
                 Stock Check #{requestId}
                 {req && <Badge className={statusColor(req.status)}>{req.status}</Badge>}
+                {req?.approval_required && (
+                  <Badge className={approvalStatusColor(req.approval_status)}>
+                    {req.approval_status === "PENDING" ? "⏳ Approval Pending" : req.approval_status === "APPROVED" ? "✓ Approved" : req.approval_status === "REJECTED" ? "✗ Rejected" : req.approval_status ?? "N/A"}
+                  </Badge>
+                )}
               </SheetTitle>
               <SheetDescription>
                 {req?.material} — {req?.material_description || "No description"}
@@ -209,6 +252,7 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
                     <NumField label="Physical HBL" value={physicalHbl} onChange={setPhysicalHbl} disabled={isClosed} />
                     <NumField label="Physical Production" value={physicalProduction} onChange={setPhysicalProduction} disabled={isClosed} />
                     <NumField label="QTY Open Orders" value={qtyOpenOrders} onChange={setQtyOpenOrders} disabled={isClosed} />
+                    <NumField label="Unit Value (EUR)" value={unitValueEur} onChange={setUnitValueEur} disabled={isClosed} step="0.01" />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Comment</Label>
@@ -227,19 +271,81 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
 
                 <Separator />
 
-                {/* Section 3: Calculated Results */}
+                {/* Section 3: Variance & Financial Impact */}
                 <section className="space-y-3">
-                  <h3 className="text-sm font-semibold text-foreground">Variance Results</h3>
+                  <h3 className="text-sm font-semibold text-foreground">Variance & Financial Impact</h3>
                   <div className="grid grid-cols-3 gap-3">
                     <ResultCard label="Diff HBL" value={diffHbl} />
                     <ResultCard label="Diff Production" value={diffProduction} />
                     <ResultCard label="Diff Total" value={diffTotal} />
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-md border p-3 bg-muted/30">
+                      <div className="text-xs text-muted-foreground mb-1">Unit Value (EUR)</div>
+                      <div className="text-lg font-bold text-foreground">{unitValueEur.toFixed(2)} €</div>
+                    </div>
+                    <div className={`rounded-md border p-3 ${Math.abs(previewFinancialImpact) > 50 ? "bg-[hsl(var(--destructive))]/10 border-[hsl(var(--destructive))]/20" : "bg-muted/30"}`}>
+                      <div className="text-xs text-muted-foreground mb-1">Financial Impact (EUR)</div>
+                      <div className={`text-lg font-bold ${Math.abs(previewFinancialImpact) > 50 ? "text-[hsl(var(--destructive))]" : "text-foreground"}`}>
+                        {previewFinancialImpact.toFixed(2)} €
+                      </div>
+                      {req.financial_impact_eur != null && req.financial_impact_eur !== previewFinancialImpact && (
+                        <div className="text-[10px] text-muted-foreground mt-0.5">Saved: {req.financial_impact_eur.toFixed(2)} €</div>
+                      )}
+                    </div>
+                  </div>
+                  {Math.abs(req.financial_impact_eur ?? previewFinancialImpact) > 50 && (
+                    <div className="flex items-center gap-2 text-xs rounded-md border border-[hsl(var(--warning))]/40 bg-[hsl(var(--warning))]/10 p-2">
+                      <AlertTriangle size={14} className="text-[hsl(var(--warning))] shrink-0" />
+                      <span className="text-[hsl(var(--warning-foreground))]">Plant Manager approval required for impacts above 50 EUR.</span>
+                    </div>
+                  )}
                 </section>
 
                 <Separator />
 
-                {/* Section 4: SAP Adjustment & Close */}
+                {/* Section 4: Financial Approval */}
+                {req.approval_required && (
+                  <>
+                    <section className="space-y-3">
+                      <h3 className="text-sm font-semibold text-foreground">Financial Approval</h3>
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+                        <InfoRow label="Approval Required" value={req.approval_required ? "Yes" : "No"} />
+                        <div>
+                          <span className="text-muted-foreground">Approval Status: </span>
+                          <Badge className={`${approvalStatusColor(req.approval_status)} text-[10px]`}>
+                            {req.approval_status?.replace(/_/g, " ") ?? "—"}
+                          </Badge>
+                        </div>
+                        <InfoRow label="Approver" value={req.approver_username} highlight />
+                        <InfoRow label="Requested At" value={req.approval_requested_at?.replace("T", " ").slice(0, 19)} />
+                        <InfoRow label="Approved By" value={req.approved_by} highlight />
+                        <InfoRow label="Approved At" value={req.approved_at?.replace("T", " ").slice(0, 19)} />
+                        {req.approval_comment && <InfoRow label="Comment" value={req.approval_comment} />}
+                      </div>
+
+                      {approvalPending && canApprove && (
+                        <div className="space-y-2 pt-2">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Approval Comment</Label>
+                            <Textarea value={approvalComment} onChange={(e) => setApprovalComment(e.target.value)} rows={2} placeholder="Optional comment…" />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button onClick={() => handleApproval("APPROVE")} disabled={saving} size="sm" className="bg-[hsl(var(--success))] hover:bg-[hsl(var(--success))]/90 text-[hsl(var(--success-foreground))]">
+                              <ShieldCheck size={14} /> Approve
+                            </Button>
+                            <Button onClick={() => handleApproval("REJECT")} disabled={saving} size="sm" variant="destructive">
+                              <ShieldX size={14} /> Reject
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </section>
+                    <Separator />
+                  </>
+                )}
+
+                {/* Section 5: SAP Adjustment & Close */}
                 <section className="space-y-3">
                   <h3 className="text-sm font-semibold text-foreground">SAP Adjustment & Closure</h3>
                   <div className="flex items-center gap-2 text-sm">
@@ -249,6 +355,14 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
                     </Badge>
                     {req.sap_adjusted_by && <span className="text-xs text-muted-foreground">by {req.sap_adjusted_by}</span>}
                   </div>
+
+                  {approvalBlocked && !isClosed && (
+                    <div className="flex items-center gap-2 text-xs rounded-md border border-[hsl(var(--warning))]/40 bg-[hsl(var(--warning))]/10 p-2">
+                      <AlertTriangle size={14} className="text-[hsl(var(--warning))] shrink-0" />
+                      <span className="text-[hsl(var(--warning-foreground))]">Plant Manager approval is required before SAP adjustment/closure for impacts above 50 EUR.</span>
+                    </div>
+                  )}
+
                   {!isClosed && (
                     <div className="space-y-2">
                       <div className="space-y-1.5">
@@ -259,7 +373,7 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
                         <Button onClick={handleReview} disabled={saving} size="sm" variant="outline">
                           <ClipboardCheck size={14} /> Mark Reviewed
                         </Button>
-                        <Button onClick={handleSapAdjusted} disabled={saving} size="sm" variant="outline">
+                        <Button onClick={handleSapAdjusted} disabled={saving || !!approvalBlocked} size="sm" variant="outline" title={approvalBlocked ? "Approval required first" : undefined}>
                           <FileCheck2 size={14} /> Mark SAP Adjusted
                         </Button>
                       </div>
@@ -267,7 +381,7 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
                         <Label className="text-xs">Closure Comment</Label>
                         <Textarea value={closureComment} onChange={(e) => setClosureComment(e.target.value)} rows={2} />
                       </div>
-                      <Button onClick={handleClose} disabled={saving} size="sm" variant="destructive">
+                      <Button onClick={handleClose} disabled={saving || !!approvalBlocked} size="sm" variant="destructive" title={approvalBlocked ? "Approval required first" : undefined}>
                         <XCircle size={14} /> Close Request
                       </Button>
                     </div>
@@ -276,7 +390,7 @@ export function InventoryRequestDetail({ requestId, open, onOpenChange, onUpdate
 
                 <Separator />
 
-                {/* Section 5: History */}
+                {/* Section 6: History */}
                 <section className="space-y-3">
                   <h3 className="text-sm font-semibold text-foreground">Audit History</h3>
                   {history.length === 0 ? (
@@ -314,7 +428,7 @@ function InfoRow({ label, value, highlight }: { label: string; value?: string | 
   );
 }
 
-function NumField({ label, value, onChange, disabled }: { label: string; value: number; onChange: (v: number) => void; disabled?: boolean }) {
+function NumField({ label, value, onChange, disabled, step }: { label: string; value: number; onChange: (v: number) => void; disabled?: boolean; step?: string }) {
   return (
     <div className="space-y-1">
       <Label className="text-xs">{label}</Label>
@@ -324,6 +438,7 @@ function NumField({ label, value, onChange, disabled }: { label: string; value: 
         onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
         disabled={disabled}
         className="h-8 text-sm"
+        step={step}
       />
     </div>
   );

@@ -111,7 +111,7 @@ export default function StockCheckRequestsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-16">ID</TableHead>
+             <TableHead className="w-16">ID</TableHead>
                 <TableHead>Material</TableHead>
                 <TableHead className="hidden lg:table-cell">Description</TableHead>
                 <TableHead className="w-20">Plant</TableHead>
@@ -121,9 +121,9 @@ export default function StockCheckRequestsPage() {
                 <TableHead className="hidden lg:table-cell">Updated By</TableHead>
                 <TableHead className="w-28">Status</TableHead>
                 <TableHead className="w-20 text-center">SAP Adj</TableHead>
-                <TableHead className="w-20 text-right">Diff HBL</TableHead>
-                <TableHead className="w-20 text-right">Diff Prod</TableHead>
                 <TableHead className="w-20 text-right">Diff Total</TableHead>
+                <TableHead className="w-24 text-right hidden md:table-cell">Impact EUR</TableHead>
+                <TableHead className="w-28 hidden md:table-cell">Approval</TableHead>
                 <TableHead className="w-36 hidden xl:table-cell">Updated</TableHead>
               </TableRow>
             </TableHeader>
@@ -150,9 +150,19 @@ export default function StockCheckRequestsPage() {
                       {r.sap_adjusted ? "Yes" : "No"}
                     </Badge>
                   </TableCell>
-                  <TableCell className={`text-right text-xs ${diffColor(r.diff_hbl)}`}>{r.diff_hbl}</TableCell>
-                  <TableCell className={`text-right text-xs ${diffColor(r.diff_production)}`}>{r.diff_production}</TableCell>
                   <TableCell className={`text-right text-xs ${diffColor(r.diff_total)}`}>{r.diff_total}</TableCell>
+                  <TableCell className={`text-right text-xs hidden md:table-cell ${r.financial_impact_eur != null && Math.abs(r.financial_impact_eur) > 50 ? "text-[hsl(var(--destructive))] font-semibold" : "text-foreground"}`}>
+                    {r.financial_impact_eur != null ? `${r.financial_impact_eur.toFixed(2)} €` : "—"}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {r.approval_required ? (
+                      <Badge className={`text-[10px] ${r.approval_status === "APPROVED" ? "bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))]" : r.approval_status === "REJECTED" ? "bg-destructive text-destructive-foreground" : r.approval_status === "PENDING" ? "bg-[hsl(var(--warning))] text-[hsl(var(--warning-foreground))]" : "bg-muted text-muted-foreground"}`}>
+                        {r.approval_status?.replace(/_/g, " ") ?? "—"}
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-xs text-muted-foreground hidden xl:table-cell">{r.updated_at?.replace("T", " ").slice(0, 16)}</TableCell>
                 </TableRow>
               ))}
