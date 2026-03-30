@@ -7,17 +7,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import {
-  Task, TaskComment, TaskStatus, TaskPriority,
-  getTask, getTaskComments, updateTask, addTaskComment,
+  Task, TaskComment, TaskStatus, TaskPriority, TaskHistoryEntry,
+  getTask, getTaskComments, getTaskHistory, updateTask, addTaskComment,
 } from '@/lib/tasksApi';
 import { priorityColor, statusBadge } from './TaskCard';
 import { cn } from '@/lib/utils';
 import { format, parseISO, isPast } from 'date-fns';
-import { Calendar, User, Clock, Send, AlertTriangle, MessageSquare } from 'lucide-react';
+import {
+  Calendar, User, Clock, Send, AlertTriangle, MessageSquare,
+  History, FileText, ArrowRight,
+} from 'lucide-react';
 
-const STATUSES: TaskStatus[] = ['OPEN', 'WAITING_REPLY', 'DONE', 'CANCELLED'];
+const STATUSES: TaskStatus[] = ['OPEN', 'IN_PROGRESS', 'WAITING_REPLY', 'DONE', 'CANCELLED'];
 const PRIORITIES: TaskPriority[] = ['LOW', 'NORMAL', 'HIGH', 'CRITICAL'];
 
 interface Props {
@@ -32,6 +36,7 @@ export function TaskDetailsDrawer({ taskId, open, onOpenChange, onUpdated }: Pro
   const qc = useQueryClient();
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [drawerTab, setDrawerTab] = useState<'details' | 'comments' | 'history'>('details');
 
   const validId = typeof taskId === 'number' && taskId > 0;
 
@@ -47,19 +52,24 @@ export function TaskDetailsDrawer({ taskId, open, onOpenChange, onUpdated }: Pro
     enabled: validId && open,
   });
 
+  const { data: history, isLoading: loadingHistory } = useQuery({
+    queryKey: ['task-history', taskId],
+    queryFn: () => getTaskHistory(taskId!),
+    enabled: validId && open && drawerTab === 'history',
+  });
+
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['task', taskId] });
     qc.invalidateQueries({ queryKey: ['task-comments', taskId] });
+    qc.invalidateQueries({ queryKey: ['task-history', taskId] });
+    qc.invalidateQueries({ queryKey: ['work-center'] });
     qc.invalidateQueries({ queryKey: ['tasks'] });
     qc.invalidateQueries({ queryKey: ['inbox-summary'] });
     onUpdated?.();
   };
 
   const handleUpdate = async (payload: Partial<Task>) => {
-    if (!validId) {
-      console.warn('Cannot update task: missing id');
-      return;
-    }
+    if (!validId) { console.warn('Cannot update task: missing id'); return; }
     try {
       await updateTask(taskId!, payload);
       toast({ title: 'Task updated' });
@@ -70,10 +80,7 @@ export function TaskDetailsDrawer({ taskId, open, onOpenChange, onUpdated }: Pro
   };
 
   const handleComment = async () => {
-    if (!validId) {
-      console.warn('Cannot add comment: missing task id');
-      return;
-    }
+    if (!validId) { console.warn('Cannot add comment: missing task id'); return; }
     if (!comment.trim()) return;
     setSubmitting(true);
     try {
@@ -89,6 +96,7 @@ export function TaskDetailsDrawer({ taskId, open, onOpenChange, onUpdated }: Pro
   };
 
   const overdue = task?.due_at && !['DONE', 'CANCELLED'].includes(task.status) && isPast(parseISO(task.due_at));
+  const isClosed = task?.status === 'DONE' || task?.status === 'CANCELLED';
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -102,12 +110,10 @@ export function TaskDetailsDrawer({ taskId, open, onOpenChange, onUpdated }: Pro
         ) : !task ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">Task not found</div>
         ) : (
-          <ScrollArea className="flex-1">
-            <div className="p-4 space-y-4">
-              {/* Title */}
-              <h2 className="text-lg font-semibold leading-tight">{task.title}</h2>
-
-              {/* Status + Priority row */}
+          <>
+            {/* Title + Status row always visible */}
+            <div className="px-4 pb-2">
+              <h2 className="text-lg font-semibold leading-tight mb-2">{task.title}</h2>
               <div className="flex flex-wrap items-center gap-2">
                 <Select value={task.status} onValueChange={(v) => handleUpdate({ status: v as TaskStatus })}>
                   <SelectTrigger className="w-auto h-7 text-xs gap-1">
@@ -116,7 +122,7 @@ export function TaskDetailsDrawer({ taskId, open, onOpenChange, onUpdated }: Pro
                     </Badge>
                   </SelectTrigger>
                   <SelectContent>
-                    {STATUSES.map(s => <SelectItem key={s} value={s}>{s.replace('_', ' ')}</SelectItem>)}
+                    {STATUSES.map(s => <SelectItem key={s} value={s}>{s.replace(/_/g, ' ')}</SelectItem>)}
                   </SelectContent>
                 </Select>
 
@@ -136,26 +142,14 @@ export function TaskDetailsDrawer({ taskId, open, onOpenChange, onUpdated }: Pro
                 )}
               </div>
 
-              {/* Description */}
-              {task.description && (
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{task.description}</p>
-              )}
-
-              {/* Meta fields */}
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                <Field label="Assigned To" value={task.assigned_to_username} />
-                <Field label="Waiting On" value={task.waiting_on_username} />
-                <Field label="Created By" value={task.created_by_username} />
-                <Field label="Due Date" value={task.due_at ? format(parseISO(task.due_at), 'dd MMM yyyy') : undefined} />
-                <Field label="Entity" value={task.entity_type ? `${task.entity_type}${task.entity_id ? `:${task.entity_id}` : ''}` : undefined} />
-                <Field label="Order" value={task.order_id} />
-                <Field label="Created" value={format(parseISO(task.created_at), 'dd MMM yyyy HH:mm')} />
-                <Field label="Updated" value={format(parseISO(task.updated_at), 'dd MMM yyyy HH:mm')} />
-              </div>
-
               {/* Quick actions */}
-              <div className="flex flex-wrap gap-2">
-                {task.status !== 'DONE' && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {!isClosed && task.status !== 'IN_PROGRESS' && (
+                  <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => handleUpdate({ status: 'IN_PROGRESS' })}>
+                    Start Working
+                  </Button>
+                )}
+                {!isClosed && (
                   <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => handleUpdate({ status: 'DONE' })}>
                     Mark Done
                   </Button>
@@ -166,47 +160,103 @@ export function TaskDetailsDrawer({ taskId, open, onOpenChange, onUpdated }: Pro
                   </Button>
                 )}
               </div>
-
-              <Separator />
-
-              {/* Comments */}
-              <div>
-                <h3 className="text-sm font-semibold mb-2 flex items-center gap-1">
-                  <MessageSquare size={14} /> Comments ({comments?.length ?? 0})
-                </h3>
-                <div className="space-y-2 mb-3">
-                  {loadingComments ? (
-                    <p className="text-xs text-muted-foreground">Loading comments…</p>
-                  ) : !comments?.length ? (
-                    <p className="text-xs text-muted-foreground">No comments yet.</p>
-                  ) : (
-                    comments.map(c => (
-                      <div key={c.id} className="bg-muted rounded p-2">
-                        <div className="flex items-center justify-between mb-0.5">
-                          <span className="text-xs font-medium">{c.username ?? 'User'}</span>
-                          <span className="text-[10px] text-muted-foreground">{format(parseISO(c.created_at), 'dd MMM HH:mm')}</span>
-                        </div>
-                        <p className="text-xs whitespace-pre-wrap">{c.message}</p>
-                      </div>
-                    ))
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <Textarea
-                    value={comment}
-                    onChange={e => setComment(e.target.value)}
-                    placeholder="Add a comment…"
-                    className="text-xs min-h-[60px]"
-                    onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) handleComment(); }}
-                    disabled={!validId}
-                  />
-                  <Button size="icon" className="shrink-0 h-[60px] w-9" disabled={!comment.trim() || submitting || !validId} onClick={handleComment}>
-                    <Send size={14} />
-                  </Button>
-                </div>
-              </div>
             </div>
-          </ScrollArea>
+
+            <Separator />
+
+            {/* Drawer tabs */}
+            <Tabs value={drawerTab} onValueChange={v => setDrawerTab(v as any)} className="flex-1 flex flex-col min-h-0">
+              <TabsList className="mx-4 mt-2 mb-0">
+                <TabsTrigger value="details" className="gap-1 text-xs"><FileText size={12} /> Details</TabsTrigger>
+                <TabsTrigger value="comments" className="gap-1 text-xs">
+                  <MessageSquare size={12} /> Comments
+                  {(comments?.length ?? 0) > 0 && <Badge variant="secondary" className="text-[10px] px-1 py-0 ml-0.5">{comments?.length}</Badge>}
+                </TabsTrigger>
+                <TabsTrigger value="history" className="gap-1 text-xs"><History size={12} /> History</TabsTrigger>
+              </TabsList>
+
+              <ScrollArea className="flex-1">
+                <TabsContent value="details" className="px-4 pb-4 mt-2">
+                  {task.description && (
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap mb-3">{task.description}</p>
+                  )}
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                    <Field label="Assigned To" value={task.assigned_to_username} />
+                    <Field label="Waiting On" value={task.waiting_on_username} />
+                    <Field label="Created By" value={task.created_by_username} />
+                    <Field label="Due Date" value={task.due_at ? format(parseISO(task.due_at), 'dd MMM yyyy') : undefined} />
+                    <Field label="Entity" value={task.entity_type ? `${task.entity_type}${task.entity_id ? `:${task.entity_id}` : ''}` : undefined} />
+                    <Field label="Order" value={task.order_id} />
+                    <Field label="Created" value={format(parseISO(task.created_at), 'dd MMM yyyy HH:mm')} />
+                    <Field label="Updated" value={format(parseISO(task.updated_at), 'dd MMM yyyy HH:mm')} />
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="comments" className="px-4 pb-4 mt-2">
+                  <div className="space-y-2 mb-3">
+                    {loadingComments ? (
+                      <p className="text-xs text-muted-foreground">Loading comments…</p>
+                    ) : !comments?.length ? (
+                      <p className="text-xs text-muted-foreground">No comments yet.</p>
+                    ) : (
+                      comments.map(c => (
+                        <div key={c.id} className="bg-muted rounded p-2">
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="text-xs font-medium">{c.username ?? 'User'}</span>
+                            <span className="text-[10px] text-muted-foreground">{format(parseISO(c.created_at), 'dd MMM HH:mm')}</span>
+                          </div>
+                          <p className="text-xs whitespace-pre-wrap">{c.message}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  {!isClosed && (
+                    <div className="flex gap-2">
+                      <Textarea
+                        value={comment}
+                        onChange={e => setComment(e.target.value)}
+                        placeholder="Add a comment…"
+                        className="text-xs min-h-[60px]"
+                        onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) handleComment(); }}
+                        disabled={!validId}
+                      />
+                      <Button size="icon" className="shrink-0 h-[60px] w-9" disabled={!comment.trim() || submitting || !validId} onClick={handleComment}>
+                        <Send size={14} />
+                      </Button>
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="history" className="px-4 pb-4 mt-2">
+                  {loadingHistory ? (
+                    <p className="text-xs text-muted-foreground">Loading history…</p>
+                  ) : !history?.length ? (
+                    <p className="text-xs text-muted-foreground">No history entries.</p>
+                  ) : (
+                    <div className="relative pl-4 border-l-2 border-muted space-y-3">
+                      {history.map(h => (
+                        <div key={h.id} className="relative">
+                          <div className="absolute -left-[calc(1rem+5px)] top-1.5 w-2 h-2 rounded-full bg-primary" />
+                          <div className="text-xs">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="font-medium">{h.action}</span>
+                              <span className="text-muted-foreground">{format(parseISO(h.changed_at), 'dd MMM HH:mm')}</span>
+                            </div>
+                            {h.changed_by_username && (
+                              <p className="text-muted-foreground">by {h.changed_by_username}</p>
+                            )}
+                            {h.details && (
+                              <p className="text-muted-foreground mt-0.5 whitespace-pre-wrap">{h.details}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              </ScrollArea>
+            </Tabs>
+          </>
         )}
       </SheetContent>
     </Sheet>

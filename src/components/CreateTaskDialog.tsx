@@ -78,6 +78,7 @@ export function CreateTaskDialog({ open, onOpenChange, onCreated, defaults }: Pr
       toast({ title: 'Task created' });
       qc.invalidateQueries({ queryKey: ['inbox-summary'] });
       qc.invalidateQueries({ queryKey: ['tasks'] });
+      qc.invalidateQueries({ queryKey: ['work-center'] });
       reset();
       onOpenChange(false);
       onCreated?.(task.id);

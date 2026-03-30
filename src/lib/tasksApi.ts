@@ -3,7 +3,7 @@ import { loadConfig } from './appConfig';
 // ============================================================
 // Types
 // ============================================================
-export type TaskStatus = 'OPEN' | 'WAITING_REPLY' | 'DONE' | 'CANCELLED';
+export type TaskStatus = 'OPEN' | 'IN_PROGRESS' | 'WAITING_REPLY' | 'DONE' | 'CANCELLED';
 export type TaskPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
 
 export interface Task {
@@ -53,6 +53,23 @@ export interface InboxSummary {
   my_open_tasks: number;
   waiting_my_reply: number;
   unread_notifications: number;
+  open_created_by_me?: number;
+}
+
+export interface TaskHistoryEntry {
+  id: number;
+  task_id: number;
+  action: string;
+  changed_by_username?: string;
+  details?: string;
+  changed_at: string;
+}
+
+export interface WorkCenterData {
+  summary: InboxSummary;
+  my_tasks: any[];
+  waiting_reply: any[];
+  notifications: any[];
 }
 
 export interface CreateTaskPayload {
@@ -212,11 +229,43 @@ export async function markNotificationRead(notificationId: number): Promise<void
   await apiFetch<unknown>(`/notifications/${notificationId}/read`, { method: 'POST' });
 }
 
+export async function markAllNotificationsRead(): Promise<void> {
+  await apiFetch<unknown>('/notifications/read-all', { method: 'POST' });
+}
+
 // ============================================================
 // Inbox Summary
 // ============================================================
 export async function getInboxSummary(): Promise<InboxSummary> {
   return apiFetch<InboxSummary>('/inbox/summary');
+}
+
+// ============================================================
+// Aggregated Work Center
+// ============================================================
+export async function getWorkCenter(): Promise<{ summary: InboxSummary; my_tasks: Task[]; waiting_reply: Task[]; notifications: Notification[] }> {
+  const raw = await apiFetch<WorkCenterData>('/work-center');
+  return {
+    summary: raw.summary,
+    my_tasks: (raw.my_tasks ?? []).map(mapTask),
+    waiting_reply: (raw.waiting_reply ?? []).map(mapTask),
+    notifications: (raw.notifications ?? []).map(mapNotification),
+  };
+}
+
+// ============================================================
+// Task History
+// ============================================================
+export async function getTaskHistory(taskId: number): Promise<TaskHistoryEntry[]> {
+  const raw = await apiFetch<any[]>(`/tasks/${taskId}/history`);
+  return raw.map(r => ({
+    id: r.id ?? r.history_id,
+    task_id: r.task_id,
+    action: r.action ?? '',
+    changed_by_username: r.changed_by_username ?? r.username,
+    details: r.details,
+    changed_at: r.changed_at ?? r.created_at,
+  }));
 }
 
 // ============================================================

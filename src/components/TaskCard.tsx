@@ -16,9 +16,11 @@ export function priorityColor(p: TaskPriority): string {
 export function statusBadge(s: TaskStatus): { className: string; label: string } {
   switch (s) {
     case 'OPEN': return { className: 'bg-[hsl(var(--info))] text-[hsl(var(--info-foreground))]', label: 'Open' };
+    case 'IN_PROGRESS': return { className: 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]', label: 'In Progress' };
     case 'WAITING_REPLY': return { className: 'bg-[hsl(var(--warning))] text-[hsl(var(--warning-foreground))] animate-pulse', label: 'Waiting Reply' };
     case 'DONE': return { className: 'bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))]', label: 'Done' };
     case 'CANCELLED': return { className: 'bg-muted text-muted-foreground opacity-60', label: 'Cancelled' };
+    default: return { className: 'bg-muted text-muted-foreground', label: String(s) };
   }
 }
 

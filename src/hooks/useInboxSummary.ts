@@ -20,10 +20,11 @@ export function useInboxSummary() {
   const qc = useQueryClient();
   const refresh = useCallback(() => {
     qc.invalidateQueries({ queryKey: INBOX_KEY });
+    qc.invalidateQueries({ queryKey: ['work-center'] });
   }, [qc]);
 
   return {
-    summary: data ?? { my_open_tasks: 0, waiting_my_reply: 0, unread_notifications: 0 },
+    summary: data ?? { my_open_tasks: 0, waiting_my_reply: 0, unread_notifications: 0, open_created_by_me: 0 },
     isLoading,
     refresh,
   };

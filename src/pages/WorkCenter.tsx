@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageContainer, PageHeader, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,81 +8,107 @@ import { TaskCard } from '@/components/TaskCard';
 import { TaskDetailsDrawer } from '@/components/TaskDetailsDrawer';
 import { CreateTaskDialog } from '@/components/CreateTaskDialog';
 import {
-  getTasks, getNotifications, markNotificationRead,
+  getWorkCenter, getTasks, markNotificationRead, markAllNotificationsRead,
   Task, Notification,
 } from '@/lib/tasksApi';
-import { useInboxSummary } from '@/hooks/useInboxSummary';
+import { useAuth } from '@/lib/AuthContext';
 import { cn } from '@/lib/utils';
-import { format, parseISO } from 'date-fns';
-import { Bell, CheckCircle, ExternalLink, Plus, ClipboardList, Clock, BellRing } from 'lucide-react';
+import { format, parseISO, isPast } from 'date-fns';
+import {
+  Bell, CheckCircle, ExternalLink, Plus, ClipboardList, Clock, BellRing,
+  UserPlus, AlertTriangle, CheckCheck,
+} from 'lucide-react';
 
-type TabValue = 'my-tasks' | 'waiting' | 'notifications' | 'created';
+type TabValue = 'my-tasks' | 'waiting' | 'notifications' | 'created' | 'overdue';
 
 export default function WorkCenterPage() {
-  const { summary, refresh: refreshSummary } = useInboxSummary();
+  const { user } = useAuth();
   const qc = useQueryClient();
 
   const [tab, setTab] = useState<TabValue>('my-tasks');
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [markingAll, setMarkingAll] = useState(false);
 
-  const { data: myTasks, isLoading: loadMyTasks, error: errMyTasks } = useQuery({
-    queryKey: ['tasks', 'mine'],
-    queryFn: () => getTasks({ mine: true }),
+  // Aggregated load
+  const { data: wc, isLoading, error, refetch: refetchWC } = useQuery({
+    queryKey: ['work-center'],
+    queryFn: getWorkCenter,
+    enabled: !!user,
+    refetchInterval: 30_000,
+    staleTime: 10_000,
   });
-  const { data: waitingTasks, isLoading: loadWaiting, error: errWaiting } = useQuery({
-    queryKey: ['tasks', 'waiting'],
-    queryFn: () => getTasks({ waiting_reply: true }),
-  });
-  const { data: notifications, isLoading: loadNotifs, error: errNotifs, refetch: refetchNotifs } = useQuery({
-    queryKey: ['notifications', 'all'],
-    queryFn: () => getNotifications(false),
-  });
-  const { data: createdTasks, isLoading: loadCreated, error: errCreated } = useQuery({
+
+  // Created by me - separate fetch since not in aggregate
+  const { data: createdTasks, isLoading: loadCreated } = useQuery({
     queryKey: ['tasks', 'created-by-me'],
     queryFn: () => getTasks({}),
+    enabled: !!user,
   });
 
-  const openTask = (id: number | undefined) => {
-    if (!id) {
-      console.warn('Cannot open task: missing id');
-      return;
+  const summary = wc?.summary ?? { my_open_tasks: 0, waiting_my_reply: 0, unread_notifications: 0, open_created_by_me: 0 };
+  const myTasks = (wc?.my_tasks ?? []).filter(t => t.status !== 'DONE' && t.status !== 'CANCELLED');
+  const waitingList = (wc?.waiting_reply ?? []).filter(t => t.status !== 'DONE' && t.status !== 'CANCELLED');
+  const allNotifs = wc?.notifications ?? [];
+  const unreadNotifs = allNotifs.filter(n => !n.is_read);
+
+  // Overdue: from myTasks + waitingList, deduped
+  const overdueTasks = (() => {
+    const seen = new Set<number>();
+    const result: Task[] = [];
+    for (const t of [...myTasks, ...waitingList]) {
+      if (!seen.has(t.id) && t.due_at && isPast(parseISO(t.due_at))) {
+        seen.add(t.id);
+        result.push(t);
+      }
     }
+    return result;
+  })();
+
+  // Created by me filtered
+  const createdByMe = (createdTasks ?? []).filter(t => t.created_by_user_id === user?.id);
+
+  const refreshAll = useCallback(() => {
+    refetchWC();
+    qc.invalidateQueries({ queryKey: ['tasks'] });
+    qc.invalidateQueries({ queryKey: ['task'] });
+    qc.invalidateQueries({ queryKey: ['task-comments'] });
+    qc.invalidateQueries({ queryKey: ['task-history'] });
+    qc.invalidateQueries({ queryKey: ['inbox-summary'] });
+  }, [refetchWC, qc]);
+
+  const openTask = (id: number | undefined) => {
+    if (!id) { console.warn('Cannot open task: missing id'); return; }
     setSelectedTaskId(id);
     setDrawerOpen(true);
   };
 
   const handleMarkRead = async (n: Notification) => {
-    if (!n.id) {
-      console.error('Notification missing id, skipping mark-read', n);
-      return;
-    }
+    if (!n.id) { console.error('Notification missing id, skipping mark-read', n); return; }
     await markNotificationRead(n.id);
-    refetchNotifs();
-    refreshSummary();
+    refreshAll();
   };
 
-  const refreshAll = () => {
-    qc.invalidateQueries({ queryKey: ['tasks'] });
-    qc.invalidateQueries({ queryKey: ['task'] });
-    qc.invalidateQueries({ queryKey: ['task-comments'] });
-    refetchNotifs();
-    refreshSummary();
+  const handleMarkAllRead = async () => {
+    setMarkingAll(true);
+    try {
+      await markAllNotificationsRead();
+      refreshAll();
+    } finally {
+      setMarkingAll(false);
+    }
   };
 
-  // Filter out DONE/CANCELLED for active views
-  const openTasks = (myTasks ?? []).filter(t => t.status !== 'DONE' && t.status !== 'CANCELLED');
-  const waitingList = (waitingTasks ?? []).filter(t => t.status !== 'DONE' && t.status !== 'CANCELLED');
-  const allNotifs = notifications ?? [];
-  const unreadNotifs = allNotifs.filter(n => !n.is_read);
-
-  // KPI cards data
   const kpis = [
     { key: 'my-tasks' as TabValue, label: 'My Open Tasks', count: summary.my_open_tasks, icon: ClipboardList, color: 'bg-[hsl(var(--info))]/10 border-[hsl(var(--info))]/30 text-[hsl(var(--info))]' },
     { key: 'waiting' as TabValue, label: 'Waiting My Reply', count: summary.waiting_my_reply, icon: Clock, color: 'bg-[hsl(var(--warning))]/10 border-[hsl(var(--warning))]/30 text-[hsl(var(--warning))]' },
     { key: 'notifications' as TabValue, label: 'Unread Notifications', count: summary.unread_notifications, icon: BellRing, color: 'bg-[hsl(var(--destructive))]/10 border-[hsl(var(--destructive))]/30 text-[hsl(var(--destructive))]' },
+    { key: 'created' as TabValue, label: 'Created by Me', count: summary.open_created_by_me ?? createdByMe.filter(t => t.status !== 'DONE' && t.status !== 'CANCELLED').length, icon: UserPlus, color: 'bg-[hsl(var(--primary))]/10 border-[hsl(var(--primary))]/30 text-[hsl(var(--primary))]' },
   ];
+
+  if (isLoading) return <PageContainer><LoadingSpinner /></PageContainer>;
+  if (error) return <PageContainer><ErrorMessage message="Failed to load Work Center" onRetry={() => refetchWC()} /></PageContainer>;
 
   return (
     <PageContainer>
@@ -97,7 +123,7 @@ export default function WorkCenterPage() {
       />
 
       {/* KPI Summary Cards */}
-      <div className="grid grid-cols-3 gap-3 mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         {kpis.map(({ key, label, count, icon: Icon, color }) => (
           <button
             key={key}
@@ -130,56 +156,66 @@ export default function WorkCenterPage() {
             Notifications
             {summary.unread_notifications > 0 && <Badge className="ml-1 text-[10px] px-1.5 py-0 bg-[hsl(var(--destructive))] text-[hsl(var(--destructive-foreground))]">{summary.unread_notifications}</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="created" className="gap-1.5">
-            Created by Me
+          <TabsTrigger value="created" className="gap-1.5">Created by Me</TabsTrigger>
+          <TabsTrigger value="overdue" className="gap-1.5">
+            Overdue
+            {overdueTasks.length > 0 && <Badge className="ml-1 text-[10px] px-1.5 py-0 bg-[hsl(var(--destructive))] text-[hsl(var(--destructive-foreground))]">{overdueTasks.length}</Badge>}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="my-tasks">
-          {loadMyTasks ? <LoadingSpinner /> : errMyTasks ? <ErrorMessage message="Failed to load tasks" onRetry={() => qc.invalidateQueries({ queryKey: ['tasks', 'mine'] })} /> : (
-            openTasks.length === 0 ? <EmptyState text="No open tasks assigned to you." /> : (
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{openTasks.map(t => <TaskCard key={t.id} task={t} onClick={() => openTask(t.id)} />)}</div>
-            )
-          )}
+          <TaskGrid tasks={myTasks} onOpen={openTask} emptyText="No open tasks assigned to you." />
         </TabsContent>
 
         <TabsContent value="waiting">
-          {loadWaiting ? <LoadingSpinner /> : errWaiting ? <ErrorMessage message="Failed to load tasks" /> : (
-            waitingList.length === 0 ? <EmptyState text="No tasks waiting on your reply." /> : (
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{waitingList.map(t => <TaskCard key={t.id} task={t} onClick={() => openTask(t.id)} />)}</div>
-            )
-          )}
+          <TaskGrid tasks={waitingList} onOpen={openTask} emptyText="No tasks waiting on your reply." />
         </TabsContent>
 
         <TabsContent value="notifications">
-          {loadNotifs ? <LoadingSpinner /> : errNotifs ? <ErrorMessage message="Failed to load notifications" /> : (
-            allNotifs.length === 0 ? <EmptyState text="No notifications." /> : (
-              <div className="space-y-2">
-                {allNotifs.map(n => (
-                  <NotificationCard
-                    key={n.id ?? `notif-${n.created_at}`}
-                    notification={n}
-                    onMarkRead={n.id ? () => handleMarkRead(n) : undefined}
-                    onOpenTask={n.task_id ? () => openTask(n.task_id!) : undefined}
-                  />
-                ))}
+          <div className="space-y-2">
+            {unreadNotifs.length > 0 && (
+              <div className="flex justify-end mb-2">
+                <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={handleMarkAllRead} disabled={markingAll}>
+                  <CheckCheck size={12} /> Mark all as read
+                </Button>
               </div>
-            )
-          )}
+            )}
+            {allNotifs.length === 0 ? <EmptyState text="No notifications." /> : (
+              allNotifs.map(n => (
+                <NotificationCard
+                  key={n.id ?? `notif-${n.created_at}`}
+                  notification={n}
+                  onMarkRead={n.id ? () => handleMarkRead(n) : undefined}
+                  onOpenTask={n.task_id ? () => openTask(n.task_id!) : undefined}
+                />
+              ))
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="created">
-          {loadCreated ? <LoadingSpinner /> : errCreated ? <ErrorMessage message="Failed to load tasks" /> : (
-            (createdTasks ?? []).length === 0 ? <EmptyState text="No tasks created by you." /> : (
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{(createdTasks ?? []).map(t => <TaskCard key={t.id} task={t} onClick={() => openTask(t.id)} />)}</div>
-            )
+          {loadCreated ? <LoadingSpinner /> : (
+            <TaskGrid tasks={createdByMe} onOpen={openTask} emptyText="No tasks created by you." />
           )}
+        </TabsContent>
+
+        <TabsContent value="overdue">
+          <TaskGrid tasks={overdueTasks} onOpen={openTask} emptyText="No overdue tasks." />
         </TabsContent>
       </Tabs>
 
       <TaskDetailsDrawer taskId={selectedTaskId} open={drawerOpen} onOpenChange={setDrawerOpen} onUpdated={refreshAll} />
-      <CreateTaskDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={(id) => openTask(id)} />
+      <CreateTaskDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={(id) => { refreshAll(); openTask(id); }} />
     </PageContainer>
+  );
+}
+
+function TaskGrid({ tasks, onOpen, emptyText }: { tasks: Task[]; onOpen: (id: number) => void; emptyText: string }) {
+  if (tasks.length === 0) return <EmptyState text={emptyText} />;
+  return (
+    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      {tasks.map(t => <TaskCard key={t.id} task={t} onClick={() => onOpen(t.id)} />)}
+    </div>
   );
 }
 
