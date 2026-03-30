@@ -3,25 +3,31 @@ import { getUsersByArea, OperationalUser } from '@/lib/usersApi';
 import { createComplaint, COMPLAINT_TYPES, COMPLAINT_SEVERITIES, ComplaintType, ComplaintSeverity } from '@/lib/complaintsApi';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Props {
-  orderId: string;
+  orderId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
 }
 
-export function RaiseComplaintDialog({ orderId, open, onOpenChange, onSuccess }: Props) {
+export function RaiseComplaintDialog({ orderId: externalOrderId, open, onOpenChange, onSuccess }: Props) {
   const [users, setUsers] = useState<OperationalUser[]>([]);
+  const [orderId, setOrderId] = useState(externalOrderId ?? '');
   const [selectedUserId, setSelectedUserId] = useState<number | ''>('');
   const [complaintType, setComplaintType] = useState<ComplaintType>('MISSING_COMPONENTS');
   const [severity, setSeverity] = useState<ComplaintSeverity>('MEDIUM');
   const [comment, setComment] = useState('');
   const [saving, setSaving] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
+
+  useEffect(() => {
+    if (externalOrderId) setOrderId(externalOrderId);
+  }, [externalOrderId]);
 
   useEffect(() => {
     if (!open) return;
@@ -32,11 +38,21 @@ export function RaiseComplaintDialog({ orderId, open, onOpenChange, onSuccess }:
       .finally(() => setLoadingUsers(false));
   }, [open]);
 
+  const reset = () => {
+    if (!externalOrderId) setOrderId('');
+    setComment('');
+    setSelectedUserId('');
+    setComplaintType('MISSING_COMPONENTS');
+    setSeverity('MEDIUM');
+  };
+
+  const isValid = orderId.trim() && selectedUserId && comment.trim();
+
   const handleSubmit = async () => {
-    if (!selectedUserId || !comment.trim()) return;
+    if (!isValid) return;
     setSaving(true);
     try {
-      await createComplaint(orderId, {
+      await createComplaint(orderId.trim(), {
         raised_by_user_id: selectedUserId as number,
         complaint_type: complaintType,
         severity,
@@ -44,8 +60,7 @@ export function RaiseComplaintDialog({ orderId, open, onOpenChange, onSuccess }:
       });
       toast.success('Complaint raised successfully');
       onOpenChange(false);
-      setComment('');
-      setSelectedUserId('');
+      reset();
       onSuccess();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to raise complaint');
@@ -58,15 +73,31 @@ export function RaiseComplaintDialog({ orderId, open, onOpenChange, onSuccess }:
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Raise Complaint — Order {orderId}</DialogTitle>
+          <DialogTitle>New Complaint{externalOrderId ? ` — Order ${externalOrderId}` : ''}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          {/* Order ID — show input only when not externally provided */}
+          {!externalOrderId && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Order *</label>
+              <Input
+                value={orderId}
+                onChange={e => setOrderId(e.target.value)}
+                placeholder="Enter order ID…"
+                className="mt-1"
+              />
+            </div>
+          )}
+
+          {/* Raised by */}
           <div>
             <label className="text-xs font-medium text-muted-foreground">Raised by *</label>
             {loadingUsers ? (
               <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                 <Loader2 size={12} className="animate-spin" /> Loading users…
               </div>
+            ) : users.length === 0 ? (
+              <p className="text-xs text-destructive mt-1">No Production users configured</p>
             ) : (
               <select
                 value={selectedUserId}
@@ -80,6 +111,8 @@ export function RaiseComplaintDialog({ orderId, open, onOpenChange, onSuccess }:
               </select>
             )}
           </div>
+
+          {/* Type & Severity */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium text-muted-foreground">Complaint Type *</label>
@@ -106,6 +139,8 @@ export function RaiseComplaintDialog({ orderId, open, onOpenChange, onSuccess }:
               </select>
             </div>
           </div>
+
+          {/* Comment */}
           <div>
             <label className="text-xs font-medium text-muted-foreground">Comment *</label>
             <Textarea
@@ -115,11 +150,13 @@ export function RaiseComplaintDialog({ orderId, open, onOpenChange, onSuccess }:
               className="mt-1 min-h-[80px] text-sm"
             />
           </div>
+
+          {/* Actions */}
           <div className="flex gap-2 pt-2">
             <Button
               variant="destructive"
               onClick={handleSubmit}
-              disabled={saving || !selectedUserId || !comment.trim()}
+              disabled={saving || !isValid}
               className="flex-1 gap-1.5"
             >
               {saving && <Loader2 size={14} className="animate-spin" />}
