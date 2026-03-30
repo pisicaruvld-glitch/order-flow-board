@@ -70,6 +70,18 @@ export interface InventoryRequest {
   comment?: string;
   closure_comment?: string;
   updated_at: string;
+  // Financial & approval fields
+  unit_value_eur?: number;
+  financial_impact_eur?: number;
+  approval_required?: boolean;
+  approval_status?: string;
+  approval_requested_at?: string;
+  approval_requested_by?: string;
+  approver_user_id?: number;
+  approver_username?: string;
+  approval_comment?: string;
+  approved_at?: string;
+  approved_by?: string;
 }
 
 export interface InventoryHistoryEntry {
@@ -99,6 +111,12 @@ export interface UpdateInventoryRequestPayload {
   qty_open_orders?: number;
   comment?: string;
   root_cause?: string;
+  unit_value_eur?: number;
+}
+
+export interface ApprovalPayload {
+  decision: "APPROVE" | "REJECT";
+  approval_comment?: string;
 }
 
 // API functions
@@ -149,4 +167,11 @@ export async function closeInventoryRequest(id: number, data: { closure_comment?
 
 export async function getInventoryRequestHistory(id: number): Promise<InventoryHistoryEntry[]> {
   return apiFetch<InventoryHistoryEntry[]>(`${BASE}/${id}/history`);
+}
+
+export async function submitApprovalDecision(id: number, payload: ApprovalPayload): Promise<InventoryRequest> {
+  return apiFetch<InventoryRequest>(`${BASE}/${id}/approval`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
