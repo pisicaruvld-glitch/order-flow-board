@@ -170,7 +170,11 @@ export async function addTaskComment(taskId: number, message: string): Promise<T
 // ============================================================
 export async function getNotifications(unreadOnly = false): Promise<Notification[]> {
   const qs = unreadOnly ? '?unread_only=true' : '';
-  return apiFetch<Notification[]>(`/notifications${qs}`);
+  const raw = await apiFetch<any[]>(`/notifications${qs}`);
+  return raw.map(n => ({
+    ...n,
+    id: n.notification_id ?? n.id,
+  }));
 }
 
 export async function markNotificationRead(notificationId: number): Promise<void> {
