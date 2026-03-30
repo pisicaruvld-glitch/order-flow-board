@@ -7,8 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { createTask, TaskPriority, TaskStatus } from '@/lib/tasksApi';
-import { getUsers, OperationalUser } from '@/lib/usersApi';
+import { createTask, TaskPriority, getActiveUsers } from '@/lib/tasksApi';
 
 interface Props {
   open: boolean;
@@ -38,9 +37,9 @@ export function CreateTaskDialog({ open, onOpenChange, onCreated, defaults }: Pr
   const [orderId, setOrderId] = useState(defaults?.order_id ?? '');
   const [submitting, setSubmitting] = useState(false);
 
-  const { data: users } = useQuery({
-    queryKey: ['admin-users'],
-    queryFn: getUsers,
+  const { data: users, isError: usersError } = useQuery({
+    queryKey: ['active-users'],
+    queryFn: getActiveUsers,
     enabled: open,
     staleTime: 60_000,
     retry: 1,
@@ -69,7 +68,7 @@ export function CreateTaskDialog({ open, onOpenChange, onCreated, defaults }: Pr
         title: title.trim(),
         description: description.trim() || undefined,
         assigned_to_user_id: Number(assignedTo),
-        waiting_on_user_id: waitingOn ? Number(waitingOn) : undefined,
+        waiting_on_user_id: waitingOn && waitingOn !== '__none' ? Number(waitingOn) : undefined,
         priority,
         due_at: dueAt || undefined,
         entity_type: entityType || undefined,
@@ -89,6 +88,8 @@ export function CreateTaskDialog({ open, onOpenChange, onCreated, defaults }: Pr
     }
   };
 
+  const activeUsers = (users ?? []);
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
       <DialogContent className="sm:max-w-md">
@@ -107,14 +108,18 @@ export function CreateTaskDialog({ open, onOpenChange, onCreated, defaults }: Pr
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Assigned To *</Label>
-              <Select value={assignedTo} onValueChange={setAssignedTo}>
-                <SelectTrigger className="text-xs"><SelectValue placeholder="Select user" /></SelectTrigger>
-                <SelectContent>
-                  {(users ?? []).filter(u => u.is_active !== 0).map(u => (
-                    <SelectItem key={u.id} value={String(u.id)}>{u.username}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {usersError ? (
+                <p className="text-xs text-destructive mt-1">Failed to load users</p>
+              ) : (
+                <Select value={assignedTo} onValueChange={setAssignedTo}>
+                  <SelectTrigger className="text-xs"><SelectValue placeholder={activeUsers.length === 0 ? 'No users available' : 'Select user'} /></SelectTrigger>
+                  <SelectContent>
+                    {activeUsers.map(u => (
+                      <SelectItem key={u.id} value={String(u.id)}>{u.username}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div>
               <Label className="text-xs">Waiting On</Label>
@@ -122,7 +127,7 @@ export function CreateTaskDialog({ open, onOpenChange, onCreated, defaults }: Pr
                 <SelectTrigger className="text-xs"><SelectValue placeholder="None" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none">None</SelectItem>
-                  {(users ?? []).filter(u => u.is_active !== 0).map(u => (
+                  {activeUsers.map(u => (
                     <SelectItem key={u.id} value={String(u.id)}>{u.username}</SelectItem>
                   ))}
                 </SelectContent>

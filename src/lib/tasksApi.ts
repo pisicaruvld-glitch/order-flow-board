@@ -79,7 +79,7 @@ export interface UpdateTaskPayload {
 }
 
 // ============================================================
-// Fetch helper (reuses same pattern as rest of app)
+// Fetch helper
 // ============================================================
 function apiBase() {
   return loadConfig().apiBaseUrl;
@@ -110,6 +110,34 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 // ============================================================
+// DTO Mappers
+// ============================================================
+function mapTask(raw: any): Task {
+  return {
+    ...raw,
+    id: raw.id ?? raw.task_id,
+  };
+}
+
+function mapComment(raw: any): TaskComment {
+  return {
+    id: raw.id ?? raw.comment_id,
+    task_id: raw.task_id,
+    user_id: raw.user_id ?? raw.created_by_user_id,
+    username: raw.username ?? raw.created_by_username,
+    message: raw.message ?? raw.comment_text,
+    created_at: raw.created_at,
+  };
+}
+
+function mapNotification(raw: any): Notification {
+  return {
+    ...raw,
+    id: raw.notification_id ?? raw.id,
+  };
+}
+
+// ============================================================
 // Tasks API
 // ============================================================
 export interface TaskFilters {
@@ -130,39 +158,45 @@ export async function getTasks(filters: TaskFilters = {}): Promise<Task[]> {
   if (filters.entity_type) params.set('entity_type', filters.entity_type);
   if (filters.order_id) params.set('order_id', filters.order_id);
   const qs = params.toString();
-  return apiFetch<Task[]>(`/tasks${qs ? `?${qs}` : ''}`);
+  const raw = await apiFetch<any[]>(`/tasks${qs ? `?${qs}` : ''}`);
+  return raw.map(mapTask);
 }
 
 export async function getTask(taskId: number): Promise<Task> {
-  return apiFetch<Task>(`/tasks/${taskId}`);
+  const raw = await apiFetch<any>(`/tasks/${taskId}`);
+  return mapTask(raw);
 }
 
 export async function createTask(payload: CreateTaskPayload): Promise<Task> {
-  return apiFetch<Task>('/tasks', {
+  const raw = await apiFetch<any>('/tasks', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+  return mapTask(raw);
 }
 
 export async function updateTask(taskId: number, payload: UpdateTaskPayload): Promise<Task> {
-  return apiFetch<Task>(`/tasks/${taskId}`, {
+  const raw = await apiFetch<any>(`/tasks/${taskId}`, {
     method: 'PUT',
     body: JSON.stringify(payload),
   });
+  return mapTask(raw);
 }
 
 // ============================================================
 // Task Comments
 // ============================================================
 export async function getTaskComments(taskId: number): Promise<TaskComment[]> {
-  return apiFetch<TaskComment[]>(`/tasks/${taskId}/comments`);
+  const raw = await apiFetch<any[]>(`/tasks/${taskId}/comments`);
+  return raw.map(mapComment);
 }
 
-export async function addTaskComment(taskId: number, message: string): Promise<TaskComment> {
-  return apiFetch<TaskComment>(`/tasks/${taskId}/comments`, {
+export async function addTaskComment(taskId: number, text: string): Promise<TaskComment> {
+  const raw = await apiFetch<any>(`/tasks/${taskId}/comments`, {
     method: 'POST',
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ comment_text: text }),
   });
+  return mapComment(raw);
 }
 
 // ============================================================
@@ -171,10 +205,7 @@ export async function addTaskComment(taskId: number, message: string): Promise<T
 export async function getNotifications(unreadOnly = false): Promise<Notification[]> {
   const qs = unreadOnly ? '?unread_only=true' : '';
   const raw = await apiFetch<any[]>(`/notifications${qs}`);
-  return raw.map(n => ({
-    ...n,
-    id: n.notification_id ?? n.id,
-  }));
+  return raw.map(mapNotification);
 }
 
 export async function markNotificationRead(notificationId: number): Promise<void> {
@@ -186,4 +217,18 @@ export async function markNotificationRead(notificationId: number): Promise<void
 // ============================================================
 export async function getInboxSummary(): Promise<InboxSummary> {
   return apiFetch<InboxSummary>('/inbox/summary');
+}
+
+// ============================================================
+// Active Users (for task assignment)
+// ============================================================
+export interface ActiveUser {
+  id: number;
+  username: string;
+  areas?: string[];
+  role?: string;
+}
+
+export async function getActiveUsers(): Promise<ActiveUser[]> {
+  return apiFetch<ActiveUser[]>('/users/active');
 }

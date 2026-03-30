@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -34,29 +33,35 @@ export function TaskDetailsDrawer({ taskId, open, onOpenChange, onUpdated }: Pro
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  const validId = typeof taskId === 'number' && taskId > 0;
+
   const { data: task, isLoading: loadingTask } = useQuery({
     queryKey: ['task', taskId],
     queryFn: () => getTask(taskId!),
-    enabled: !!taskId && open,
+    enabled: validId && open,
   });
 
   const { data: comments, isLoading: loadingComments } = useQuery({
     queryKey: ['task-comments', taskId],
     queryFn: () => getTaskComments(taskId!),
-    enabled: !!taskId && open,
+    enabled: validId && open,
   });
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['task', taskId] });
     qc.invalidateQueries({ queryKey: ['task-comments', taskId] });
+    qc.invalidateQueries({ queryKey: ['tasks'] });
     qc.invalidateQueries({ queryKey: ['inbox-summary'] });
     onUpdated?.();
   };
 
   const handleUpdate = async (payload: Partial<Task>) => {
-    if (!taskId) return;
+    if (!validId) {
+      console.warn('Cannot update task: missing id');
+      return;
+    }
     try {
-      await updateTask(taskId, payload);
+      await updateTask(taskId!, payload);
       toast({ title: 'Task updated' });
       refresh();
     } catch (e: any) {
@@ -65,10 +70,14 @@ export function TaskDetailsDrawer({ taskId, open, onOpenChange, onUpdated }: Pro
   };
 
   const handleComment = async () => {
-    if (!taskId || !comment.trim()) return;
+    if (!validId) {
+      console.warn('Cannot add comment: missing task id');
+      return;
+    }
+    if (!comment.trim()) return;
     setSubmitting(true);
     try {
-      await addTaskComment(taskId, comment.trim());
+      await addTaskComment(taskId!, comment.trim());
       setComment('');
       toast({ title: 'Comment added' });
       refresh();
@@ -189,8 +198,9 @@ export function TaskDetailsDrawer({ taskId, open, onOpenChange, onUpdated }: Pro
                     placeholder="Add a comment…"
                     className="text-xs min-h-[60px]"
                     onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) handleComment(); }}
+                    disabled={!validId}
                   />
-                  <Button size="icon" className="shrink-0 h-[60px] w-9" disabled={!comment.trim() || submitting} onClick={handleComment}>
+                  <Button size="icon" className="shrink-0 h-[60px] w-9" disabled={!comment.trim() || submitting || !validId} onClick={handleComment}>
                     <Send size={14} />
                   </Button>
                 </div>
