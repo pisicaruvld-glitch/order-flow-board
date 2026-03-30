@@ -44,27 +44,36 @@ export default function WorkCenterPage() {
     queryFn: () => getTasks({}),
   });
 
-  const openTask = (id: number) => { setSelectedTaskId(id); setDrawerOpen(true); };
-
-  const handleMarkRead = async (n: Notification) => {
-    const nid = (n as any).notification_id ?? n.id;
-    if (!nid) {
-      console.error('Notification missing notification_id, skipping mark-read', n);
+  const openTask = (id: number | undefined) => {
+    if (!id) {
+      console.warn('Cannot open task: missing id');
       return;
     }
-    await markNotificationRead(nid);
+    setSelectedTaskId(id);
+    setDrawerOpen(true);
+  };
+
+  const handleMarkRead = async (n: Notification) => {
+    if (!n.id) {
+      console.error('Notification missing id, skipping mark-read', n);
+      return;
+    }
+    await markNotificationRead(n.id);
     refetchNotifs();
     refreshSummary();
   };
 
   const refreshAll = () => {
     qc.invalidateQueries({ queryKey: ['tasks'] });
+    qc.invalidateQueries({ queryKey: ['task'] });
+    qc.invalidateQueries({ queryKey: ['task-comments'] });
     refetchNotifs();
     refreshSummary();
   };
 
-  const openTasks = (myTasks ?? []).filter(t => t.status === 'OPEN' || t.status === 'WAITING_REPLY');
-  const waitingList = waitingTasks ?? [];
+  // Filter out DONE/CANCELLED for active views
+  const openTasks = (myTasks ?? []).filter(t => t.status !== 'DONE' && t.status !== 'CANCELLED');
+  const waitingList = (waitingTasks ?? []).filter(t => t.status !== 'DONE' && t.status !== 'CANCELLED');
   const allNotifs = notifications ?? [];
   const unreadNotifs = allNotifs.filter(n => !n.is_read);
 
@@ -146,17 +155,14 @@ export default function WorkCenterPage() {
           {loadNotifs ? <LoadingSpinner /> : errNotifs ? <ErrorMessage message="Failed to load notifications" /> : (
             allNotifs.length === 0 ? <EmptyState text="No notifications." /> : (
               <div className="space-y-2">
-                {allNotifs.map(n => {
-                  const nid = (n as any).notification_id ?? n.id;
-                  return (
-                    <NotificationCard
-                      key={nid ?? `notif-${n.created_at}`}
-                      notification={n}
-                      onMarkRead={nid ? () => handleMarkRead(n) : undefined}
-                      onOpenTask={n.task_id ? () => openTask(n.task_id!) : undefined}
-                    />
-                  );
-                })}
+                {allNotifs.map(n => (
+                  <NotificationCard
+                    key={n.id ?? `notif-${n.created_at}`}
+                    notification={n}
+                    onMarkRead={n.id ? () => handleMarkRead(n) : undefined}
+                    onOpenTask={n.task_id ? () => openTask(n.task_id!) : undefined}
+                  />
+                ))}
               </div>
             )
           )}
