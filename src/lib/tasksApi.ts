@@ -3,7 +3,7 @@ import { loadConfig } from './appConfig';
 // ============================================================
 // Types
 // ============================================================
-export type TaskStatus = 'OPEN' | 'WAITING_REPLY' | 'DONE' | 'CANCELLED';
+export type TaskStatus = 'OPEN' | 'IN_PROGRESS' | 'WAITING_REPLY' | 'DONE' | 'CANCELLED';
 export type TaskPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
 
 export interface Task {
