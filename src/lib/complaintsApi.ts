@@ -7,8 +7,12 @@ export type ComplaintType =
   | 'MISSING_COMPONENTS'
   | 'WRONG_COMPONENT'
   | 'WRONG_QUANTITY'
+  | 'WRONG_QTY'
+  | 'WRONG_PART'
   | 'WRONG_LABELING'
   | 'DAMAGED_COMPONENTS'
+  | 'QUALITY_PROBLEM'
+  | 'LATE_PREPARATION'
   | 'OTHER';
 
 export type ComplaintSeverity = 'LOW' | 'MEDIUM' | 'HIGH';
@@ -16,10 +20,13 @@ export type ComplaintStatus = 'OPEN' | 'IN_REVIEW' | 'CLOSED';
 
 export const COMPLAINT_TYPES: { value: ComplaintType; label: string }[] = [
   { value: 'MISSING_COMPONENTS', label: 'Missing Components' },
+  { value: 'WRONG_QTY', label: 'Wrong Quantity' },
+  { value: 'WRONG_PART', label: 'Wrong Part' },
   { value: 'WRONG_COMPONENT', label: 'Wrong Component' },
-  { value: 'WRONG_QUANTITY', label: 'Wrong Quantity' },
   { value: 'WRONG_LABELING', label: 'Wrong Labeling' },
   { value: 'DAMAGED_COMPONENTS', label: 'Damaged Components' },
+  { value: 'QUALITY_PROBLEM', label: 'Quality Problem' },
+  { value: 'LATE_PREPARATION', label: 'Late Preparation' },
   { value: 'OTHER', label: 'Other' },
 ];
 

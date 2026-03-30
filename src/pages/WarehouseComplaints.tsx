@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ComplaintBadge } from '@/components/ComplaintBadge';
-import { Search, RefreshCw, AlertTriangle, ChevronDown, ChevronUp, Loader2, History, Eye } from 'lucide-react';
+import { RaiseComplaintDialog } from '@/components/RaiseComplaintDialog';
+import { Search, RefreshCw, AlertTriangle, ChevronDown, ChevronUp, Loader2, History, Eye, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -28,6 +29,7 @@ export default function WarehouseComplaintsPage() {
   const [severityFilter, setSeverityFilter] = useState<SeverityFilterValue>('ALL');
   const [search, setSearch] = useState('');
   const [detailComplaint, setDetailComplaint] = useState<Complaint | null>(null);
+  const [newComplaintOpen, setNewComplaintOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -82,9 +84,14 @@ export default function WarehouseComplaintsPage() {
           <h1 className="text-xl font-bold text-foreground">Warehouse Complaints</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Complaints raised by Production against Warehouse</p>
         </div>
-        <button onClick={load} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-          <RefreshCw size={14} /> Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" onClick={() => setNewComplaintOpen(true)} className="gap-1.5">
+            <Plus size={14} /> New Complaint
+          </Button>
+          <button onClick={load} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+            <RefreshCw size={14} /> Refresh
+          </button>
+        </div>
       </div>
 
       {/* KPIs */}
@@ -188,6 +195,12 @@ export default function WarehouseComplaintsPage() {
           }}
         />
       )}
+
+      <RaiseComplaintDialog
+        open={newComplaintOpen}
+        onOpenChange={setNewComplaintOpen}
+        onSuccess={load}
+      />
     </PageContainer>
   );
 }
