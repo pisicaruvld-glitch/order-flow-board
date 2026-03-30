@@ -216,17 +216,8 @@ export async function addTaskComment(taskId: number, text: string): Promise<Task
   return mapComment(raw);
 }
 
-// ============================================================
-// Notifications
-// ============================================================
-export async function getNotifications(unreadOnly = false): Promise<Notification[]> {
-  const qs = unreadOnly ? '?unread_only=true' : '';
-  const raw = await apiFetch<any[]>(`/notifications${qs}`);
-  return raw.map(mapNotification);
-}
-
-export async function markNotificationRead(notificationId: number): Promise<void> {
-  await apiFetch<unknown>(`/notifications/${notificationId}/read`, { method: 'POST' });
+export async function markAllNotificationsRead(): Promise<void> {
+  await apiFetch<unknown>('/notifications/read-all', { method: 'POST' });
 }
 
 // ============================================================
@@ -234,6 +225,34 @@ export async function markNotificationRead(notificationId: number): Promise<void
 // ============================================================
 export async function getInboxSummary(): Promise<InboxSummary> {
   return apiFetch<InboxSummary>('/inbox/summary');
+}
+
+// ============================================================
+// Aggregated Work Center
+// ============================================================
+export async function getWorkCenter(): Promise<{ summary: InboxSummary; my_tasks: Task[]; waiting_reply: Task[]; notifications: Notification[] }> {
+  const raw = await apiFetch<WorkCenterData>('/work-center');
+  return {
+    summary: raw.summary,
+    my_tasks: (raw.my_tasks ?? []).map(mapTask),
+    waiting_reply: (raw.waiting_reply ?? []).map(mapTask),
+    notifications: (raw.notifications ?? []).map(mapNotification),
+  };
+}
+
+// ============================================================
+// Task History
+// ============================================================
+export async function getTaskHistory(taskId: number): Promise<TaskHistoryEntry[]> {
+  const raw = await apiFetch<any[]>(`/tasks/${taskId}/history`);
+  return raw.map(r => ({
+    id: r.id ?? r.history_id,
+    task_id: r.task_id,
+    action: r.action ?? '',
+    changed_by_username: r.changed_by_username ?? r.username,
+    details: r.details,
+    changed_at: r.changed_at ?? r.created_at,
+  }));
 }
 
 // ============================================================
