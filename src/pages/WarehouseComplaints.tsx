@@ -195,6 +195,12 @@ export default function WarehouseComplaintsPage() {
           }}
         />
       )}
+
+      <RaiseComplaintDialog
+        open={newComplaintOpen}
+        onOpenChange={setNewComplaintOpen}
+        onSuccess={load}
+      />
     </PageContainer>
   );
 }
