@@ -53,6 +53,23 @@ export interface InboxSummary {
   my_open_tasks: number;
   waiting_my_reply: number;
   unread_notifications: number;
+  open_created_by_me?: number;
+}
+
+export interface TaskHistoryEntry {
+  id: number;
+  task_id: number;
+  action: string;
+  changed_by_username?: string;
+  details?: string;
+  changed_at: string;
+}
+
+export interface WorkCenterData {
+  summary: InboxSummary;
+  my_tasks: any[];
+  waiting_reply: any[];
+  notifications: any[];
 }
 
 export interface CreateTaskPayload {
