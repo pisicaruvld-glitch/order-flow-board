@@ -81,6 +81,7 @@ function AppRoutes() {
               <Route path="/warehouse-complaints" element={<WarehouseComplaintsPage />} />
               <Route path="/tv" element={<TvDashboardPage />} />
               <Route path="/stock-checks" element={<StockCheckRequestsPage />} />
+              <Route path="/reports" element={<ReportsPage />} />
               <Route path="/work-center" element={<WorkCenterPage />} />
               <Route path="/inbox" element={<Navigate to="/work-center" replace />} />
               <Route path="/tasks" element={<Navigate to="/work-center" replace />} />

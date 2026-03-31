@@ -26,6 +26,7 @@ import {
   KeyRound,
   User,
   Briefcase,
+  BarChart3,
 } from 'lucide-react';
 import { useInboxSummary } from '@/hooks/useInboxSummary';
 import { cn } from '@/lib/utils';
