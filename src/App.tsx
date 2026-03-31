@@ -25,6 +25,7 @@ import TransportsPage from "./pages/Transports";
 import WarehouseComplaintsPage from "./pages/WarehouseComplaints";
 import StockCheckRequestsPage from "./pages/StockCheckRequests";
 import WorkCenterPage from "./pages/WorkCenter";
+import ReportsPage from "./pages/Reports";
 import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
 import NotFound from "./pages/NotFound";
