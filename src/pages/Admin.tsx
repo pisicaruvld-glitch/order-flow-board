@@ -571,6 +571,9 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
           </>
         )}
       </div>
+      {/* Warehouse Issue Categories */}
+      <WarehouseIssueCategoriesAdmin />
+
       {/* Users Management */}
       <div className="mb-6">
         <UsersManagement />
