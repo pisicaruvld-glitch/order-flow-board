@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { StatusMapping, Area, AREAS, AppConfig as AppConfigType, DEFAULT_ENDPOINTS, EndpointPaths, AreaModes, DEFAULT_AREA_MODES, FLOW_AREAS } from '@/lib/types';
+import { getWarehouseIssueCategories, saveWarehouseIssueCategories, WarehouseIssueCategory } from '@/lib/api';
 
 /** Allowed board areas for the Status → Area mapping dropdown (aligned with backend) */
 const MAPPING_AREAS = ['Orders', 'Warehouse', 'Production', 'Logistics'] as const;
