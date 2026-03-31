@@ -832,7 +832,7 @@ export async function createIssue(
 
 export async function patchIssue(
   issueId: string,
-  data: { status?: "OPEN" | "CLOSED"; comment?: string },
+  data: { status?: "OPEN" | "CLOSED"; comment?: string; issue_category?: string },
 ): Promise<Issue> {
   if (isDemo()) {
     const idx = _issues.findIndex((i) => i.id === issueId);
