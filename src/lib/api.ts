@@ -1070,11 +1070,3 @@ export function resetDemoState() {
   _logisticsStatus = { ...MOCK_LOGISTICS_STATUS };
   _moveAuditTrail = [];
 }
-  _orders = [...MOCK_ORDERS];
-  _statusMappings = [...MOCK_STATUS_MAPPINGS];
-  _issues = [...MOCK_ISSUES];
-  _issueHistory = [...MOCK_ISSUE_HISTORY];
-  _productionStatus = { ...MOCK_PRODUCTION_STATUS };
-  _logisticsStatus = { ...MOCK_LOGISTICS_STATUS };
-  _moveAuditTrail = [];
-}
