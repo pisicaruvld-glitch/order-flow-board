@@ -1061,6 +1061,42 @@ export async function getWarehouseIssuesSummary(): Promise<WarehouseIssuesSummar
   return apiFetch<WarehouseIssuesSummary>("/reports/warehouse-issues-summary");
 }
 
+// Timeline report
+export interface TimelinePoint {
+  bucket: string;
+  value: number;
+}
+
+export interface TimelineSeries {
+  category_code: string;
+  category_label: string;
+  sort_order: number;
+  points: TimelinePoint[];
+}
+
+export interface WarehouseIssuesTimeline {
+  group_by: string;
+  bucket_kind: string;
+  status: string;
+  date_from: string;
+  date_to: string;
+  buckets: string[];
+  series: TimelineSeries[];
+}
+
+export async function getWarehouseIssuesTimeline(params: {
+  date_from: string;
+  date_to: string;
+  group_by: string;
+  status: string;
+}): Promise<WarehouseIssuesTimeline> {
+  if (isDemo()) {
+    return { group_by: params.group_by, bucket_kind: params.group_by.toUpperCase(), status: params.status, date_from: params.date_from, date_to: params.date_to, buckets: [], series: [] };
+  }
+  const qs = new URLSearchParams(params as Record<string, string>).toString();
+  return apiFetch<WarehouseIssuesTimeline>(`/reports/warehouse-issues-timeline?${qs}`);
+}
+
 export function resetDemoState() {
   _orders = [...MOCK_ORDERS];
   _statusMappings = [...MOCK_STATUS_MAPPINGS];
