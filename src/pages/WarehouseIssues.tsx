@@ -207,6 +207,18 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                         </span>
                       </TableCell>
                       <TableCell>
+                        <select
+                          value={issue.issue_category || ''}
+                          onChange={e => handleCategoryChange(issue.id, e.target.value)}
+                          className="text-xs border border-border rounded px-2 py-1 bg-card focus:outline-none focus:ring-1 focus:ring-ring min-w-[120px]"
+                        >
+                          <option value="">— None —</option>
+                          {categories.filter(c => c.is_active).map(c => (
+                            <option key={c.category_code} value={c.category_code}>{c.category_label}</option>
+                          ))}
+                        </select>
+                      </TableCell>
+                      <TableCell>
                         <p className="text-xs text-muted-foreground line-clamp-1">{issue.comment}</p>
                       </TableCell>
                       <TableCell>
