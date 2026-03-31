@@ -37,9 +37,10 @@ function getSeverity(issueType: string): 'ERROR' | 'WARNING' {
 
 export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps) {
   const navigate = useNavigate();
-  const [issues, setIssues] = useState<(Issue & { has_purchasing_feedback?: boolean; purchasing_feedback_status?: string; last_feedback_at?: string; last_feedback_by?: string; last_feedback_text?: string })[]>([]);
+  const [issues, setIssues] = useState<(Issue & { has_purchasing_feedback?: boolean; purchasing_feedback_status?: string; last_feedback_at?: string; last_feedback_by?: string; last_feedback_text?: string; issue_category?: string; issue_category_label?: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<WarehouseIssueCategory[]>([]);
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('ALL');
@@ -52,8 +53,12 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
     setLoading(true);
     setError(null);
     try {
-      const data = await getWarehouseIssues();
+      const [data, cats] = await Promise.all([
+        getWarehouseIssues(),
+        getWarehouseIssueCategories().catch(() => [] as WarehouseIssueCategory[]),
+      ]);
       setIssues(data);
+      setCategories(cats);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load warehouse issues');
     } finally {
