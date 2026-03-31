@@ -1001,7 +1001,75 @@ export function getUniquePlants(orders: Order[]): string[] {
   return [...new Set(orders.map((o) => o.Plant))].sort();
 }
 
+// ============================================================
+// WAREHOUSE ISSUE CATEGORIES (Admin)
+// ============================================================
+export interface WarehouseIssueCategory {
+  category_code: string;
+  category_label: string;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export async function getWarehouseIssueCategories(): Promise<WarehouseIssueCategory[]> {
+  if (isDemo()) {
+    return [
+      { category_code: 'BAD_PLANNING', category_label: 'Bad planning', sort_order: 10, is_active: true },
+      { category_code: 'STOCK_ACCURACY', category_label: 'Stock Accuracy', sort_order: 20, is_active: true },
+      { category_code: 'WRONG_ACQUISITION', category_label: 'Wrong Acquisition', sort_order: 30, is_active: true },
+      { category_code: 'OTHER', category_label: 'Other', sort_order: 40, is_active: true },
+    ];
+  }
+  return apiFetch<WarehouseIssueCategory[]>("/admin/warehouse-issue-categories");
+}
+
+export async function saveWarehouseIssueCategories(categories: WarehouseIssueCategory[]): Promise<unknown> {
+  if (isDemo()) return { ok: true };
+  return apiFetch<unknown>("/admin/warehouse-issue-categories", {
+    method: "PUT",
+    body: JSON.stringify(categories),
+  });
+}
+
+// ============================================================
+// REPORTS
+// ============================================================
+export interface WarehouseIssuesSummary {
+  total_issues: number;
+  by_category: Array<{
+    category_code: string;
+    category_label: string;
+    sort_order: number;
+    total_issues: number;
+    open_issues: number;
+    closed_issues: number;
+  }>;
+}
+
+export async function getWarehouseIssuesSummary(): Promise<WarehouseIssuesSummary> {
+  if (isDemo()) {
+    return {
+      total_issues: 42,
+      by_category: [
+        { category_code: 'BAD_PLANNING', category_label: 'Bad planning', sort_order: 10, total_issues: 15, open_issues: 5, closed_issues: 10 },
+        { category_code: 'STOCK_ACCURACY', category_label: 'Stock Accuracy', sort_order: 20, total_issues: 12, open_issues: 4, closed_issues: 8 },
+        { category_code: 'WRONG_ACQUISITION', category_label: 'Wrong Acquisition', sort_order: 30, total_issues: 10, open_issues: 3, closed_issues: 7 },
+        { category_code: 'OTHER', category_label: 'Other', sort_order: 40, total_issues: 5, open_issues: 2, closed_issues: 3 },
+      ],
+    };
+  }
+  return apiFetch<WarehouseIssuesSummary>("/reports/warehouse-issues-summary");
+}
+
 export function resetDemoState() {
+  _orders = [...MOCK_ORDERS];
+  _statusMappings = [...MOCK_STATUS_MAPPINGS];
+  _issues = [...MOCK_ISSUES];
+  _issueHistory = [...MOCK_ISSUE_HISTORY];
+  _productionStatus = { ...MOCK_PRODUCTION_STATUS };
+  _logisticsStatus = { ...MOCK_LOGISTICS_STATUS };
+  _moveAuditTrail = [];
+}
   _orders = [...MOCK_ORDERS];
   _statusMappings = [...MOCK_STATUS_MAPPINGS];
   _issues = [...MOCK_ISSUES];
