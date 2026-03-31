@@ -168,7 +168,7 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center text-muted-foreground py-12">
+                  <TableCell colSpan={11} className="text-center text-muted-foreground py-12">
                     No issues found
                   </TableCell>
                 </TableRow>
