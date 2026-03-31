@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Issue, IssueHistoryEntry, ISSUE_TYPES } from '@/lib/types';
-import { getWarehouseIssues, getIssueHistory, addIssueFeedback, patchIssue } from '@/lib/api';
+import { getWarehouseIssues, getIssueHistory, addIssueFeedback, patchIssue, getWarehouseIssueCategories, WarehouseIssueCategory } from '@/lib/api';
 import { PageContainer, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { IssueBadge } from '@/components/Badges';
 import { Input } from '@/components/ui/input';
@@ -37,9 +37,10 @@ function getSeverity(issueType: string): 'ERROR' | 'WARNING' {
 
 export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps) {
   const navigate = useNavigate();
-  const [issues, setIssues] = useState<(Issue & { has_purchasing_feedback?: boolean; purchasing_feedback_status?: string; last_feedback_at?: string; last_feedback_by?: string; last_feedback_text?: string })[]>([]);
+  const [issues, setIssues] = useState<(Issue & { has_purchasing_feedback?: boolean; purchasing_feedback_status?: string; last_feedback_at?: string; last_feedback_by?: string; last_feedback_text?: string; issue_category?: string; issue_category_label?: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<WarehouseIssueCategory[]>([]);
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('ALL');
@@ -52,8 +53,12 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
     setLoading(true);
     setError(null);
     try {
-      const data = await getWarehouseIssues();
+      const [data, cats] = await Promise.all([
+        getWarehouseIssues(),
+        getWarehouseIssueCategories().catch(() => [] as WarehouseIssueCategory[]),
+      ]);
       setIssues(data);
+      setCategories(cats);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load warehouse issues');
     } finally {
@@ -89,6 +94,17 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
       toast({ title: 'Status updated', description: `Issue ${newStatus === 'CLOSED' ? 'closed' : 'reopened'}` });
     } catch {
       toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' });
+    }
+  };
+
+  const handleCategoryChange = async (issueId: string, newCategory: string) => {
+    try {
+      const updated = await patchIssue(issueId, { issue_category: newCategory });
+      setIssues(prev => prev.map(i => i.id === issueId ? { ...i, ...updated } : i));
+      const catLabel = categories.find(c => c.category_code === newCategory)?.category_label ?? newCategory;
+      toast({ title: 'Category updated', description: `Category set to ${catLabel}` });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to update category', variant: 'destructive' });
     }
   };
 
@@ -142,6 +158,7 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                 <TableHead>Finish Good Desc.</TableHead>
                 <TableHead className="w-28">Part Number</TableHead>
                 <TableHead className="w-28">Issue Type</TableHead>
+                <TableHead className="w-32">Category</TableHead>
                 <TableHead>Comment</TableHead>
                 <TableHead className="w-20">Status</TableHead>
                 <TableHead className="w-36">Created At</TableHead>
@@ -151,7 +168,7 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center text-muted-foreground py-12">
+                  <TableCell colSpan={11} className="text-center text-muted-foreground py-12">
                     No issues found
                   </TableCell>
                 </TableRow>
@@ -188,6 +205,18 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                           {severity === 'ERROR' ? <AlertOctagon size={12} /> : <AlertTriangle size={12} />}
                           {ISSUE_TYPES.find(t => t.value === issue.issue_type)?.label ?? issue.issue_type}
                         </span>
+                      </TableCell>
+                      <TableCell>
+                        <select
+                          value={issue.issue_category || ''}
+                          onChange={e => handleCategoryChange(issue.id, e.target.value)}
+                          className="text-xs border border-border rounded px-2 py-1 bg-card focus:outline-none focus:ring-1 focus:ring-ring min-w-[120px]"
+                        >
+                          <option value="">— None —</option>
+                          {categories.filter(c => c.is_active).map(c => (
+                            <option key={c.category_code} value={c.category_code}>{c.category_label}</option>
+                          ))}
+                        </select>
                       </TableCell>
                       <TableCell>
                         <p className="text-xs text-muted-foreground line-clamp-1">{issue.comment}</p>
@@ -234,7 +263,7 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                     </TableRow>
                     {isExpanded && (
                       <TableRow key={`${issue.id}-feedback`} className={cn(severity === 'ERROR' && 'bg-destructive/5', severity === 'WARNING' && 'bg-warning/5')}>
-                        <TableCell colSpan={10} className="p-0">
+                        <TableCell colSpan={11} className="p-0">
                           <FeedbackPanel issueId={issue.id} />
                         </TableCell>
                       </TableRow>

@@ -25,6 +25,7 @@ import TransportsPage from "./pages/Transports";
 import WarehouseComplaintsPage from "./pages/WarehouseComplaints";
 import StockCheckRequestsPage from "./pages/StockCheckRequests";
 import WorkCenterPage from "./pages/WorkCenter";
+import ReportsPage from "./pages/Reports";
 import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
 import NotFound from "./pages/NotFound";
@@ -80,6 +81,7 @@ function AppRoutes() {
               <Route path="/warehouse-complaints" element={<WarehouseComplaintsPage />} />
               <Route path="/tv" element={<TvDashboardPage />} />
               <Route path="/stock-checks" element={<StockCheckRequestsPage />} />
+              <Route path="/reports" element={<ReportsPage />} />
               <Route path="/work-center" element={<WorkCenterPage />} />
               <Route path="/inbox" element={<Navigate to="/work-center" replace />} />
               <Route path="/tasks" element={<Navigate to="/work-center" replace />} />

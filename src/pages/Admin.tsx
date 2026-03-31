@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { StatusMapping, Area, AREAS, AppConfig as AppConfigType, DEFAULT_ENDPOINTS, EndpointPaths, AreaModes, DEFAULT_AREA_MODES, FLOW_AREAS } from '@/lib/types';
+import { getWarehouseIssueCategories, saveWarehouseIssueCategories, WarehouseIssueCategory } from '@/lib/api';
 
 /** Allowed board areas for the Status → Area mapping dropdown (aligned with backend) */
 const MAPPING_AREAS = ['Orders', 'Warehouse', 'Production', 'Logistics'] as const;
@@ -570,6 +571,9 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
           </>
         )}
       </div>
+      {/* Warehouse Issue Categories */}
+      <WarehouseIssueCategoriesAdmin />
+
       {/* Users Management */}
       <div className="mb-6">
         <UsersManagement />
@@ -579,8 +583,130 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
 }
 
 // ============================================================
-// Endpoint Field helper
+// Warehouse Issue Categories Admin
 // ============================================================
+function WarehouseIssueCategoriesAdmin() {
+  const [categories, setCategories] = useState<WarehouseIssueCategory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getWarehouseIssueCategories();
+      setCategories(data);
+    } catch { /* ignore */ }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleChange = (idx: number, field: keyof WarehouseIssueCategory, value: string | number | boolean) => {
+    setCategories(prev => prev.map((c, i) => i === idx ? { ...c, [field]: value } : c));
+    setSaved(false);
+  };
+
+  const addRow = () => {
+    setCategories(prev => [...prev, {
+      category_code: '',
+      category_label: '',
+      sort_order: (prev.length + 1) * 10,
+      is_active: true,
+    }]);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await saveWarehouseIssueCategories(categories);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch { /* ignore */ }
+    setSaving(false);
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-lg mb-6">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <div className="flex items-center gap-2">
+          <AlertTriangle size={16} className="text-primary" />
+          <h2 className="text-sm font-semibold">Warehouse Issue Categories</h2>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={addRow} className="flex items-center gap-1 text-xs text-primary hover:underline">+ Add</button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs rounded hover:bg-primary-light disabled:opacity-50 transition-colors"
+          >
+            <Save size={12} />
+            {saving ? 'Saving…' : saved ? '✓ Saved!' : 'Save Categories'}
+          </button>
+        </div>
+      </div>
+      {loading ? <LoadingSpinner label="Loading categories…" /> : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-muted text-muted-foreground text-xs border-b border-border">
+                <th className="text-left px-4 py-2.5 font-medium">Code</th>
+                <th className="text-left px-4 py-2.5 font-medium">Label</th>
+                <th className="text-left px-4 py-2.5 font-medium">Sort Order</th>
+                <th className="text-left px-4 py-2.5 font-medium">Active</th>
+              </tr>
+            </thead>
+            <tbody>
+              {categories.map((cat, idx) => (
+                <tr key={idx} className={cn('border-b border-border hover:bg-muted/40', !cat.is_active && 'opacity-50')}>
+                  <td className="px-4 py-2.5">
+                    <input
+                      value={cat.category_code}
+                      onChange={e => handleChange(idx, 'category_code', e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ''))}
+                      className="text-xs font-mono border border-border rounded px-2 py-1 bg-card focus:outline-none focus:ring-1 focus:ring-ring w-40"
+                      placeholder="CODE_VALUE"
+                    />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <input
+                      value={cat.category_label}
+                      onChange={e => handleChange(idx, 'category_label', e.target.value)}
+                      className="text-xs border border-border rounded px-2 py-1 bg-card focus:outline-none focus:ring-1 focus:ring-ring w-44"
+                      placeholder="Display label"
+                    />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <input
+                      type="number"
+                      value={cat.sort_order}
+                      onChange={e => handleChange(idx, 'sort_order', Number(e.target.value))}
+                      className="text-xs border border-border rounded px-2 py-1 bg-card focus:outline-none focus:ring-1 focus:ring-ring w-16 text-center"
+                    />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <button
+                      onClick={() => handleChange(idx, 'is_active', !cat.is_active)}
+                      className={cn(
+                        'w-9 h-5 rounded-full transition-colors relative',
+                        cat.is_active ? 'bg-success' : 'bg-border'
+                      )}
+                    >
+                      <span className={cn(
+                        'absolute top-0.5 w-4 h-4 bg-card rounded-full shadow transition-all',
+                        cat.is_active ? 'left-4' : 'left-0.5'
+                      )} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const ENDPOINT_LABELS: Record<string, string> = {
   healthPath: 'Health check path',
   ordersPath: 'Orders path',

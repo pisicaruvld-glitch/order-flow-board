@@ -26,6 +26,7 @@ import {
   KeyRound,
   User,
   Briefcase,
+  BarChart3,
 } from 'lucide-react';
 import { useInboxSummary } from '@/hooks/useInboxSummary';
 import { cn } from '@/lib/utils';
@@ -59,6 +60,7 @@ const otherNavItems = [
   { path: '/warehouse-complaints', label: 'Complaints', icon: AlertTriangle },
   { path: '/history', label: 'History', icon: History },
   { path: '/stock-checks', label: 'Stock Checks', icon: ClipboardList },
+  { path: '/reports', label: 'Reports', icon: BarChart3 },
 ];
 
 export function Layout({ children, config }: LayoutProps) {
