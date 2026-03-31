@@ -97,6 +97,17 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
     }
   };
 
+  const handleCategoryChange = async (issueId: string, newCategory: string) => {
+    try {
+      const updated = await patchIssue(issueId, { issue_category: newCategory });
+      setIssues(prev => prev.map(i => i.id === issueId ? { ...i, ...updated } : i));
+      const catLabel = categories.find(c => c.category_code === newCategory)?.category_label ?? newCategory;
+      toast({ title: 'Category updated', description: `Category set to ${catLabel}` });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to update category', variant: 'destructive' });
+    }
+  };
+
   return (
     <PageContainer>
       <div className="flex items-start justify-between mb-6">
