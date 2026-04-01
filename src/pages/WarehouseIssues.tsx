@@ -165,6 +165,7 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                 <TableHead>Comment</TableHead>
                 <TableHead className="w-20">Status</TableHead>
                 <TableHead className="w-36">Created At</TableHead>
+                <TableHead className="w-24">Start Week</TableHead>
                 <TableHead className="w-36">Purchasing Feedback</TableHead>
               </TableRow>
             </TableHeader>
