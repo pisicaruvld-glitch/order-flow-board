@@ -139,8 +139,8 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
           <Input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search by Order ID…"
-            className="pl-8 h-9 w-56 text-sm"
+            placeholder="Search by Order / Part Number / Finish Good…"
+            className="pl-8 h-9 w-72 text-sm"
           />
         </div>
         <FilterGroup label="Status" value={statusFilter} options={['ALL', 'OPEN', 'CLOSED'] as const} onChange={v => setStatusFilter(v as StatusFilter)} />
