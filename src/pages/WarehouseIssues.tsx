@@ -268,7 +268,7 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                     </TableRow>
                     {isExpanded && (
                       <TableRow key={`${issue.id}-feedback`} className={cn(severity === 'ERROR' && 'bg-destructive/5', severity === 'WARNING' && 'bg-warning/5')}>
-                        <TableCell colSpan={11} className="p-0">
+                        <TableCell colSpan={12} className="p-0">
                           <FeedbackPanel issueId={issue.id} />
                         </TableCell>
                       </TableRow>
