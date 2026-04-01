@@ -78,14 +78,9 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
 
   const filtered = useMemo(() => {
     let result = [...issues];
-    if (statusFilter !== 'ALL') result = result.filter(i => i.status === statusFilter);
     if (severityFilter !== 'ALL') result = result.filter(i => getSeverity(i.issue_type) === severityFilter);
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      result = result.filter(i => i.order_id.toLowerCase().includes(q));
-    }
     return result;
-  }, [issues, statusFilter, severityFilter, search]);
+  }, [issues, severityFilter]);
 
   const totalIssues = issues.length;
   const openIssues = issues.filter(i => i.status === 'OPEN').length;
