@@ -45,6 +45,12 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('ALL');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   // Expanded row for feedback
   const [expandedIssueId, setExpandedIssueId] = useState<string | null>(null);
@@ -53,8 +59,10 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
     setLoading(true);
     setError(null);
     try {
+      const statusParam = statusFilter !== 'ALL' ? statusFilter : undefined;
+      const qParam = debouncedSearch || undefined;
       const [data, cats] = await Promise.all([
-        getWarehouseIssues(),
+        getWarehouseIssues(statusParam, qParam),
         getWarehouseIssueCategories().catch(() => [] as WarehouseIssueCategory[]),
       ]);
       setIssues(data);
@@ -64,20 +72,15 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [statusFilter, debouncedSearch]);
 
   useEffect(() => { load(); }, [load]);
 
   const filtered = useMemo(() => {
     let result = [...issues];
-    if (statusFilter !== 'ALL') result = result.filter(i => i.status === statusFilter);
     if (severityFilter !== 'ALL') result = result.filter(i => getSeverity(i.issue_type) === severityFilter);
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      result = result.filter(i => i.order_id.toLowerCase().includes(q));
-    }
     return result;
-  }, [issues, statusFilter, severityFilter, search]);
+  }, [issues, severityFilter]);
 
   const totalIssues = issues.length;
   const openIssues = issues.filter(i => i.status === 'OPEN').length;
@@ -136,8 +139,8 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
           <Input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search by Order ID…"
-            className="pl-8 h-9 w-56 text-sm"
+            placeholder="Search by Order / Part Number / Finish Good…"
+            className="pl-8 h-9 w-72 text-sm"
           />
         </div>
         <FilterGroup label="Status" value={statusFilter} options={['ALL', 'OPEN', 'CLOSED'] as const} onChange={v => setStatusFilter(v as StatusFilter)} />
@@ -162,13 +165,14 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                 <TableHead>Comment</TableHead>
                 <TableHead className="w-20">Status</TableHead>
                 <TableHead className="w-36">Created At</TableHead>
+                <TableHead className="w-24">Start Week</TableHead>
                 <TableHead className="w-36">Purchasing Feedback</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center text-muted-foreground py-12">
+                  <TableCell colSpan={12} className="text-center text-muted-foreground py-12">
                     No issues found
                   </TableCell>
                 </TableRow>
@@ -238,6 +242,7 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                         {new Date(issue.created_at).toLocaleDateString()}{' '}
                         {new Date(issue.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </TableCell>
+                      <TableCell className="text-xs font-mono text-muted-foreground">{(issue as any).start_work_week || '—'}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5">
                           {issue.has_purchasing_feedback ? (
@@ -263,7 +268,7 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                     </TableRow>
                     {isExpanded && (
                       <TableRow key={`${issue.id}-feedback`} className={cn(severity === 'ERROR' && 'bg-destructive/5', severity === 'WARNING' && 'bg-warning/5')}>
-                        <TableCell colSpan={11} className="p-0">
+                        <TableCell colSpan={12} className="p-0">
                           <FeedbackPanel issueId={issue.id} />
                         </TableCell>
                       </TableRow>
