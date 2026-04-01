@@ -59,8 +59,10 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
     setLoading(true);
     setError(null);
     try {
+      const statusParam = statusFilter !== 'ALL' ? statusFilter : undefined;
+      const qParam = debouncedSearch || undefined;
       const [data, cats] = await Promise.all([
-        getWarehouseIssues(),
+        getWarehouseIssues(statusParam, qParam),
         getWarehouseIssueCategories().catch(() => [] as WarehouseIssueCategory[]),
       ]);
       setIssues(data);
@@ -70,7 +72,7 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [statusFilter, debouncedSearch]);
 
   useEffect(() => { load(); }, [load]);
 
