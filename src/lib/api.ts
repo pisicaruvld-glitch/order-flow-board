@@ -749,15 +749,26 @@ function shiftDate(dateStr: string | undefined | null, days: number): string {
 // ============================================================
 
 /** Fetch all warehouse issues (all orders in Warehouse area) */
-export async function getWarehouseIssues(status?: 'OPEN' | 'CLOSED'): Promise<Issue[]> {
+export async function getWarehouseIssues(status?: 'OPEN' | 'CLOSED', q?: string): Promise<Issue[]> {
   if (isDemo()) {
     const warehouseOrderIds = new Set(_orders.filter(o => o.current_area === 'Warehouse').map(o => o.Order));
     let issues = _issues.filter(i => warehouseOrderIds.has(i.order_id));
     if (status) issues = issues.filter(i => i.status === status);
+    if (q) {
+      const lower = q.toLowerCase();
+      issues = issues.filter(i =>
+        i.order_id.toLowerCase().includes(lower) ||
+        (i.part_number || '').toLowerCase().includes(lower) ||
+        (i.pn || '').toLowerCase().includes(lower) ||
+        (i.finish_good_no || '').toLowerCase().includes(lower) ||
+        (i.finish_good_description || '').toLowerCase().includes(lower)
+      );
+    }
     return issues;
   }
   const params = new URLSearchParams();
   if (status) params.set('status', status);
+  if (q) params.set('q', q);
   return apiFetch<Issue[]>(`/warehouse/issues?${params.toString()}`);
 }
 

@@ -45,6 +45,12 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('ALL');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   // Expanded row for feedback
   const [expandedIssueId, setExpandedIssueId] = useState<string | null>(null);
