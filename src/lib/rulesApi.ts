@@ -7,7 +7,7 @@ function apiBase() {
 function authHeaders(): Record<string, string> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   try {
-    const token = localStorage.getItem("auth_token");
+    const token = localStorage.getItem("vsro_auth_token");
     if (token) headers["Authorization"] = `Bearer ${token}`;
   } catch {}
   return headers;
@@ -56,31 +56,31 @@ export interface RulesResponse {
 
 // GET
 export function getRules(): Promise<RulesResponse> {
-  return apiFetch("/api/rules");
+  return apiFetch("/rules");
 }
 
 // Category CRUD
 export function createCategory(payload: { category_title: string; category_key: string; sort_order: number; is_active: number }): Promise<RuleCategory> {
-  return apiFetch("/api/admin/rules/categories", { method: "POST", body: JSON.stringify(payload) });
+  return apiFetch("/admin/rules/categories", { method: "POST", body: JSON.stringify(payload) });
 }
 
 export function updateCategory(id: number, payload: Partial<{ category_title: string; category_key: string; sort_order: number; is_active: number }>): Promise<RuleCategory> {
-  return apiFetch(`/api/admin/rules/categories/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+  return apiFetch(`/admin/rules/categories/${id}`, { method: "PUT", body: JSON.stringify(payload) });
 }
 
 export function deleteCategory(id: number): Promise<void> {
-  return apiFetch(`/api/admin/rules/categories/${id}`, { method: "DELETE" });
+  return apiFetch(`/admin/rules/categories/${id}`, { method: "DELETE" });
 }
 
 // Rule item CRUD
 export function createRuleItem(payload: { category_id: number; rule_title: string; rule_key: string; rule_content: string; sort_order: number; is_active: number }): Promise<RuleItem> {
-  return apiFetch("/api/admin/rules/items", { method: "POST", body: JSON.stringify(payload) });
+  return apiFetch("/admin/rules/items", { method: "POST", body: JSON.stringify(payload) });
 }
 
 export function updateRuleItem(id: number, payload: Partial<{ category_id: number; rule_title: string; rule_key: string; rule_content: string; sort_order: number; is_active: number }>): Promise<RuleItem> {
-  return apiFetch(`/api/admin/rules/items/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+  return apiFetch(`/admin/rules/items/${id}`, { method: "PUT", body: JSON.stringify(payload) });
 }
 
 export function deleteRuleItem(id: number): Promise<void> {
-  return apiFetch(`/api/admin/rules/items/${id}`, { method: "DELETE" });
+  return apiFetch(`/admin/rules/items/${id}`, { method: "DELETE" });
 }

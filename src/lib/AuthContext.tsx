@@ -26,7 +26,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const me = await getMe();
       setUser(me);
-    } catch {
+    } catch (err) {
+      console.error('[AuthContext] /auth/me failed, clearing session:', err);
       clearStoredToken();
       setUser(null);
     } finally {

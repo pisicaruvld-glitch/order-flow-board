@@ -20,10 +20,13 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     try {
+      console.log('[Login] Submitting login for:', username.trim());
       const resp = await login({ username: username.trim(), password });
+      console.log('[Login] Login successful, user:', resp.user?.username);
       setUser(resp.user);
       navigate('/', { replace: true });
     } catch (err: unknown) {
+      console.error('[Login] Login failed:', err);
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setLoading(false);
