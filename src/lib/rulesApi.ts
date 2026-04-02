@@ -7,7 +7,7 @@ function apiBase() {
 function authHeaders(): Record<string, string> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   try {
-    const token = localStorage.getItem("auth_token");
+    const token = localStorage.getItem("vsro_auth_token");
     if (token) headers["Authorization"] = `Bearer ${token}`;
   } catch {}
   return headers;
