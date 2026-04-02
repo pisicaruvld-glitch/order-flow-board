@@ -62,10 +62,11 @@ export interface ComplaintHistoryEntry {
 }
 
 export interface CreateComplaintPayload {
-  raised_by_user_id: number;
   complaint_type: ComplaintType;
   severity: ComplaintSeverity;
   comment: string;
+  assigned_department: string;
+  assigned_to_user_id: number;
 }
 
 export interface PatchComplaintPayload {
