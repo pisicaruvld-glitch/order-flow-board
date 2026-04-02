@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getUsersByArea, OperationalUser } from '@/lib/usersApi';
+import { getUsersByArea, OperationalUser, UserArea } from '@/lib/usersApi';
 import { createComplaint, COMPLAINT_TYPES, COMPLAINT_SEVERITIES, ComplaintType, ComplaintSeverity } from '@/lib/complaintsApi';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+
+const DEPARTMENTS: UserArea[] = ['Orders', 'Warehouse', 'Production', 'Logistics'];
 
 interface Props {
   orderId?: string;
@@ -16,47 +18,60 @@ interface Props {
 }
 
 export function RaiseComplaintDialog({ orderId: externalOrderId, open, onOpenChange, onSuccess }: Props) {
-  const [users, setUsers] = useState<OperationalUser[]>([]);
   const [orderId, setOrderId] = useState(externalOrderId ?? '');
-  const [selectedUserId, setSelectedUserId] = useState<number | ''>('');
   const [complaintType, setComplaintType] = useState<ComplaintType>('MISSING_COMPONENTS');
   const [severity, setSeverity] = useState<ComplaintSeverity>('MEDIUM');
   const [comment, setComment] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [assignedDepartment, setAssignedDepartment] = useState<UserArea | ''>('');
+  const [assignedUserId, setAssignedUserId] = useState<number | ''>('');
+  const [deptUsers, setDeptUsers] = useState<OperationalUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (externalOrderId) setOrderId(externalOrderId);
   }, [externalOrderId]);
 
+  // Load users when department changes
   useEffect(() => {
-    if (!open) return;
+    if (!assignedDepartment) {
+      setDeptUsers([]);
+      setAssignedUserId('');
+      return;
+    }
     setLoadingUsers(true);
-    getUsersByArea('Production')
-      .then(setUsers)
-      .catch(() => toast.error('Failed to load production users'))
+    setAssignedUserId('');
+    getUsersByArea(assignedDepartment)
+      .then(setDeptUsers)
+      .catch(() => {
+        toast.error(`Failed to load ${assignedDepartment} users`);
+        setDeptUsers([]);
+      })
       .finally(() => setLoadingUsers(false));
-  }, [open]);
+  }, [assignedDepartment]);
 
   const reset = () => {
     if (!externalOrderId) setOrderId('');
     setComment('');
-    setSelectedUserId('');
     setComplaintType('MISSING_COMPONENTS');
     setSeverity('MEDIUM');
+    setAssignedDepartment('');
+    setAssignedUserId('');
+    setDeptUsers([]);
   };
 
-  const isValid = orderId.trim() && selectedUserId && comment.trim();
+  const isValid = orderId.trim() && comment.trim() && assignedDepartment && assignedUserId;
 
   const handleSubmit = async () => {
     if (!isValid) return;
     setSaving(true);
     try {
       await createComplaint(orderId.trim(), {
-        raised_by_user_id: selectedUserId as number,
         complaint_type: complaintType,
         severity,
         comment: comment.trim(),
+        assigned_department: assignedDepartment as UserArea,
+        assigned_to_user_id: assignedUserId as number,
       });
       toast.success('Complaint raised successfully');
       onOpenChange(false);
@@ -76,7 +91,6 @@ export function RaiseComplaintDialog({ orderId: externalOrderId, open, onOpenCha
           <DialogTitle>New Complaint{externalOrderId ? ` — Order ${externalOrderId}` : ''}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          {/* Order ID — show input only when not externally provided */}
           {!externalOrderId && (
             <div>
               <label className="text-xs font-medium text-muted-foreground">Order *</label>
@@ -89,23 +103,42 @@ export function RaiseComplaintDialog({ orderId: externalOrderId, open, onOpenCha
             </div>
           )}
 
-          {/* Raised by */}
+          {/* Assign to Department */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Raised by *</label>
-            {loadingUsers ? (
+            <label className="text-xs font-medium text-muted-foreground">Assign to Department *</label>
+            <select
+              value={assignedDepartment}
+              onChange={e => setAssignedDepartment(e.target.value as UserArea)}
+              className="w-full mt-1 px-3 py-2 text-sm border border-border rounded-md bg-card focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="">Select department…</option>
+              {DEPARTMENTS.map(d => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Assign to User */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Assign to User *</label>
+            {!assignedDepartment ? (
+              <select disabled className="w-full mt-1 px-3 py-2 text-sm border border-border rounded-md bg-muted text-muted-foreground opacity-60">
+                <option>Select a department first…</option>
+              </select>
+            ) : loadingUsers ? (
               <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                 <Loader2 size={12} className="animate-spin" /> Loading users…
               </div>
-            ) : users.length === 0 ? (
-              <p className="text-xs text-destructive mt-1">No Production users configured</p>
+            ) : deptUsers.length === 0 ? (
+              <p className="text-xs text-destructive mt-1">No {assignedDepartment} users configured</p>
             ) : (
               <select
-                value={selectedUserId}
-                onChange={e => setSelectedUserId(Number(e.target.value))}
+                value={assignedUserId}
+                onChange={e => setAssignedUserId(Number(e.target.value))}
                 className="w-full mt-1 px-3 py-2 text-sm border border-border rounded-md bg-card focus:outline-none focus:ring-1 focus:ring-ring"
               >
                 <option value="">Select user…</option>
-                {users.map(u => (
+                {deptUsers.map(u => (
                   <option key={u.id} value={u.id}>{u.username}</option>
                 ))}
               </select>
