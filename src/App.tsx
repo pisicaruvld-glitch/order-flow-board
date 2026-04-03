@@ -27,6 +27,7 @@ import StockCheckRequestsPage from "./pages/StockCheckRequests";
 import WorkCenterPage from "./pages/WorkCenter";
 import ReportsPage from "./pages/Reports";
 import RulesPage from "./pages/Rules";
+import GanttPage from "./pages/Gantt";
 import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
 import NotFound from "./pages/NotFound";
@@ -84,6 +85,7 @@ function AppRoutes() {
               <Route path="/stock-checks" element={<StockCheckRequestsPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/rules" element={<RulesPage />} />
+              <Route path="/gantt" element={<GanttPage />} />
               <Route path="/work-center" element={<WorkCenterPage />} />
               <Route path="/inbox" element={<Navigate to="/work-center" replace />} />
               <Route path="/tasks" element={<Navigate to="/work-center" replace />} />

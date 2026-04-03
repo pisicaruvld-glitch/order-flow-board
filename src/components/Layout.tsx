@@ -62,6 +62,7 @@ const otherNavItems = [
   { path: '/stock-checks', label: 'Stock Checks', icon: ClipboardList },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
   { path: '/rules', label: 'Rules', icon: ClipboardList },
+  { path: '/gantt', label: 'Gantt', icon: BarChart3 },
 ];
 
 export function Layout({ children, config }: LayoutProps) {
