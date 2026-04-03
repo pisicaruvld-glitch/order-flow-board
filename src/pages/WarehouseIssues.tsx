@@ -244,7 +244,10 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                         {new Date(issue.created_at).toLocaleDateString()}{' '}
                         {new Date(issue.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </TableCell>
-                      <TableCell className="text-xs font-mono text-muted-foreground">{(issue as any).start_work_week || '—'}</TableCell>
+                      <TableCell className="text-xs font-mono text-muted-foreground">
+                        {/* Computed from start_date_sched using shared factory week helper (Fri→Thu) */}
+                        {(issue as any).start_date_sched ? `KW ${getFactoryWeek((issue as any).start_date_sched)}` : '—'}
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5">
                           {issue.has_purchasing_feedback ? (
