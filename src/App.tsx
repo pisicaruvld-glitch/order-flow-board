@@ -27,6 +27,7 @@ import StockCheckRequestsPage from "./pages/StockCheckRequests";
 import WorkCenterPage from "./pages/WorkCenter";
 import ReportsPage from "./pages/Reports";
 import RulesPage from "./pages/Rules";
+import GanttPage from "./pages/Gantt";
 import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
 import NotFound from "./pages/NotFound";
