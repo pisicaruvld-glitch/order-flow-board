@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+// Warehouse Issues week must stay aligned with Dashboard factory week logic
+import { getFactoryWeek } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { Issue, IssueHistoryEntry, ISSUE_TYPES } from '@/lib/types';
 import { getWarehouseIssues, getIssueHistory, addIssueFeedback, patchIssue, getWarehouseIssueCategories, WarehouseIssueCategory } from '@/lib/api';
