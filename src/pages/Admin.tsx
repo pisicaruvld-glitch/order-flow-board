@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { StatusMapping, Area, AREAS, AppConfig as AppConfigType, DEFAULT_ENDPOINTS, EndpointPaths, AreaModes, DEFAULT_AREA_MODES, FLOW_AREAS } from '@/lib/types';
 import { getWarehouseIssueCategories, saveWarehouseIssueCategories, WarehouseIssueCategory } from '@/lib/api';
+import {
+  getReceivingIssueTypes, saveReceivingIssueTypes, ReceivingIssueType,
+  getReceivingSuppliers, saveReceivingSuppliers, ReceivingSupplier,
+} from '@/lib/receivingApi';
 
 /** Allowed board areas for the Status → Area mapping dropdown (aligned with backend) */
 const MAPPING_AREAS = ['Orders', 'Warehouse', 'Production', 'Logistics'] as const;
@@ -573,6 +577,12 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
       </div>
       {/* Warehouse Issue Categories */}
       <WarehouseIssueCategoriesAdmin />
+
+      {/* Receiving Issue Types */}
+      <ReceivingIssueTypesAdmin />
+
+      {/* Receiving Suppliers */}
+      <ReceivingSuppliersAdmin />
 
       {/* Users Management */}
       <div className="mb-6">
