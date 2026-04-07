@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { StatusMapping, Area, AREAS, AppConfig as AppConfigType, DEFAULT_ENDPOINTS, EndpointPaths, AreaModes, DEFAULT_AREA_MODES, FLOW_AREAS } from '@/lib/types';
 import { getWarehouseIssueCategories, saveWarehouseIssueCategories, WarehouseIssueCategory } from '@/lib/api';
+import {
+  getReceivingIssueTypes, saveReceivingIssueTypes, ReceivingIssueType,
+  getReceivingSuppliers, saveReceivingSuppliers, ReceivingSupplier,
+} from '@/lib/receivingApi';
 
 /** Allowed board areas for the Status → Area mapping dropdown (aligned with backend) */
 const MAPPING_AREAS = ['Orders', 'Warehouse', 'Production', 'Logistics'] as const;
@@ -574,6 +578,12 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
       {/* Warehouse Issue Categories */}
       <WarehouseIssueCategoriesAdmin />
 
+      {/* Receiving Issue Types */}
+      <ReceivingIssueTypesAdmin />
+
+      {/* Receiving Suppliers */}
+      <ReceivingSuppliersAdmin />
+
       {/* Users Management */}
       <div className="mb-6">
         <UsersManagement />
@@ -757,6 +767,184 @@ function EndpointField({
           disabled && 'opacity-50 cursor-not-allowed'
         )}
       />
+    </div>
+  );
+}
+
+// ============================================================
+// Receiving Issue Types Admin
+// ============================================================
+function ReceivingIssueTypesAdmin() {
+  const [items, setItems] = useState<ReceivingIssueType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { setItems(await getReceivingIssueTypes()); } catch { /* ignore */ }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleChange = (idx: number, field: keyof ReceivingIssueType, value: string | number | boolean) => {
+    setItems(prev => prev.map((c, i) => i === idx ? { ...c, [field]: value } : c));
+    setSaved(false);
+  };
+
+  const addRow = () => {
+    setItems(prev => [...prev, { id: 0, type_code: '', type_label: '', sort_order: (prev.length + 1) * 10, is_active: true }]);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await saveReceivingIssueTypes(items);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch { /* ignore */ }
+    setSaving(false);
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-lg mb-6">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <div className="flex items-center gap-2">
+          <AlertTriangle size={16} className="text-primary" />
+          <h2 className="text-sm font-semibold">Receiving Issue Types</h2>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={addRow} className="flex items-center gap-1 text-xs text-primary hover:underline">+ Add</button>
+          <button onClick={handleSave} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs rounded hover:bg-primary-light disabled:opacity-50 transition-colors">
+            <Save size={12} />
+            {saving ? 'Saving…' : saved ? '✓ Saved!' : 'Save Types'}
+          </button>
+        </div>
+      </div>
+      {loading ? <LoadingSpinner label="Loading…" /> : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-muted text-muted-foreground text-xs border-b border-border">
+                <th className="text-left px-4 py-2.5 font-medium">Code</th>
+                <th className="text-left px-4 py-2.5 font-medium">Label</th>
+                <th className="text-left px-4 py-2.5 font-medium">Sort Order</th>
+                <th className="text-left px-4 py-2.5 font-medium">Active</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item, idx) => (
+                <tr key={idx} className={cn('border-b border-border hover:bg-muted/40', !item.is_active && 'opacity-50')}>
+                  <td className="px-4 py-2.5">
+                    <input value={item.type_code} onChange={e => handleChange(idx, 'type_code', e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ''))} className="text-xs font-mono border border-border rounded px-2 py-1 bg-card focus:outline-none focus:ring-1 focus:ring-ring w-40" placeholder="CODE" />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <input value={item.type_label} onChange={e => handleChange(idx, 'type_label', e.target.value)} className="text-xs border border-border rounded px-2 py-1 bg-card focus:outline-none focus:ring-1 focus:ring-ring w-44" placeholder="Label" />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <input type="number" value={item.sort_order} onChange={e => handleChange(idx, 'sort_order', Number(e.target.value))} className="text-xs border border-border rounded px-2 py-1 bg-card focus:outline-none focus:ring-1 focus:ring-ring w-16 text-center" />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <button onClick={() => handleChange(idx, 'is_active', !item.is_active)} className={cn('w-9 h-5 rounded-full transition-colors relative', item.is_active ? 'bg-success' : 'bg-border')}>
+                      <span className={cn('absolute top-0.5 w-4 h-4 bg-card rounded-full shadow transition-all', item.is_active ? 'left-4' : 'left-0.5')} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// Receiving Suppliers Admin
+// ============================================================
+function ReceivingSuppliersAdmin() {
+  const [items, setItems] = useState<ReceivingSupplier[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { setItems(await getReceivingSuppliers()); } catch { /* ignore */ }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleChange = (idx: number, field: keyof ReceivingSupplier, value: string | number | boolean) => {
+    setItems(prev => prev.map((c, i) => i === idx ? { ...c, [field]: value } : c));
+    setSaved(false);
+  };
+
+  const addRow = () => {
+    setItems(prev => [...prev, { id: 0, supplier_code: '', supplier_name: '', sort_order: (prev.length + 1) * 10, is_active: true }]);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await saveReceivingSuppliers(items);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch { /* ignore */ }
+    setSaving(false);
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-lg mb-6">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <div className="flex items-center gap-2">
+          <Database size={16} className="text-primary" />
+          <h2 className="text-sm font-semibold">Receiving Suppliers</h2>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={addRow} className="flex items-center gap-1 text-xs text-primary hover:underline">+ Add</button>
+          <button onClick={handleSave} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs rounded hover:bg-primary-light disabled:opacity-50 transition-colors">
+            <Save size={12} />
+            {saving ? 'Saving…' : saved ? '✓ Saved!' : 'Save Suppliers'}
+          </button>
+        </div>
+      </div>
+      {loading ? <LoadingSpinner label="Loading…" /> : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-muted text-muted-foreground text-xs border-b border-border">
+                <th className="text-left px-4 py-2.5 font-medium">Code</th>
+                <th className="text-left px-4 py-2.5 font-medium">Name</th>
+                <th className="text-left px-4 py-2.5 font-medium">Sort Order</th>
+                <th className="text-left px-4 py-2.5 font-medium">Active</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item, idx) => (
+                <tr key={idx} className={cn('border-b border-border hover:bg-muted/40', !item.is_active && 'opacity-50')}>
+                  <td className="px-4 py-2.5">
+                    <input value={item.supplier_code} onChange={e => handleChange(idx, 'supplier_code', e.target.value.toUpperCase())} className="text-xs font-mono border border-border rounded px-2 py-1 bg-card focus:outline-none focus:ring-1 focus:ring-ring w-40" placeholder="SUP_CODE" />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <input value={item.supplier_name} onChange={e => handleChange(idx, 'supplier_name', e.target.value)} className="text-xs border border-border rounded px-2 py-1 bg-card focus:outline-none focus:ring-1 focus:ring-ring w-52" placeholder="Supplier name" />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <input type="number" value={item.sort_order} onChange={e => handleChange(idx, 'sort_order', Number(e.target.value))} className="text-xs border border-border rounded px-2 py-1 bg-card focus:outline-none focus:ring-1 focus:ring-ring w-16 text-center" />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <button onClick={() => handleChange(idx, 'is_active', !item.is_active)} className={cn('w-9 h-5 rounded-full transition-colors relative', item.is_active ? 'bg-success' : 'bg-border')}>
+                      <span className={cn('absolute top-0.5 w-4 h-4 bg-card rounded-full shadow transition-all', item.is_active ? 'left-4' : 'left-0.5')} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
