@@ -26,7 +26,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Search, Plus, Loader2, Eye, CheckCircle2, ClipboardCheck } from 'lucide-react';
+import { Search, Plus, Loader2, Eye, CheckCircle2, ClipboardCheck, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
