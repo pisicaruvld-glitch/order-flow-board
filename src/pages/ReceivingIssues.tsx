@@ -418,8 +418,41 @@ function ReviewDialog({ issue, onClose, onDone }: { issue: ReceivingIssue; onClo
             <Input value={comment} onChange={e => setComment(e.target.value)} className="h-9 text-sm" placeholder="Optional comment" />
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex-col sm:flex-row gap-2">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              const subject = `Receiving Issue #${issue.id} - ${issue.problem_type_label ?? ''} - ${issue.supplier_name ?? ''}`;
+              const body = [
+                'Receiving Issue Review',
+                '',
+                `Issue ID: ${issue.id}`,
+                `Status: ${issue.status}`,
+                `Problem Type: ${issue.problem_type_label ?? '—'}`,
+                `Supplier: ${issue.supplier_name ?? '—'}`,
+                `SAP Component Number: ${issue.sap_component_number || '—'}`,
+                `PO Number: ${issue.po_number || '—'}`,
+                `Created By: ${issue.created_by_username ?? '—'}`,
+                `Created At: ${fmtDate(issue.created_at)}`,
+                `Reviewed By: ${issue.reviewed_by_username ?? '—'}`,
+                `Reviewed At: ${fmtDate(issue.reviewed_at)}`,
+                '',
+                'Problem Description:',
+                issue.problem_description || '—',
+                '',
+                'Proposed Resolution:',
+                resolution || '—',
+                '',
+                'Review Comment:',
+                comment || '—',
+              ].join('\n');
+              window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_self');
+            }}
+            className="gap-1.5"
+          >
+            <Mail size={14} /> Compose E-mail
+          </Button>
           <Button onClick={handleSubmit} disabled={!resolution.trim() || submitting}>
             {submitting && <Loader2 size={14} className="animate-spin mr-1" />}
             Submit Review
