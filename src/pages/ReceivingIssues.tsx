@@ -14,6 +14,7 @@ import {
   ReceivingSupplier,
   ReceivingIssueHistoryEntry,
 } from '@/lib/receivingApi';
+import { getUsersByArea, OperationalUser, UserArea } from '@/lib/usersApi';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
