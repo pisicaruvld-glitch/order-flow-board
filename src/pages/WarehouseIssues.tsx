@@ -4,6 +4,7 @@ import { getFactoryWeek } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { Issue, IssueHistoryEntry, ISSUE_TYPES } from '@/lib/types';
 import { getWarehouseIssues, getIssueHistory, addIssueFeedback, patchIssue, getWarehouseIssueCategories, WarehouseIssueCategory } from '@/lib/api';
+import { getUsersByArea, OperationalUser, UserArea } from '@/lib/usersApi';
 import { PageContainer, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { IssueBadge } from '@/components/Badges';
 import { Input } from '@/components/ui/input';
