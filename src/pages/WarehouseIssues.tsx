@@ -57,6 +57,55 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
 
   // Expanded row for feedback
   const [expandedIssueId, setExpandedIssueId] = useState<string | null>(null);
+  // Inline assignment state: keyed by issue id
+  const [assigningIds, setAssigningIds] = useState<Set<string>>(new Set());
+  const [areaUsers, setAreaUsers] = useState<Record<string, OperationalUser[]>>({});
+  const [loadingArea, setLoadingArea] = useState<string | null>(null);
+
+  const fetchUsersForArea = useCallback(async (area: string) => {
+    if (areaUsers[area]) return;
+    setLoadingArea(area);
+    try {
+      const users = await getUsersByArea(area as UserArea);
+      setAreaUsers(prev => ({ ...prev, [area]: users }));
+    } catch {
+      toast({ title: 'Error', description: `Failed to load users for ${area}`, variant: 'destructive' });
+    } finally {
+      setLoadingArea(null);
+    }
+  }, [areaUsers]);
+
+  const handleDepartmentChange = useCallback(async (issueId: string, dept: string) => {
+    // Update local state immediately for responsiveness
+    setIssues(prev => prev.map(i => i.id === issueId ? { ...i, assigned_department: dept || undefined, assigned_to_user_id: undefined, assigned_to_username: undefined } as any : i));
+    if (dept) {
+      fetchUsersForArea(dept);
+      // Save department (clear user)
+      setAssigningIds(prev => new Set(prev).add(issueId));
+      try {
+        const updated = await patchIssue(issueId, { assigned_department: dept, assigned_to_user_id: null } as any);
+        setIssues(prev => prev.map(i => i.id === issueId ? { ...i, ...updated } : i));
+      } catch {
+        toast({ title: 'Error', description: 'Failed to update department', variant: 'destructive' });
+      } finally {
+        setAssigningIds(prev => { const n = new Set(prev); n.delete(issueId); return n; });
+      }
+    }
+  }, [fetchUsersForArea]);
+
+  const handleResponsibleChange = useCallback(async (issueId: string, userId: string, dept: string) => {
+    setAssigningIds(prev => new Set(prev).add(issueId));
+    try {
+      const payload: any = { assigned_department: dept, assigned_to_user_id: userId ? Number(userId) : null };
+      const updated = await patchIssue(issueId, payload);
+      setIssues(prev => prev.map(i => i.id === issueId ? { ...i, ...updated } : i));
+      toast({ title: 'Assignment saved' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to assign user', variant: 'destructive' });
+    } finally {
+      setAssigningIds(prev => { const n = new Set(prev); n.delete(issueId); return n; });
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -78,6 +127,12 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
   }, [statusFilter, debouncedSearch]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Preload users for departments already assigned in loaded issues
+  useEffect(() => {
+    const depts = new Set(issues.map(i => (i as any).assigned_department).filter(Boolean) as string[]);
+    depts.forEach(d => { if (!areaUsers[d]) fetchUsersForArea(d); });
+  }, [issues]);
 
   const filtered = useMemo(() => {
     let result = [...issues];
@@ -251,8 +306,38 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                         {/* Computed from start_date_sched using shared factory week helper (Fri→Thu) */}
                         {(issue as any).start_date_sched ? `KW ${getFactoryWeek((issue as any).start_date_sched)}` : '—'}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{(issue as any).assigned_department || '—'}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{(issue as any).assigned_to_username || '—'}</TableCell>
+                      <TableCell>
+                        <div className="relative">
+                          {assigningIds.has(issue.id) && <Loader2 size={10} className="animate-spin absolute -left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />}
+                          <select
+                            value={(issue as any).assigned_department || ''}
+                            onChange={e => handleDepartmentChange(issue.id, e.target.value)}
+                            className="text-xs border border-border rounded px-2 py-1 bg-card focus:outline-none focus:ring-1 focus:ring-ring min-w-[110px]"
+                          >
+                            <option value="">— None —</option>
+                            {(['Orders', 'Warehouse', 'Production', 'Logistics'] as const).map(d => (
+                              <option key={d} value={d}>{d}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <select
+                          value={(issue as any).assigned_to_user_id?.toString() || ''}
+                          disabled={!(issue as any).assigned_department}
+                          onChange={e => handleResponsibleChange(issue.id, e.target.value, (issue as any).assigned_department)}
+                          className="text-xs border border-border rounded px-2 py-1 bg-card focus:outline-none focus:ring-1 focus:ring-ring min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <option value="">— None —</option>
+                          {(areaUsers[(issue as any).assigned_department] || []).filter((u: OperationalUser) => u.is_active).map((u: OperationalUser) => (
+                            <option key={u.id} value={u.id.toString()}>{u.username}</option>
+                          ))}
+                          {/* Show current assignee even if not yet in loaded list */}
+                          {(issue as any).assigned_to_user_id && !(areaUsers[(issue as any).assigned_department] || []).some((u: OperationalUser) => u.id === (issue as any).assigned_to_user_id) && (
+                            <option value={(issue as any).assigned_to_user_id.toString()}>{(issue as any).assigned_to_username || `User #${(issue as any).assigned_to_user_id}`}</option>
+                          )}
+                        </select>
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5">
                           {issue.has_purchasing_feedback ? (
