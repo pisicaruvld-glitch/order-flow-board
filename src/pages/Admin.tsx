@@ -197,14 +197,25 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
         title="Admin Settings"
         subtitle="Manage connection mode, API endpoints, area modes, and status mappings"
         actions={
-          <a
-            href="/admin/product-type-rules"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary text-secondary-foreground text-xs font-medium rounded border border-border hover:border-primary/50 transition-colors"
-          >
-            Product Type Rules →
-          </a>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setAiModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded border border-primary hover:bg-primary/90 transition-colors"
+            >
+              <Brain size={13} />
+              AI Analyse
+            </button>
+            <a
+              href="/admin/product-type-rules"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary text-secondary-foreground text-xs font-medium rounded border border-border hover:border-primary/50 transition-colors"
+            >
+              Product Type Rules →
+            </a>
+          </div>
         }
       />
+
+      <AiAnalysisModal open={aiModalOpen} onOpenChange={setAiModalOpen} />
 
       {/* Connection Settings */}
       <div className="bg-card border border-border rounded-lg mb-6">
