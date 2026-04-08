@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { StatusMapping, Area, AREAS, AppConfig as AppConfigType, DEFAULT_ENDPOINTS, EndpointPaths, AreaModes, DEFAULT_AREA_MODES, FLOW_AREAS } from '@/lib/types';
+import AiAnalysisModal from '@/components/AiAnalysisModal';
 import { getWarehouseIssueCategories, saveWarehouseIssueCategories, WarehouseIssueCategory } from '@/lib/api';
 import {
   getReceivingIssueTypes, saveReceivingIssueTypes, ReceivingIssueType,
