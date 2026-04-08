@@ -128,6 +128,12 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
 
   useEffect(() => { load(); }, [load]);
 
+  // Preload users for departments already assigned in loaded issues
+  useEffect(() => {
+    const depts = new Set(issues.map(i => (i as any).assigned_department).filter(Boolean) as string[]);
+    depts.forEach(d => { if (!areaUsers[d]) fetchUsersForArea(d); });
+  }, [issues]);
+
   const filtered = useMemo(() => {
     let result = [...issues];
     if (severityFilter !== 'ALL') result = result.filter(i => getSeverity(i.issue_type) === severityFilter);
