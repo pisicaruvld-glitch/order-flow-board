@@ -194,7 +194,8 @@ export default function ReceivingIssuesPage() {
                 <TableHead className="text-xs">SAP Component</TableHead>
                 <TableHead className="text-xs">PO Number</TableHead>
                 <TableHead className="text-xs max-w-[220px]">Description</TableHead>
-                <TableHead className="text-xs">Assigned To</TableHead>
+                <TableHead className="text-xs">Department</TableHead>
+                <TableHead className="text-xs">Responsible</TableHead>
                 <TableHead className="text-xs">Created By</TableHead>
                 <TableHead className="text-xs">Created</TableHead>
                 <TableHead className="text-xs">Reviewed</TableHead>
@@ -212,7 +213,8 @@ export default function ReceivingIssuesPage() {
                   <TableCell className="text-xs font-mono">{issue.sap_component_number || '—'}</TableCell>
                   <TableCell className="text-xs font-mono">{issue.po_number || '—'}</TableCell>
                   <TableCell className="text-xs max-w-[220px] truncate" title={issue.problem_description}>{issue.problem_description}</TableCell>
-                  <TableCell className="text-xs">{issue.assigned_to_username ?? issue.reviewed_by_username ?? '—'}</TableCell>
+                  <TableCell className="text-xs">{(issue as any).assigned_department ?? '—'}</TableCell>
+                  <TableCell className="text-xs">{(issue as any).assigned_to_username ?? '—'}</TableCell>
                   <TableCell className="text-xs">{issue.created_by_username ?? '—'}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{fmtDate(issue.created_at)}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{fmtDate(issue.reviewed_at)}</TableCell>
