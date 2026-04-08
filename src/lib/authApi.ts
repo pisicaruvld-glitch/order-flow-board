@@ -33,9 +33,12 @@ export interface ResetPasswordPayload {
 }
 
 interface LoginResponse {
-  access_token: string;
-  token_type: string;
-  user: AuthUser;
+  ok?: boolean;
+  access_token?: string;
+  token?: string;
+  token_type?: string;
+  user?: AuthUser;
+  current_user?: AuthUser;
 }
 
 // ============================================================
@@ -90,15 +93,29 @@ async function authFetch<T>(path: string, options?: RequestInit): Promise<T> {
 // ============================================================
 // Auth API
 // ============================================================
-export async function login(payload: LoginPayload): Promise<LoginResponse> {
+export async function login(payload: LoginPayload): Promise<{ token: string; user: AuthUser }> {
   const resp = await authFetch<LoginResponse>('/auth/login', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
-  if (resp.access_token) {
-    setStoredToken(resp.access_token);
+
+  // Accept either access_token or token
+  const token = resp.access_token || resp.token;
+  if (!token) {
+    console.error('[authApi] login response missing token', resp);
+    throw new Error('Login failed: no token received');
   }
-  return resp;
+  setStoredToken(token);
+  console.log('[authApi] token stored');
+
+  // Normalize user from user or current_user
+  const user = resp.user || resp.current_user;
+  if (!user) {
+    console.error('[authApi] login response missing user', resp);
+    throw new Error('Login failed: no user data received');
+  }
+
+  return { token, user };
 }
 
 export async function register(payload: RegisterPayload): Promise<unknown> {
@@ -116,7 +133,15 @@ export async function logout(): Promise<void> {
 }
 
 export async function getMe(): Promise<AuthUser> {
-  return authFetch<AuthUser>('/auth/me');
+  const resp = await authFetch<{ ok?: boolean; user?: AuthUser; current_user?: AuthUser; id?: number }>('/auth/me');
+  // Support both wrapped { user } and flat response
+  const user = resp.user || resp.current_user || (resp.id ? resp as unknown as AuthUser : null);
+  if (!user) {
+    console.error('[authApi] /auth/me returned no user', resp);
+    throw new Error('Session invalid');
+  }
+  console.log('[authApi] /auth/me resolved user:', user.username);
+  return user;
 }
 
 export async function changePassword(payload: ChangePasswordPayload): Promise<unknown> {
