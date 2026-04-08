@@ -24,7 +24,6 @@ export default function LoginPage() {
       const { user } = await login({ username: username.trim(), password });
       console.log('[Login] Login OK, user:', user.username);
 
-      // Verify session with /auth/me
       try {
         const me = await getMe();
         console.log('[Login] /auth/me verified:', me.username);
@@ -96,6 +95,8 @@ export default function LoginPage() {
               Create account
             </Link>
           </p>
+
+          <p className="text-center text-[10px] text-muted-foreground/50 mt-3">Auth API: /api</p>
         </div>
       </div>
     </div>
