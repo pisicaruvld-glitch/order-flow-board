@@ -301,9 +301,23 @@ function CreateIssueDialog({
   const [sapComp, setSapComp] = useState('');
   const [poNum, setPoNum] = useState('');
   const [desc, setDesc] = useState('');
+  const [department, setDepartment] = useState('');
+  const [assigneeId, setAssigneeId] = useState('');
+  const [areaUsers, setAreaUsers] = useState<OperationalUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const reset = () => { setTypeId(''); setSupplierId(''); setSapComp(''); setPoNum(''); setDesc(''); };
+  const reset = () => { setTypeId(''); setSupplierId(''); setSapComp(''); setPoNum(''); setDesc(''); setDepartment(''); setAssigneeId(''); setAreaUsers([]); };
+
+  useEffect(() => {
+    if (!department) { setAreaUsers([]); setAssigneeId(''); return; }
+    setLoadingUsers(true);
+    setAssigneeId('');
+    getUsersByArea(department as UserArea)
+      .then(users => setAreaUsers(users.filter(u => u.is_active)))
+      .catch(() => setAreaUsers([]))
+      .finally(() => setLoadingUsers(false));
+  }, [department]);
 
   const canSubmit = typeId && supplierId && desc.trim();
 
@@ -317,6 +331,8 @@ function CreateIssueDialog({
         sap_component_number: sapComp || undefined,
         po_number: poNum || undefined,
         problem_description: desc.trim(),
+        assigned_department: department || undefined,
+        assigned_to_user_id: assigneeId ? Number(assigneeId) : undefined,
       });
       toast({ title: 'Issue created', description: 'Receiving issue has been created successfully.' });
       reset();
