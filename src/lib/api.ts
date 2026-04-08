@@ -806,7 +806,7 @@ export async function getAllOpenIssueCounts(): Promise<Record<string, number>> {
 
 export async function createIssue(
   orderId: string,
-  data: { pn: string; issue_type: IssueType; comment: string },
+  data: { pn: string; issue_type: IssueType; comment: string; assigned_department?: string; assigned_to_user_id?: number },
 ): Promise<Issue> {
   if (isDemo()) {
     const newIssue: Issue = {
@@ -843,7 +843,7 @@ export async function createIssue(
 
 export async function patchIssue(
   issueId: string,
-  data: { status?: "OPEN" | "CLOSED"; comment?: string; issue_category?: string },
+  data: { status?: "OPEN" | "CLOSED"; comment?: string; issue_category?: string; assigned_department?: string; assigned_to_user_id?: number },
 ): Promise<Issue> {
   if (isDemo()) {
     const idx = _issues.findIndex((i) => i.id === issueId);
