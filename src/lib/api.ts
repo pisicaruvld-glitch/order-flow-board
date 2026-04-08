@@ -61,7 +61,7 @@ function cfg() {
 }
 
 function apiBase() {
-  return "/api";
+  return cfg().apiBaseUrl.replace(/\/+$/, '');
 }
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {

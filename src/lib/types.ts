@@ -280,7 +280,7 @@ export const DEFAULT_ENDPOINTS: EndpointPaths = {
 
 export const DEFAULT_CONFIG: AppConfig = {
   mode: "LIVE",
-  apiBaseUrl: "/api",
+  apiBaseUrl: "http://10.71.11.119:8000/api",
   userRole: "admin",
   endpoints: { ...DEFAULT_ENDPOINTS },
 };

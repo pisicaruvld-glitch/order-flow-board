@@ -1,16 +1,22 @@
+import { loadConfig } from './appConfig';
+
 const AUTH_TOKEN_KEY = 'vsro_auth_token';
 const API_TIMEOUT_MS = 10_000;
 
-export const API_BASE = '/api';
+export function getApiBaseUrl(): string {
+  return loadConfig().apiBaseUrl.trim().replace(/\/+$/, '');
+}
 
 function normalizeApiPath(path: string): string {
+  const apiBase = getApiBaseUrl();
+
   if (path.startsWith('http://') || path.startsWith('https://')) {
     return path;
   }
-  if (path.startsWith(API_BASE)) {
-    return path;
+  if (path.startsWith('/api')) {
+    return `${apiBase}${path.slice('/api'.length)}`;
   }
-  return `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
+  return `${apiBase}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
 function createHeaders(options?: RequestInit): Headers {
