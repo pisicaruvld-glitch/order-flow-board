@@ -8,12 +8,24 @@ function isValidApiBase(url: unknown): boolean {
   return url.startsWith('/api') || url.startsWith('http');
 }
 
+function normalizeApiBaseUrl(url: unknown): string {
+  const fallback = DEFAULT_CONFIG.apiBaseUrl.replace(/\/+$/, '');
+
+  if (!isValidApiBase(url)) return fallback;
+
+  const candidate = String(url).trim().replace(/\/+$/, '');
+  if (!candidate || candidate.startsWith('/api')) return fallback;
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/.*)?$/i.test(candidate)) return fallback;
+
+  return candidate;
+}
+
 export function loadConfig(): AppConfig {
   try {
     const raw = localStorage.getItem(CONFIG_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      const apiBaseUrl = isValidApiBase(parsed.apiBaseUrl) ? parsed.apiBaseUrl : DEFAULT_CONFIG.apiBaseUrl;
+      const apiBaseUrl = normalizeApiBaseUrl(parsed.apiBaseUrl);
       return {
         ...DEFAULT_CONFIG,
         ...parsed,

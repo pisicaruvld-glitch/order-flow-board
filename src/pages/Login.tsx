@@ -5,6 +5,8 @@ import { useAuth } from '@/lib/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Loader2, LogIn } from 'lucide-react';
+import { DEFAULT_CONFIG } from '@/lib/types';
+import { updateConfig } from '@/lib/appConfig';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -13,6 +15,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login: setUser } = useAuth();
+  const authEndpoint = `${DEFAULT_CONFIG.apiBaseUrl.replace(/\/+$/, '')}/auth/login`;
 
   useEffect(() => {
     try {
@@ -20,12 +23,15 @@ export default function LoginPage() {
       if (!raw) return;
 
       const parsed = JSON.parse(raw);
-      const storedBase = parsed?.apiBaseUrl;
-      if (typeof storedBase === 'string' && storedBase.trim() && storedBase !== '/api') {
-        console.warn('[Login] Ignoring stored apiBaseUrl for auth:', storedBase);
+      const storedBase = typeof parsed?.apiBaseUrl === 'string' ? parsed.apiBaseUrl.trim().replace(/\/+$/, '') : '';
+      const expectedBase = DEFAULT_CONFIG.apiBaseUrl.replace(/\/+$/, '');
+
+      if (storedBase !== expectedBase) {
+        updateConfig({ apiBaseUrl: expectedBase });
+        console.info('[Login] Updated stored apiBaseUrl:', expectedBase);
       }
     } catch (err) {
-      console.warn('[Login] Failed to inspect stored app config:', err);
+      console.warn('[Login] Failed to normalize stored app config:', err);
     }
   }, []);
 
@@ -111,7 +117,7 @@ export default function LoginPage() {
             </Link>
           </p>
 
-          <p className="text-center text-[10px] text-muted-foreground/50 mt-3">Auth endpoint: /api/auth/login</p>
+          <p className="text-center text-[10px] text-muted-foreground/50 mt-3">Auth endpoint: {authEndpoint}</p>
         </div>
       </div>
     </div>

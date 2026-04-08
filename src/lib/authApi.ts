@@ -1,8 +1,8 @@
-// ============================================================
-// Auth API – always uses same-origin /api, never localStorage config
-// ============================================================
+import { loadConfig } from './appConfig';
 
-const AUTH_API_BASE = '/api';
+// ============================================================
+// Auth API – uses configured LAN API base with timeout + debug logging
+// ============================================================
 
 export interface AuthUser {
   id: number;
@@ -43,8 +43,19 @@ export function clearStoredToken(): void {
   localStorage.removeItem(TOKEN_KEY);
 }
 
+function getAuthApiBase(): string {
+  return loadConfig().apiBaseUrl.trim().replace(/\/+$/, '');
+}
+
+function buildAuthUrl(path: string): string {
+  const base = getAuthApiBase();
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  if (path.startsWith('/api')) return `${base}${path.slice('/api'.length)}`;
+  return `${base}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
 // ============================================================
-// Fetch with timeout + debug logging (always /api)
+// Fetch with timeout + debug logging
 // ============================================================
 function authHeaders(): Record<string, string> {
   const token = getStoredToken();
@@ -57,7 +68,7 @@ function authHeaders(): Record<string, string> {
 const AUTH_TIMEOUT_MS = 10_000;
 
 async function authFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const url = `${AUTH_API_BASE}${path}`;
+  const url = buildAuthUrl(path);
   const method = options?.method || 'GET';
   console.log(`[authApi] ${method} ${url}`);
 
@@ -89,6 +100,7 @@ async function authFetch<T>(path: string, options?: RequestInit): Promise<T> {
       console.error(`[authApi] ${method} ${url} timed out after ${AUTH_TIMEOUT_MS}ms`);
       throw new Error('Request timeout – check API connection');
     }
+    console.error(`[authApi] ${method} ${url} failed`, err);
     throw err;
   }
 }
