@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { login } from '@/lib/authApi';
+import { login, getMe } from '@/lib/authApi';
 import { useAuth } from '@/lib/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -21,9 +21,20 @@ export default function LoginPage() {
     setError('');
     try {
       console.log('[Login] Submitting login for:', username.trim());
-      const resp = await login({ username: username.trim(), password });
-      console.log('[Login] Login successful, user:', resp.user?.username);
-      setUser(resp.user);
+      const { user } = await login({ username: username.trim(), password });
+      console.log('[Login] Login OK, user:', user.username);
+
+      // Verify session with /auth/me
+      try {
+        const me = await getMe();
+        console.log('[Login] /auth/me verified:', me.username);
+        setUser(me);
+      } catch {
+        console.warn('[Login] /auth/me failed, using login user');
+        setUser(user);
+      }
+
+      console.log('[Login] Redirecting to /');
       navigate('/', { replace: true });
     } catch (err: unknown) {
       console.error('[Login] Login failed:', err);
