@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { StatusMapping, Area, AREAS, AppConfig as AppConfigType, DEFAULT_ENDPOINTS, EndpointPaths, AreaModes, DEFAULT_AREA_MODES, FLOW_AREAS } from '@/lib/types';
+import AiAnalysisModal from '@/components/AiAnalysisModal';
 import { getWarehouseIssueCategories, saveWarehouseIssueCategories, WarehouseIssueCategory } from '@/lib/api';
 import {
   getReceivingIssueTypes, saveReceivingIssueTypes, ReceivingIssueType,
@@ -29,6 +30,7 @@ import { AreaBadge } from '@/components/Badges';
 import {
   Save, RefreshCw, Settings2, Link2, Database, ShieldCheck,
   Activity, CheckCircle2, XCircle, ChevronDown, ChevronUp, Eye, ToggleLeft, ToggleRight, AlertTriangle,
+  Brain,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -59,6 +61,7 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
 
   // Status preview tool
   const [previewStatus, setPreviewStatus] = useState('');
+  const [aiModalOpen, setAiModalOpen] = useState(false);
   const [previewResult, setPreviewResult] = useState<{ effectiveStatus: string; area: Area; label: string } | null>(null);
 
   const loadMappings = useCallback(async () => {
@@ -194,14 +197,25 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
         title="Admin Settings"
         subtitle="Manage connection mode, API endpoints, area modes, and status mappings"
         actions={
-          <a
-            href="/admin/product-type-rules"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary text-secondary-foreground text-xs font-medium rounded border border-border hover:border-primary/50 transition-colors"
-          >
-            Product Type Rules →
-          </a>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setAiModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded border border-primary hover:bg-primary/90 transition-colors"
+            >
+              <Brain size={13} />
+              AI Analyse
+            </button>
+            <a
+              href="/admin/product-type-rules"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary text-secondary-foreground text-xs font-medium rounded border border-border hover:border-primary/50 transition-colors"
+            >
+              Product Type Rules →
+            </a>
+          </div>
         }
       />
+
+      <AiAnalysisModal open={aiModalOpen} onOpenChange={setAiModalOpen} />
 
       {/* Connection Settings */}
       <div className="bg-card border border-border rounded-lg mb-6">
