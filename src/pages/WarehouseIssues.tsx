@@ -177,7 +177,7 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={12} className="text-center text-muted-foreground py-12">
+                  <TableCell colSpan={14} className="text-center text-muted-foreground py-12">
                     No issues found
                   </TableCell>
                 </TableRow>
@@ -251,6 +251,8 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                         {/* Computed from start_date_sched using shared factory week helper (Fri→Thu) */}
                         {(issue as any).start_date_sched ? `KW ${getFactoryWeek((issue as any).start_date_sched)}` : '—'}
                       </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{(issue as any).assigned_department || '—'}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{(issue as any).assigned_to_username || '—'}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5">
                           {issue.has_purchasing_feedback ? (
@@ -276,7 +278,7 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                     </TableRow>
                     {isExpanded && (
                       <TableRow key={`${issue.id}-feedback`} className={cn(severity === 'ERROR' && 'bg-destructive/5', severity === 'WARNING' && 'bg-warning/5')}>
-                        <TableCell colSpan={12} className="p-0">
+                        <TableCell colSpan={14} className="p-0">
                           <FeedbackPanel issueId={issue.id} />
                         </TableCell>
                       </TableRow>
