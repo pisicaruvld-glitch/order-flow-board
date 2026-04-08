@@ -30,6 +30,7 @@ import { AreaBadge } from '@/components/Badges';
 import {
   Save, RefreshCw, Settings2, Link2, Database, ShieldCheck,
   Activity, CheckCircle2, XCircle, ChevronDown, ChevronUp, Eye, ToggleLeft, ToggleRight, AlertTriangle,
+  Brain,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
