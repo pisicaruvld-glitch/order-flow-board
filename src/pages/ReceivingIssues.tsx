@@ -383,6 +383,31 @@ function CreateIssueDialog({
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Problem Description *</label>
             <Textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Describe the problem…" rows={3} className="text-sm" />
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Assign to Department</label>
+              <Select value={department} onValueChange={setDepartment}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Optional…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Orders">Orders</SelectItem>
+                  <SelectItem value="Warehouse">Warehouse</SelectItem>
+                  <SelectItem value="Production">Production</SelectItem>
+                  <SelectItem value="Logistics">Logistics</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Assign to User</label>
+              <Select value={assigneeId} onValueChange={setAssigneeId} disabled={!department || loadingUsers}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={loadingUsers ? 'Loading…' : !department ? 'Select department first' : 'Select user…'} /></SelectTrigger>
+                <SelectContent>
+                  {areaUsers.map(u => (
+                    <SelectItem key={u.id} value={String(u.id)}>{u.username}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => { reset(); onClose(); }}>Cancel</Button>
