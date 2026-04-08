@@ -1,27 +1,7 @@
-import { loadConfig } from "./appConfig";
-
-function apiBase() {
-  return loadConfig().apiBaseUrl;
-}
-
-function authHeaders(): Record<string, string> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  try {
-    const token = localStorage.getItem("vsro_auth_token");
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-  } catch {}
-  return headers;
-}
+import { fetchApiJson } from "./http";
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const url = `${apiBase()}${path}`;
-  const res = await fetch(url, { headers: authHeaders(), ...options });
-  if (!res.ok) {
-    let msg = `API Error ${res.status}`;
-    try { const b = await res.json(); msg = b.detail || b.message || msg; } catch {}
-    throw new Error(msg);
-  }
-  return res.json();
+  return fetchApiJson<T>(path, options);
 }
 
 // Types

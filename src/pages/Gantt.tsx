@@ -8,8 +8,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { CalendarIcon, Search, Loader2 } from 'lucide-react';
+import { fetchApiJson } from '@/lib/http';
 import { cn } from '@/lib/utils';
-import { loadConfig } from '@/lib/appConfig';
 
 interface GanttOrder {
   order_id: string;
@@ -71,8 +71,6 @@ export default function GanttPage() {
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
-      const cfg = loadConfig();
-      const base = cfg.apiBaseUrl;
       const params = new URLSearchParams();
       if (debouncedSearch) params.set('q', debouncedSearch);
       if (areaFilter !== 'all') params.set('area', areaFilter);
@@ -81,13 +79,8 @@ export default function GanttPage() {
       params.set('date_to', format(dateTo, 'yyyy-MM-dd'));
       params.set('limit', '200');
 
-      const token = localStorage.getItem('vsro_auth_token');
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const res = await fetch(`${base}/gantt/orders?${params}`, { headers });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      const qs = params.toString();
+      const data = await fetchApiJson<GanttOrder[]>(`/gantt/orders${qs ? `?${qs}` : ''}`);
       setOrders(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error('[Gantt] fetch error', e);

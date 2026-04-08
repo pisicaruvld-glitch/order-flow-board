@@ -31,6 +31,7 @@ import {
   MOCK_CHANGE_REPORT,
 } from "./mockData";
 import { loadConfig, AREA_MODES_KEY } from "./appConfig";
+import { buildApiUrl, fetchApi, fetchApiJson } from "./http";
 
 // ============================================================
 // In-memory mutable state for DEMO mode
@@ -60,7 +61,11 @@ function cfg() {
 }
 
 function apiBase() {
-  return cfg().apiBaseUrl;
+  return "/api";
+}
+
+async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+  return fetchApiJson<T>(path, options);
 }
 
 function ep() {
@@ -72,52 +77,12 @@ function resolvePath(template: string, vars: Record<string, string>): string {
   return Object.entries(vars).reduce((path, [k, v]) => path.replace(`{${k}}`, v), template);
 }
 
-function authHeaders(): Record<string, string> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  try {
-    const token = localStorage.getItem('vsro_auth_token');
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-  } catch { /* ignore */ }
-  return headers;
-}
-
-async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const url = `${apiBase()}${path}`;
-  const res = await fetch(url, {
-    headers: authHeaders(),
-    ...options,
-  });
-  if (!res.ok) {
-    let errorMsg = `API Error ${res.status}`;
-    try {
-      const body = await res.json();
-      if (body?.detail) {
-        errorMsg = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
-      } else if (body?.message) {
-        errorMsg = body.message;
-      } else {
-        errorMsg = `${errorMsg}: ${JSON.stringify(body)}`;
-      }
-    } catch {
-      try {
-        const text = await res.text();
-        if (text) errorMsg = `${errorMsg}: ${text}`;
-      } catch {
-        /* ignore */
-      }
-    }
-    throw new Error(errorMsg);
-  }
-  return res.json();
-}
-
 // ============================================================
 // BOARD VERSION (polling)
 // ============================================================
 export async function getBoardVersion(): Promise<string> {
   try {
-    const url = `${apiBase()}/board-version`;
-    const res = await fetch(url, { method: "GET" });
+    const res = await fetchApi("/board-version", { method: "GET" });
     if (!res.ok) return "";
     const data = await res.json();
     return `${data?.last_upload ?? ""}|${data?.last_update ?? ""}`;
@@ -131,8 +96,8 @@ export async function getBoardVersion(): Promise<string> {
 // ============================================================
 export async function checkHealth(): Promise<{ ok: boolean; message: string }> {
   try {
-    const url = `${apiBase()}${ep().healthPath}`;
-    const res = await fetch(url, { method: "GET" });
+    const url = buildApiUrl(ep().healthPath);
+    const res = await fetchApi(url, { method: "GET" });
     if (res.ok) {
       return { ok: true, message: `HTTP ${res.status} — Connection successful` };
     }

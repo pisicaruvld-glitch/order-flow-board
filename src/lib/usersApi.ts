@@ -1,4 +1,4 @@
-import { loadConfig } from './appConfig';
+import { fetchApiJson } from './http';
 
 // ============================================================
 // Types
@@ -33,31 +33,8 @@ export interface UpdateUserPayload {
 // ============================================================
 // Helpers
 // ============================================================
-function apiBase() {
-  return loadConfig().apiBaseUrl;
-}
-
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const url = `${apiBase()}${path}`;
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  try {
-    const token = localStorage.getItem('vsro_auth_token');
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-  } catch { /* ignore */ }
-  const res = await fetch(url, {
-    headers,
-    ...options,
-  });
-  if (!res.ok) {
-    let errorMsg = `API Error ${res.status}`;
-    try {
-      const body = await res.json();
-      if (body?.detail) errorMsg = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail);
-      else if (body?.message) errorMsg = body.message;
-    } catch { /* ignore */ }
-    throw new Error(errorMsg);
-  }
-  return res.json();
+  return fetchApiJson<T>(path, options);
 }
 
 // ============================================================
