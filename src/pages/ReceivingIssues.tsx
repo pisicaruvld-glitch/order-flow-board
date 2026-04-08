@@ -314,8 +314,8 @@ function CreateIssueDialog({
     setLoadingUsers(true);
     setAssigneeId('');
     getUsersByArea(department as UserArea)
-      .then(users => setAreaUsers(users.filter(u => u.is_active)))
-      .catch(() => setAreaUsers([]))
+      .then(users => setAreaUsers(users.filter(u => !!u.is_active)))
+      .catch(() => { setAreaUsers([]); })
       .finally(() => setLoadingUsers(false));
   }, [department]);
 
@@ -401,9 +401,13 @@ function CreateIssueDialog({
               <Select value={assigneeId} onValueChange={setAssigneeId} disabled={!department || loadingUsers}>
                 <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={loadingUsers ? 'Loading…' : !department ? 'Select department first' : 'Select user…'} /></SelectTrigger>
                 <SelectContent>
-                  {areaUsers.map(u => (
-                    <SelectItem key={u.id} value={String(u.id)}>{u.username}</SelectItem>
-                  ))}
+                  {areaUsers.length === 0 && !loadingUsers && department ? (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">No users available for this department</div>
+                  ) : (
+                    areaUsers.map(u => (
+                      <SelectItem key={u.id} value={String(u.id)}>{u.username}</SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
