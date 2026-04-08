@@ -14,6 +14,7 @@ import {
   ReceivingSupplier,
   ReceivingIssueHistoryEntry,
 } from '@/lib/receivingApi';
+import { getUsersByArea, OperationalUser, UserArea } from '@/lib/usersApi';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -193,7 +194,8 @@ export default function ReceivingIssuesPage() {
                 <TableHead className="text-xs">SAP Component</TableHead>
                 <TableHead className="text-xs">PO Number</TableHead>
                 <TableHead className="text-xs max-w-[220px]">Description</TableHead>
-                <TableHead className="text-xs">Assigned To</TableHead>
+                <TableHead className="text-xs">Department</TableHead>
+                <TableHead className="text-xs">Responsible</TableHead>
                 <TableHead className="text-xs">Created By</TableHead>
                 <TableHead className="text-xs">Created</TableHead>
                 <TableHead className="text-xs">Reviewed</TableHead>
@@ -211,7 +213,8 @@ export default function ReceivingIssuesPage() {
                   <TableCell className="text-xs font-mono">{issue.sap_component_number || '—'}</TableCell>
                   <TableCell className="text-xs font-mono">{issue.po_number || '—'}</TableCell>
                   <TableCell className="text-xs max-w-[220px] truncate" title={issue.problem_description}>{issue.problem_description}</TableCell>
-                  <TableCell className="text-xs">{issue.assigned_to_username ?? issue.reviewed_by_username ?? '—'}</TableCell>
+                  <TableCell className="text-xs">{(issue as any).assigned_department ?? '—'}</TableCell>
+                  <TableCell className="text-xs">{(issue as any).assigned_to_username ?? '—'}</TableCell>
                   <TableCell className="text-xs">{issue.created_by_username ?? '—'}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{fmtDate(issue.created_at)}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{fmtDate(issue.reviewed_at)}</TableCell>
@@ -298,9 +301,23 @@ function CreateIssueDialog({
   const [sapComp, setSapComp] = useState('');
   const [poNum, setPoNum] = useState('');
   const [desc, setDesc] = useState('');
+  const [department, setDepartment] = useState('');
+  const [assigneeId, setAssigneeId] = useState('');
+  const [areaUsers, setAreaUsers] = useState<OperationalUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const reset = () => { setTypeId(''); setSupplierId(''); setSapComp(''); setPoNum(''); setDesc(''); };
+  const reset = () => { setTypeId(''); setSupplierId(''); setSapComp(''); setPoNum(''); setDesc(''); setDepartment(''); setAssigneeId(''); setAreaUsers([]); };
+
+  useEffect(() => {
+    if (!department) { setAreaUsers([]); setAssigneeId(''); return; }
+    setLoadingUsers(true);
+    setAssigneeId('');
+    getUsersByArea(department as UserArea)
+      .then(users => setAreaUsers(users.filter(u => u.is_active)))
+      .catch(() => setAreaUsers([]))
+      .finally(() => setLoadingUsers(false));
+  }, [department]);
 
   const canSubmit = typeId && supplierId && desc.trim();
 
@@ -314,6 +331,8 @@ function CreateIssueDialog({
         sap_component_number: sapComp || undefined,
         po_number: poNum || undefined,
         problem_description: desc.trim(),
+        assigned_department: department || undefined,
+        assigned_to_user_id: assigneeId ? Number(assigneeId) : undefined,
       });
       toast({ title: 'Issue created', description: 'Receiving issue has been created successfully.' });
       reset();
@@ -363,6 +382,31 @@ function CreateIssueDialog({
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Problem Description *</label>
             <Textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Describe the problem…" rows={3} className="text-sm" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Assign to Department</label>
+              <Select value={department} onValueChange={setDepartment}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Optional…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Orders">Orders</SelectItem>
+                  <SelectItem value="Warehouse">Warehouse</SelectItem>
+                  <SelectItem value="Production">Production</SelectItem>
+                  <SelectItem value="Logistics">Logistics</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Assign to User</label>
+              <Select value={assigneeId} onValueChange={setAssigneeId} disabled={!department || loadingUsers}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={loadingUsers ? 'Loading…' : !department ? 'Select department first' : 'Select user…'} /></SelectTrigger>
+                <SelectContent>
+                  {areaUsers.map(u => (
+                    <SelectItem key={u.id} value={String(u.id)}>{u.username}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
         <DialogFooter>
@@ -531,7 +575,8 @@ function DetailDialog({
             <Field label="SAP Component">{issue.sap_component_number || '—'}</Field>
             <Field label="PO Number">{issue.po_number || '—'}</Field>
             <Field label="Created By">{issue.created_by_username ?? '—'}</Field>
-            <Field label="Assigned To">{issue.assigned_to_username ?? issue.reviewed_by_username ?? '—'}</Field>
+            <Field label="Department">{(issue as any).assigned_department ?? '—'}</Field>
+            <Field label="Responsible">{(issue as any).assigned_to_username ?? '—'}</Field>
             <Field label="Created">{fmtDate(issue.created_at)}</Field>
             <Field label="Reviewed">{fmtDate(issue.reviewed_at)}</Field>
             <Field label="Closed">{fmtDate(issue.closed_at)}</Field>

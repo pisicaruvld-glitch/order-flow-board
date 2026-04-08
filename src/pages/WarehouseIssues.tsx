@@ -4,6 +4,7 @@ import { getFactoryWeek } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { Issue, IssueHistoryEntry, ISSUE_TYPES } from '@/lib/types';
 import { getWarehouseIssues, getIssueHistory, addIssueFeedback, patchIssue, getWarehouseIssueCategories, WarehouseIssueCategory } from '@/lib/api';
+import { getUsersByArea, OperationalUser, UserArea } from '@/lib/usersApi';
 import { PageContainer, LoadingSpinner, ErrorMessage } from '@/components/Layout';
 import { IssueBadge } from '@/components/Badges';
 import { Input } from '@/components/ui/input';
@@ -168,13 +169,15 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                 <TableHead className="w-20">Status</TableHead>
                 <TableHead className="w-36">Created At</TableHead>
                 <TableHead className="w-24">Start Week</TableHead>
+                <TableHead className="w-28">Department</TableHead>
+                <TableHead className="w-28">Responsible</TableHead>
                 <TableHead className="w-36">Purchasing Feedback</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={12} className="text-center text-muted-foreground py-12">
+                  <TableCell colSpan={14} className="text-center text-muted-foreground py-12">
                     No issues found
                   </TableCell>
                 </TableRow>
@@ -248,6 +251,8 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                         {/* Computed from start_date_sched using shared factory week helper (Fri→Thu) */}
                         {(issue as any).start_date_sched ? `KW ${getFactoryWeek((issue as any).start_date_sched)}` : '—'}
                       </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{(issue as any).assigned_department || '—'}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{(issue as any).assigned_to_username || '—'}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5">
                           {issue.has_purchasing_feedback ? (
@@ -273,7 +278,7 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                     </TableRow>
                     {isExpanded && (
                       <TableRow key={`${issue.id}-feedback`} className={cn(severity === 'ERROR' && 'bg-destructive/5', severity === 'WARNING' && 'bg-warning/5')}>
-                        <TableCell colSpan={12} className="p-0">
+                        <TableCell colSpan={14} className="p-0">
                           <FeedbackPanel issueId={issue.id} />
                         </TableCell>
                       </TableRow>

@@ -124,6 +124,8 @@ export interface CreateReceivingIssuePayload {
   sap_component_number?: string;
   po_number?: string;
   problem_description: string;
+  assigned_department?: string;
+  assigned_to_user_id?: number;
 }
 
 export async function createReceivingIssue(payload: CreateReceivingIssuePayload): Promise<ReceivingIssue> {
