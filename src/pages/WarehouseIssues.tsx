@@ -300,8 +300,38 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                         {/* Computed from start_date_sched using shared factory week helper (Fri→Thu) */}
                         {(issue as any).start_date_sched ? `KW ${getFactoryWeek((issue as any).start_date_sched)}` : '—'}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{(issue as any).assigned_department || '—'}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{(issue as any).assigned_to_username || '—'}</TableCell>
+                      <TableCell>
+                        <div className="relative">
+                          {assigningIds.has(issue.id) && <Loader2 size={10} className="animate-spin absolute -left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />}
+                          <select
+                            value={(issue as any).assigned_department || ''}
+                            onChange={e => handleDepartmentChange(issue.id, e.target.value)}
+                            className="text-xs border border-border rounded px-2 py-1 bg-card focus:outline-none focus:ring-1 focus:ring-ring min-w-[110px]"
+                          >
+                            <option value="">— None —</option>
+                            {(['Orders', 'Warehouse', 'Production', 'Logistics'] as const).map(d => (
+                              <option key={d} value={d}>{d}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <select
+                          value={(issue as any).assigned_to_user_id?.toString() || ''}
+                          disabled={!(issue as any).assigned_department}
+                          onChange={e => handleResponsibleChange(issue.id, e.target.value, (issue as any).assigned_department)}
+                          className="text-xs border border-border rounded px-2 py-1 bg-card focus:outline-none focus:ring-1 focus:ring-ring min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <option value="">— None —</option>
+                          {(areaUsers[(issue as any).assigned_department] || []).filter((u: OperationalUser) => u.is_active).map((u: OperationalUser) => (
+                            <option key={u.id} value={u.id.toString()}>{u.username}</option>
+                          ))}
+                          {/* Show current assignee even if not yet in loaded list */}
+                          {(issue as any).assigned_to_user_id && !(areaUsers[(issue as any).assigned_department] || []).some((u: OperationalUser) => u.id === (issue as any).assigned_to_user_id) && (
+                            <option value={(issue as any).assigned_to_user_id.toString()}>{(issue as any).assigned_to_username || `User #${(issue as any).assigned_to_user_id}`}</option>
+                          )}
+                        </select>
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5">
                           {issue.has_purchasing_feedback ? (
