@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { login, getMe } from '@/lib/authApi';
 import { useAuth } from '@/lib/AuthContext';
@@ -13,6 +13,21 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login: setUser } = useAuth();
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('vsro_app_config');
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw);
+      const storedBase = parsed?.apiBaseUrl;
+      if (typeof storedBase === 'string' && storedBase.trim() && storedBase !== '/api') {
+        console.warn('[Login] Ignoring stored apiBaseUrl for auth:', storedBase);
+      }
+    } catch (err) {
+      console.warn('[Login] Failed to inspect stored app config:', err);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,7 +111,7 @@ export default function LoginPage() {
             </Link>
           </p>
 
-          <p className="text-center text-[10px] text-muted-foreground/50 mt-3">Auth API: /api</p>
+          <p className="text-center text-[10px] text-muted-foreground/50 mt-3">Auth endpoint: /api/auth/login</p>
         </div>
       </div>
     </div>

@@ -3,9 +3,10 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppConfig } from "@/lib/types";
 import { loadConfig } from "@/lib/appConfig";
+import { checkHealth } from "@/lib/api";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import { Layout } from "@/components/Layout";
 import { LoadingSpinner } from "@/components/Layout";
@@ -34,6 +35,16 @@ import RegisterPage from "./pages/Register";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+function BackendConnectionBanner({ message }: { message: string | null }) {
+  if (!message) return null;
+
+  return (
+    <div className="border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">
+      {message}
+    </div>
+  );
+}
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -102,12 +113,40 @@ function AppRoutes() {
 }
 
 const App = () => {
+  const [backendError, setBackendError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const config = loadConfig();
+    if (config.mode === 'DEMO') {
+      setBackendError(null);
+      return;
+    }
+
+    let active = true;
+
+    checkHealth()
+      .then((result) => {
+        if (!active) return;
+        setBackendError(result.ok ? null : 'Backend connection failed. Check FE proxy / backend server.');
+      })
+      .catch((error) => {
+        console.error('[App] Backend health check failed:', error);
+        if (!active) return;
+        setBackendError('Backend connection failed. Check FE proxy / backend server.');
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <BackendConnectionBanner message={backendError} />
           <AuthProvider>
             <AppRoutes />
           </AuthProvider>

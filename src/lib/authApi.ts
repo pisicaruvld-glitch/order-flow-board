@@ -48,6 +48,7 @@ export function clearStoredToken(): void {
 // ============================================================
 function authHeaders(): Record<string, string> {
   const token = getStoredToken();
+  console.log(`[authApi] token ${token ? 'found' : 'not found'}`);
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
   return headers;
