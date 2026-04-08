@@ -61,6 +61,7 @@ export default function AdminPage({ config, onConfigChange }: AdminPageProps) {
 
   // Status preview tool
   const [previewStatus, setPreviewStatus] = useState('');
+  const [aiModalOpen, setAiModalOpen] = useState(false);
   const [previewResult, setPreviewResult] = useState<{ effectiveStatus: string; area: Area; label: string } | null>(null);
 
   const loadMappings = useCallback(async () => {
