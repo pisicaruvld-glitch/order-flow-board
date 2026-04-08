@@ -575,7 +575,8 @@ function DetailDialog({
             <Field label="SAP Component">{issue.sap_component_number || '—'}</Field>
             <Field label="PO Number">{issue.po_number || '—'}</Field>
             <Field label="Created By">{issue.created_by_username ?? '—'}</Field>
-            <Field label="Assigned To">{issue.assigned_to_username ?? issue.reviewed_by_username ?? '—'}</Field>
+            <Field label="Department">{(issue as any).assigned_department ?? '—'}</Field>
+            <Field label="Responsible">{(issue as any).assigned_to_username ?? '—'}</Field>
             <Field label="Created">{fmtDate(issue.created_at)}</Field>
             <Field label="Reviewed">{fmtDate(issue.reviewed_at)}</Field>
             <Field label="Closed">{fmtDate(issue.closed_at)}</Field>
