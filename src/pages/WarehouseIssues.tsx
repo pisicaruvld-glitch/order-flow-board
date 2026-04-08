@@ -61,19 +61,22 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
   const [assigningIds, setAssigningIds] = useState<Set<string>>(new Set());
   const [areaUsers, setAreaUsers] = useState<Record<string, OperationalUser[]>>({});
   const [loadingArea, setLoadingArea] = useState<string | null>(null);
+  const areaUsersRef = React.useRef(areaUsers);
+  areaUsersRef.current = areaUsers;
 
   const fetchUsersForArea = useCallback(async (area: string) => {
-    if (areaUsers[area]) return;
+    if (areaUsersRef.current[area]) return;
     setLoadingArea(area);
     try {
       const users = await getUsersByArea(area as UserArea);
-      setAreaUsers(prev => ({ ...prev, [area]: users }));
+      setAreaUsers(prev => ({ ...prev, [area]: users.filter(u => !!u.is_active) }));
     } catch {
       toast({ title: 'Error', description: `Failed to load users for ${area}`, variant: 'destructive' });
+      setAreaUsers(prev => ({ ...prev, [area]: [] }));
     } finally {
       setLoadingArea(null);
     }
-  }, [areaUsers]);
+  }, []);
 
   const handleDepartmentChange = useCallback(async (issueId: string, dept: string) => {
     // Update local state immediately for responsiveness
@@ -324,12 +327,15 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                       <TableCell>
                         <select
                           value={(issue as any).assigned_to_user_id?.toString() || ''}
-                          disabled={!(issue as any).assigned_department}
+                          disabled={!(issue as any).assigned_department || (loadingArea === (issue as any).assigned_department)}
                           onChange={e => handleResponsibleChange(issue.id, e.target.value, (issue as any).assigned_department)}
                           className="text-xs border border-border rounded px-2 py-1 bg-card focus:outline-none focus:ring-1 focus:ring-ring min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <option value="">— None —</option>
-                          {(areaUsers[(issue as any).assigned_department] || []).filter((u: OperationalUser) => u.is_active).map((u: OperationalUser) => (
+                          {(issue as any).assigned_department && (areaUsers[(issue as any).assigned_department] || []).length === 0 && !loadingArea && (
+                            <option value="" disabled>No users available for this department</option>
+                          )}
+                          {(areaUsers[(issue as any).assigned_department] || []).map((u: OperationalUser) => (
                             <option key={u.id} value={u.id.toString()}>{u.username}</option>
                           ))}
                           {/* Show current assignee even if not yet in loaded list */}
