@@ -280,6 +280,15 @@ export default function ReceivingIssuesPage() {
         />
       )}
 
+      {/* Update Status Dialog */}
+      {updateStatusOpen && (
+        <UpdateStatusDialog
+          issue={updateStatusOpen}
+          onClose={() => setUpdateStatusOpen(null)}
+          onDone={() => { setUpdateStatusOpen(null); loadIssues(); }}
+        />
+      )}
+
       {/* Detail Dialog */}
       {detailOpen && (
         <DetailDialog
@@ -289,6 +298,7 @@ export default function ReceivingIssuesPage() {
           onClose={() => { setDetailOpen(null); setHistory([]); }}
           onReview={() => { setDetailOpen(null); setReviewOpen(detailOpen); }}
           onCloseIssue={() => { setDetailOpen(null); setCloseOpen(detailOpen); }}
+          onUpdateStatus={() => { setDetailOpen(null); setUpdateStatusOpen(detailOpen); }}
         />
       )}
     </PageContainer>
