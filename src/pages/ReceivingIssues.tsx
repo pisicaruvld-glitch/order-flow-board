@@ -9,10 +9,12 @@ import {
   reviewReceivingIssue,
   closeReceivingIssue,
   getReceivingIssueHistory,
+  patchReceivingIssue,
   ReceivingIssue,
   ReceivingIssueType,
   ReceivingSupplier,
   ReceivingIssueHistoryEntry,
+  ReceivingIssueStatus,
 } from '@/lib/receivingApi';
 import { getUsersByArea, OperationalUser, UserArea } from '@/lib/usersApi';
 import { Input } from '@/components/ui/input';
@@ -27,15 +29,16 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Search, Plus, Loader2, Eye, CheckCircle2, ClipboardCheck, Mail } from 'lucide-react';
+import { Search, Plus, Loader2, Eye, CheckCircle2, ClipboardCheck, Mail, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
 
-type StatusFilter = 'ALL' | 'NEW' | 'REVIEWED' | 'CLOSED';
+type StatusFilter = 'ALL' | 'NEW' | 'ONGOING' | 'REVIEWED' | 'CLOSED';
 
 const STATUS_COLORS: Record<string, string> = {
   NEW: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  ONGOING: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
   REVIEWED: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
   CLOSED: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
 };
@@ -71,6 +74,7 @@ export default function ReceivingIssuesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState<ReceivingIssue | null>(null);
   const [closeOpen, setCloseOpen] = useState<ReceivingIssue | null>(null);
+  const [updateStatusOpen, setUpdateStatusOpen] = useState<ReceivingIssue | null>(null);
   const [detailOpen, setDetailOpen] = useState<ReceivingIssue | null>(null);
   const [history, setHistory] = useState<ReceivingIssueHistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -151,6 +155,7 @@ export default function ReceivingIssuesPage() {
           <SelectContent>
             <SelectItem value="ALL">All Statuses</SelectItem>
             <SelectItem value="NEW">New</SelectItem>
+            <SelectItem value="ONGOING">Ongoing</SelectItem>
             <SelectItem value="REVIEWED">Reviewed</SelectItem>
             <SelectItem value="CLOSED">Closed</SelectItem>
           </SelectContent>
@@ -224,7 +229,12 @@ export default function ReceivingIssuesPage() {
                       <Button variant="ghost" size="icon" className="h-7 w-7" title="View details" onClick={() => openDetail(issue)}>
                         <Eye size={13} />
                       </Button>
-                      {issue.status === 'NEW' && (
+                      {issue.status !== 'CLOSED' && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-purple-600" title="Update Status" onClick={() => setUpdateStatusOpen(issue)}>
+                          <RefreshCw size={13} />
+                        </Button>
+                      )}
+                      {(issue.status === 'NEW' || issue.status === 'ONGOING') && (
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-amber-600" title="Review" onClick={() => setReviewOpen(issue)}>
                           <ClipboardCheck size={13} />
                         </Button>
@@ -270,6 +280,15 @@ export default function ReceivingIssuesPage() {
         />
       )}
 
+      {/* Update Status Dialog */}
+      {updateStatusOpen && (
+        <UpdateStatusDialog
+          issue={updateStatusOpen}
+          onClose={() => setUpdateStatusOpen(null)}
+          onDone={() => { setUpdateStatusOpen(null); loadIssues(); }}
+        />
+      )}
+
       {/* Detail Dialog */}
       {detailOpen && (
         <DetailDialog
@@ -279,6 +298,7 @@ export default function ReceivingIssuesPage() {
           onClose={() => { setDetailOpen(null); setHistory([]); }}
           onReview={() => { setDetailOpen(null); setReviewOpen(detailOpen); }}
           onCloseIssue={() => { setDetailOpen(null); setCloseOpen(detailOpen); }}
+          onUpdateStatus={() => { setDetailOpen(null); setUpdateStatusOpen(detailOpen); }}
         />
       )}
     </PageContainer>
@@ -555,10 +575,77 @@ function CloseDialog({ issue, onClose, onDone }: { issue: ReceivingIssue; onClos
   );
 }
 
+// ── Update Status Dialog ──
+
+function UpdateStatusDialog({ issue, onClose, onDone }: { issue: ReceivingIssue; onClose: () => void; onDone: () => void }) {
+  const [status, setStatus] = useState<string>(issue.status);
+  const [comment, setComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const statusOptions: { value: ReceivingIssueStatus; label: string }[] = [
+    { value: 'NEW', label: 'New' },
+    { value: 'ONGOING', label: 'Ongoing' },
+    { value: 'REVIEWED', label: 'Reviewed' },
+    { value: 'CLOSED', label: 'Closed' },
+  ];
+
+  const handleSubmit = async () => {
+    if (status === issue.status && !comment.trim()) return;
+    setSubmitting(true);
+    try {
+      await patchReceivingIssue(issue.id, {
+        status: status !== issue.status ? status : undefined,
+        comment: comment.trim() || undefined,
+      });
+      toast({ title: 'Issue updated', description: `Issue #${issue.id} status updated to ${status}.` });
+      onDone();
+    } catch (e: unknown) {
+      toast({ title: 'Error', description: e instanceof Error ? e.message : 'Update failed', variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={v => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Update Issue #{issue.id}</DialogTitle></DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="text-xs text-muted-foreground bg-muted/50 rounded p-3">
+            <strong>Current Status:</strong> <StatusBadge status={issue.status} />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">New Status</label>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {statusOptions.map(s => (
+                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Comment</label>
+            <Textarea value={comment} onChange={e => setComment(e.target.value)} rows={3} className="text-sm" placeholder="Add a comment…" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={submitting || (status === issue.status && !comment.trim())}>
+            {submitting && <Loader2 size={14} className="animate-spin mr-1" />}
+            Update
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Detail Dialog ──
 
 function DetailDialog({
-  issue, history, historyLoading, onClose, onReview, onCloseIssue,
+  issue, history, historyLoading, onClose, onReview, onCloseIssue, onUpdateStatus,
 }: {
   issue: ReceivingIssue;
   history: ReceivingIssueHistoryEntry[];
@@ -566,6 +653,7 @@ function DetailDialog({
   onClose: () => void;
   onReview: () => void;
   onCloseIssue: () => void;
+  onUpdateStatus: () => void;
 }) {
   return (
     <Dialog open onOpenChange={v => { if (!v) onClose(); }}>
@@ -617,7 +705,10 @@ function DetailDialog({
           </div>
         </div>
         <DialogFooter className="gap-2">
-          {issue.status === 'NEW' && (
+          {issue.status !== 'CLOSED' && (
+            <Button size="sm" variant="outline" onClick={onUpdateStatus}>Update Status</Button>
+          )}
+          {(issue.status === 'NEW' || issue.status === 'ONGOING') && (
             <Button size="sm" variant="outline" onClick={onReview}>Review</Button>
           )}
           {issue.status === 'REVIEWED' && (

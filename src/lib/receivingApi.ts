@@ -22,9 +22,11 @@ export interface ReceivingSupplier {
   is_active: boolean;
 }
 
+export type ReceivingIssueStatus = 'NEW' | 'ONGOING' | 'REVIEWED' | 'CLOSED';
+
 export interface ReceivingIssue {
   id: number;
-  status: 'NEW' | 'REVIEWED' | 'CLOSED';
+  status: ReceivingIssueStatus;
   problem_type_id: number;
   problem_type_label?: string;
   supplier_id: number;
@@ -127,4 +129,11 @@ export async function closeReceivingIssue(issueId: number, payload: { close_comm
 
 export async function getReceivingIssueHistory(issueId: number): Promise<ReceivingIssueHistoryEntry[]> {
   return apiFetch<ReceivingIssueHistoryEntry[]>(`/receiving/issues/${issueId}/history`);
+}
+
+export async function patchReceivingIssue(issueId: number, payload: { status?: string; comment?: string }): Promise<unknown> {
+  return apiFetch(`/receiving/issues/${issueId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
 }
