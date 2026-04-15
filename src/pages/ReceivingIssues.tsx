@@ -9,10 +9,12 @@ import {
   reviewReceivingIssue,
   closeReceivingIssue,
   getReceivingIssueHistory,
+  patchReceivingIssue,
   ReceivingIssue,
   ReceivingIssueType,
   ReceivingSupplier,
   ReceivingIssueHistoryEntry,
+  ReceivingIssueStatus,
 } from '@/lib/receivingApi';
 import { getUsersByArea, OperationalUser, UserArea } from '@/lib/usersApi';
 import { Input } from '@/components/ui/input';
@@ -27,15 +29,16 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Search, Plus, Loader2, Eye, CheckCircle2, ClipboardCheck, Mail } from 'lucide-react';
+import { Search, Plus, Loader2, Eye, CheckCircle2, ClipboardCheck, Mail, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
 
-type StatusFilter = 'ALL' | 'NEW' | 'REVIEWED' | 'CLOSED';
+type StatusFilter = 'ALL' | 'NEW' | 'ONGOING' | 'REVIEWED' | 'CLOSED';
 
 const STATUS_COLORS: Record<string, string> = {
   NEW: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  ONGOING: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
   REVIEWED: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
   CLOSED: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
 };
@@ -71,6 +74,7 @@ export default function ReceivingIssuesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState<ReceivingIssue | null>(null);
   const [closeOpen, setCloseOpen] = useState<ReceivingIssue | null>(null);
+  const [updateStatusOpen, setUpdateStatusOpen] = useState<ReceivingIssue | null>(null);
   const [detailOpen, setDetailOpen] = useState<ReceivingIssue | null>(null);
   const [history, setHistory] = useState<ReceivingIssueHistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -151,6 +155,7 @@ export default function ReceivingIssuesPage() {
           <SelectContent>
             <SelectItem value="ALL">All Statuses</SelectItem>
             <SelectItem value="NEW">New</SelectItem>
+            <SelectItem value="ONGOING">Ongoing</SelectItem>
             <SelectItem value="REVIEWED">Reviewed</SelectItem>
             <SelectItem value="CLOSED">Closed</SelectItem>
           </SelectContent>
@@ -224,7 +229,12 @@ export default function ReceivingIssuesPage() {
                       <Button variant="ghost" size="icon" className="h-7 w-7" title="View details" onClick={() => openDetail(issue)}>
                         <Eye size={13} />
                       </Button>
-                      {issue.status === 'NEW' && (
+                      {issue.status !== 'CLOSED' && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-purple-600" title="Update Status" onClick={() => setUpdateStatusOpen(issue)}>
+                          <RefreshCw size={13} />
+                        </Button>
+                      )}
+                      {(issue.status === 'NEW' || issue.status === 'ONGOING') && (
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-amber-600" title="Review" onClick={() => setReviewOpen(issue)}>
                           <ClipboardCheck size={13} />
                         </Button>
