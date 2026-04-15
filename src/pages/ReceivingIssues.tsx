@@ -575,10 +575,77 @@ function CloseDialog({ issue, onClose, onDone }: { issue: ReceivingIssue; onClos
   );
 }
 
+// ── Update Status Dialog ──
+
+function UpdateStatusDialog({ issue, onClose, onDone }: { issue: ReceivingIssue; onClose: () => void; onDone: () => void }) {
+  const [status, setStatus] = useState<string>(issue.status);
+  const [comment, setComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const statusOptions: { value: ReceivingIssueStatus; label: string }[] = [
+    { value: 'NEW', label: 'New' },
+    { value: 'ONGOING', label: 'Ongoing' },
+    { value: 'REVIEWED', label: 'Reviewed' },
+    { value: 'CLOSED', label: 'Closed' },
+  ];
+
+  const handleSubmit = async () => {
+    if (status === issue.status && !comment.trim()) return;
+    setSubmitting(true);
+    try {
+      await patchReceivingIssue(issue.id, {
+        status: status !== issue.status ? status : undefined,
+        comment: comment.trim() || undefined,
+      });
+      toast({ title: 'Issue updated', description: `Issue #${issue.id} status updated to ${status}.` });
+      onDone();
+    } catch (e: unknown) {
+      toast({ title: 'Error', description: e instanceof Error ? e.message : 'Update failed', variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={v => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Update Issue #{issue.id}</DialogTitle></DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="text-xs text-muted-foreground bg-muted/50 rounded p-3">
+            <strong>Current Status:</strong> <StatusBadge status={issue.status} />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">New Status</label>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {statusOptions.map(s => (
+                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Comment</label>
+            <Textarea value={comment} onChange={e => setComment(e.target.value)} rows={3} className="text-sm" placeholder="Add a comment…" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={submitting || (status === issue.status && !comment.trim())}>
+            {submitting && <Loader2 size={14} className="animate-spin mr-1" />}
+            Update
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Detail Dialog ──
 
 function DetailDialog({
-  issue, history, historyLoading, onClose, onReview, onCloseIssue,
+  issue, history, historyLoading, onClose, onReview, onCloseIssue, onUpdateStatus,
 }: {
   issue: ReceivingIssue;
   history: ReceivingIssueHistoryEntry[];
@@ -586,6 +653,7 @@ function DetailDialog({
   onClose: () => void;
   onReview: () => void;
   onCloseIssue: () => void;
+  onUpdateStatus: () => void;
 }) {
   return (
     <Dialog open onOpenChange={v => { if (!v) onClose(); }}>
@@ -637,7 +705,10 @@ function DetailDialog({
           </div>
         </div>
         <DialogFooter className="gap-2">
-          {issue.status === 'NEW' && (
+          {issue.status !== 'CLOSED' && (
+            <Button size="sm" variant="outline" onClick={onUpdateStatus}>Update Status</Button>
+          )}
+          {(issue.status === 'NEW' || issue.status === 'ONGOING') && (
             <Button size="sm" variant="outline" onClick={onReview}>Review</Button>
           )}
           {issue.status === 'REVIEWED' && (
