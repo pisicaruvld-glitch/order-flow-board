@@ -38,9 +38,15 @@ function getSeverity(issueType: string): 'ERROR' | 'WARNING' {
   return SEVERITY_TYPES[issueType] ?? 'WARNING';
 }
 
+function formatDaysOpen(d?: number | null): string {
+  if (d == null || isNaN(Number(d))) return '—';
+  const n = Math.max(0, Math.floor(Number(d)));
+  return n === 1 ? '1 day' : `${n} days`;
+}
+
 export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps) {
   const navigate = useNavigate();
-  const [issues, setIssues] = useState<(Issue & { has_purchasing_feedback?: boolean; purchasing_feedback_status?: string; last_feedback_at?: string; last_feedback_by?: string; last_feedback_text?: string; issue_category?: string; issue_category_label?: string })[]>([]);
+  const [issues, setIssues] = useState<(Issue & { has_purchasing_feedback?: boolean; purchasing_feedback_status?: string; last_feedback_at?: string; last_feedback_by?: string; last_feedback_text?: string; issue_category?: string; issue_category_label?: string; days_open?: number; age_days?: number; start_week_num?: number | string; start_work_week?: string; is_critical?: boolean; criticality?: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<WarehouseIssueCategory[]>([]);
