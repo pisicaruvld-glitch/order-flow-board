@@ -570,13 +570,23 @@ export default function ReportsWarehousePage() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Timeline chart */}
                 <div className="lg:col-span-2">
-                  <h3 className="text-sm font-medium text-foreground mb-2">
-                    LL01 Errors over time
-                  </h3>
-                  {ll01Summary && ll01Summary.timeline.length > 0 ? (
+                  <div className="flex items-baseline justify-between mb-2 flex-wrap gap-2">
+                    <h3 className="text-sm font-medium text-foreground">
+                      LL01 Errors over time
+                    </h3>
+                    {ll01TotalValue != null && (
+                      <span className="text-xs text-muted-foreground">
+                        Total in range:{' '}
+                        <span className="font-semibold text-foreground tabular-nums">
+                          {ll01TotalValue}
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                  {timelineData.length > 0 ? (
                     <div className="h-[320px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={ll01Summary.timeline} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                        <LineChart data={timelineData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                           <XAxis
                             dataKey="bucket"
@@ -598,15 +608,40 @@ export default function ReportsWarehousePage() {
                             }}
                           />
                           <Legend wrapperStyle={{ fontSize: '12px' }} />
-                          <Line
-                            type="monotone"
-                            dataKey="value"
-                            name="LL01 Errors"
-                            stroke="hsl(var(--primary))"
-                            strokeWidth={2}
-                            dot={{ r: 3 }}
-                          />
-                          {ll01Summary.target_value != null && (
+                          {seriesCategoryKeys.length > 0 ? (
+                            <>
+                              {seriesCategoryKeys.map((key, i) => (
+                                <Line
+                                  key={key}
+                                  type="monotone"
+                                  dataKey={key}
+                                  name={key}
+                                  stroke={PIE_COLORS[i % PIE_COLORS.length]}
+                                  strokeWidth={2}
+                                  dot={{ r: 2 }}
+                                />
+                              ))}
+                              <Line
+                                type="monotone"
+                                dataKey="total"
+                                name="Total"
+                                stroke="hsl(var(--foreground))"
+                                strokeWidth={2}
+                                strokeDasharray="4 2"
+                                dot={false}
+                              />
+                            </>
+                          ) : (
+                            <Line
+                              type="monotone"
+                              dataKey="value"
+                              name="LL01 Errors"
+                              stroke="hsl(var(--primary))"
+                              strokeWidth={2}
+                              dot={{ r: 3 }}
+                            />
+                          )}
+                          {ll01Summary?.target_value != null && (
                             <ReferenceLine
                               y={ll01Summary.target_value}
                               stroke="hsl(var(--destructive))"
