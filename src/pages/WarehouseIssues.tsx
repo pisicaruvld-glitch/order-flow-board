@@ -41,6 +41,37 @@ function formatDaysOpen(d?: number | null): string {
   return n === 1 ? '1 day' : `${n} days`;
 }
 
+// Defensive field normalization to handle backend naming variations (snake_case, camelCase, PascalCase)
+function normalizeIssueFields<T extends Record<string, any>>(issue: T): T & { days_open?: number; start_week_num?: number | null; start_work_week?: string | number | null } {
+  const normalized = {
+    ...issue,
+    days_open:
+      issue.days_open ??
+      issue.daysOpen ??
+      issue.Days_Open ??
+      issue.age_days ??
+      null,
+    start_week_num:
+      issue.start_week_num ??
+      issue.startWeekNum ??
+      issue.Start_Week_Num ??
+      null,
+    start_work_week:
+      issue.start_work_week ??
+      issue.start_week ??
+      issue.startWeek ??
+      issue.Start_Week ??
+      null,
+  };
+
+  // Optional: warn if critical fields are missing
+  if (normalized.days_open == null) {
+    console.warn('Missing days_open for issue:', issue.id ?? issue);
+  }
+
+  return normalized;
+}
+
 export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps) {
   const navigate = useNavigate();
   const [issues, setIssues] = useState<(Issue & { has_purchasing_feedback?: boolean; purchasing_feedback_status?: string; last_feedback_at?: string; last_feedback_by?: string; last_feedback_text?: string; issue_category?: string; issue_category_label?: string; days_open?: number; age_days?: number; start_week_num?: number | string; start_work_week?: string; is_critical?: boolean; criticality?: string })[]>([]);
