@@ -272,12 +272,13 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{issue.finish_good_no || '—'}</TableCell>
                       <TableCell className="text-xs text-muted-foreground truncate max-w-[200px]" title={issue.finish_good_description}>{issue.finish_good_description || '—'}</TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">{issue.part_number || issue.pn || '—'}</TableCell>
-                      <TableCell>
-                        <span className={cn('inline-flex items-center gap-1 text-xs font-medium', severity === 'ERROR' ? 'text-destructive' : 'text-warning')}>
-                          {severity === 'ERROR' ? <AlertOctagon size={12} /> : <AlertTriangle size={12} />}
-                          {ISSUE_TYPES.find(t => t.value === issue.issue_type)?.label ?? issue.issue_type}
-                        </span>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {issue.part_number || issue.pn || '—'}
+                        {issue.is_critical && (
+                          <span className="ml-2 inline-flex items-center gap-0.5 text-[9px] font-bold uppercase text-destructive" title={issue.criticality || 'Critical'}>
+                            <AlertOctagon size={10} /> Critical
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <select
