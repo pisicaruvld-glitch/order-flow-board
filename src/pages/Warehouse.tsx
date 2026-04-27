@@ -35,7 +35,7 @@ export default function WarehousePage({ config }: WarehousePageProps) {
   const [history, setHistory] = useState<Record<string, IssueHistoryEntry[]>>({});
   const [showHistoryId, setShowHistoryId] = useState<string | null>(null);
   const [addingIssue, setAddingIssue] = useState(false);
-  const [newIssue, setNewIssue] = useState({ pn: '', issue_type: ISSUE_TYPES[0].value, comment: '' });
+  const [newIssue, setNewIssue] = useState<{ pn: string; issue_type: typeof ISSUE_TYPES[number]['value']; comment: string; is_critical: boolean }>({ pn: '', issue_type: ISSUE_TYPES[0].value, comment: '', is_critical: false });
   const [submitting, setSubmitting] = useState(false);
   const [markingReady, setMarkingReady] = useState(false);
   const [moveDialog, setMoveDialog] = useState<MoveDialogState>(null);
