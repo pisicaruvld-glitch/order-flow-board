@@ -68,11 +68,9 @@ export interface KpiSummary {
 }
 
 export interface KpiCategory {
-  code: string;
-  label: string;
-  description?: string | null;
-  unit?: string | null;
-  default_value?: number | null;
+  category_code: string;
+  category_label: string;
+  sort_order?: number;
 }
 
 export interface KpiCategoriesResponse {
