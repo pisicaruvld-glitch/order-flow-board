@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
@@ -49,10 +49,12 @@ import {
 import { toast } from '@/hooks/use-toast';
 import {
   GroupBy,
+  KpiCategory,
   KpiDefinition,
   KpiSummary,
   canEditWarehouseKpi,
   exportKpiXlsx,
+  getKpiCategories,
   getKpiSummary,
   getWarehouseKpis,
   saveKpiEntry,
@@ -122,8 +124,11 @@ function KpiCard({
   onChanged: () => void;
 }) {
   const [entryDate, setEntryDate] = useState<Date>(new Date());
-  const [value, setValue] = useState<string>('');
-  const [comment, setComment] = useState<string>('');
+  const [categories, setCategories] = useState<KpiCategory[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [comments, setComments] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
   const [targetValue, setTargetValue] = useState<string>(
@@ -135,22 +140,54 @@ function KpiCard({
     if (meta?.target_value != null) setTargetValue(String(meta.target_value));
   }, [meta?.target_value]);
 
-  const handleSaveEntry = async () => {
-    const num = Number(value);
-    if (!Number.isFinite(num)) {
-      toast({ title: 'Invalid value', description: 'Enter a number', variant: 'destructive' });
-      return;
-    }
+  useEffect(() => {
+    let cancelled = false;
+    setCategoriesLoading(true);
+    setCategoriesError(null);
+    getKpiCategories(kpiCode)
+      .then((resp) => {
+        if (cancelled) return;
+        setCategories(resp.categories ?? []);
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        setCategoriesError(e instanceof Error ? e.message : 'Failed to load categories');
+      })
+      .finally(() => {
+        if (!cancelled) setCategoriesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [kpiCode]);
+
+  const totalEntered = useMemo(() => {
+    return categories.reduce((sum, c) => {
+      const n = Number(values[c.code]);
+      return Number.isFinite(n) ? sum + n : sum;
+    }, 0);
+  }, [values, categories]);
+
+  const handleSaveEntries = async () => {
+    if (categories.length === 0) return;
+    const entries = categories.map((c) => {
+      const raw = values[c.code];
+      const num = raw === '' || raw == null ? 0 : Number(raw);
+      return {
+        category_code: c.code,
+        value: Number.isFinite(num) ? num : 0,
+        comment: (comments[c.code] ?? '').trim(),
+      };
+    });
     setSaving(true);
     try {
       await saveKpiEntry(kpiCode, {
         entry_date: format(entryDate, 'yyyy-MM-dd'),
-        value: num,
-        ...(comment.trim() ? { comment: comment.trim() } : {}),
+        entries,
       });
-      toast({ title: 'Saved', description: `${kpiLabel} entry saved` });
-      setValue('');
-      setComment('');
+      toast({ title: 'Saved', description: `${kpiLabel} entries saved` });
+      setValues({});
+      setComments({});
       onChanged();
     } catch (e: unknown) {
       toast({
@@ -210,47 +247,78 @@ function KpiCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Entry form */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-          <div className="md:col-span-3">
-            <label className="text-xs text-muted-foreground">Date</label>
+        {/* Date + total */}
+        <div className="flex items-end justify-between flex-wrap gap-3">
+          <div>
+            <label className="text-xs text-muted-foreground block mb-1">Entry date</label>
             <DatePickerButton date={entryDate} onChange={setEntryDate} label="Date" />
           </div>
-          <div className="md:col-span-2">
-            <label className="text-xs text-muted-foreground">Errors count</label>
-            <Input
-              type="number"
-              inputMode="numeric"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder="0"
-              disabled={!canEdit}
-              className="h-9"
-            />
-          </div>
-          <div className="md:col-span-5">
-            <label className="text-xs text-muted-foreground">Comment (optional)</label>
-            <Textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Notes…"
-              disabled={!canEdit}
-              rows={1}
-              className="min-h-[36px]"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <Button
-              onClick={handleSaveEntry}
-              disabled={!canEdit || saving || value === ''}
-              className="w-full gap-1.5"
-              size="sm"
-            >
-              <Save size={14} />
-              {saving ? 'Saving…' : 'Save'}
-            </Button>
+          <div className="text-xs text-muted-foreground">
+            Total for date:{' '}
+            <span className="font-semibold text-foreground tabular-nums">{totalEntered}</span>
           </div>
         </div>
+
+        {/* Categories grid */}
+        {categoriesLoading && <Skeleton className="h-32 w-full rounded-md" />}
+        {categoriesError && (
+          <p className="text-xs text-destructive">{categoriesError}</p>
+        )}
+        {!categoriesLoading && !categoriesError && categories.length === 0 && (
+          <p className="text-xs text-muted-foreground">No categories defined for this KPI.</p>
+        )}
+        {!categoriesLoading && categories.length > 0 && (
+          <div className="border border-border rounded-md divide-y divide-border">
+            {categories.map((c) => (
+              <div
+                key={c.code}
+                className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center p-2.5"
+              >
+                <div className="md:col-span-5">
+                  <div className="text-sm font-medium text-foreground">{c.label}</div>
+                  <code className="text-[10px] font-mono text-muted-foreground">{c.code}</code>
+                </div>
+                <div className="md:col-span-2">
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    value={values[c.code] ?? ''}
+                    onChange={(e) =>
+                      setValues((p) => ({ ...p, [c.code]: e.target.value }))
+                    }
+                    placeholder="0"
+                    disabled={!canEdit}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="md:col-span-5">
+                  <Input
+                    value={comments[c.code] ?? ''}
+                    onChange={(e) =>
+                      setComments((p) => ({ ...p, [c.code]: e.target.value }))
+                    }
+                    placeholder="Comment (optional)"
+                    disabled={!canEdit}
+                    className="h-8 text-sm"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center justify-end">
+          <Button
+            onClick={handleSaveEntries}
+            disabled={!canEdit || saving || categories.length === 0}
+            size="sm"
+            className="gap-1.5"
+          >
+            <Save size={14} />
+            {saving ? 'Saving…' : 'Save all categories'}
+          </Button>
+        </div>
+
         {!canEdit && (
           <p className="text-[11px] text-muted-foreground">
             You need <code className="font-mono">Warehouse</code> area or admin role to record entries.
@@ -382,6 +450,28 @@ export default function ReportsWarehousePage() {
     [kpis],
   );
 
+  // Timeline data: prefer `series`, fallback to legacy `timeline`
+  const timelineData = useMemo(() => {
+    if (!ll01Summary) return [];
+    if (ll01Summary.series && ll01Summary.series.length > 0) return ll01Summary.series;
+    return ll01Summary.timeline ?? [];
+  }, [ll01Summary]);
+
+  // Detect category keys present in series points (for multi-line chart)
+  const seriesCategoryKeys = useMemo(() => {
+    if (!ll01Summary?.series || ll01Summary.series.length === 0) return [];
+    const keys = new Set<string>();
+    for (const point of ll01Summary.series) {
+      for (const k of Object.keys(point)) {
+        if (k === 'bucket' || k === 'value' || k === 'total') continue;
+        if (typeof point[k] === 'number') keys.add(k);
+      }
+    }
+    return Array.from(keys);
+  }, [ll01Summary]);
+
+  const ll01TotalValue = ll01Summary?.total_value ?? ll01Summary?.total ?? null;
+
   // Aggregate pie across all loaded KPIs (scalable)
   const combinedPie = useMemo(() => {
     const slices: { label: string; value: number }[] = [];
@@ -392,6 +482,8 @@ export default function ReportsWarehousePage() {
         for (const slice of s.pie) {
           slices.push({ label: slice.label || k.label, value: slice.value });
         }
+      } else if (typeof s.total_value === 'number') {
+        slices.push({ label: k.label, value: s.total_value });
       } else if (typeof s.total === 'number') {
         slices.push({ label: k.label, value: s.total });
       }
@@ -478,13 +570,23 @@ export default function ReportsWarehousePage() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Timeline chart */}
                 <div className="lg:col-span-2">
-                  <h3 className="text-sm font-medium text-foreground mb-2">
-                    LL01 Errors over time
-                  </h3>
-                  {ll01Summary && ll01Summary.timeline.length > 0 ? (
+                  <div className="flex items-baseline justify-between mb-2 flex-wrap gap-2">
+                    <h3 className="text-sm font-medium text-foreground">
+                      LL01 Errors over time
+                    </h3>
+                    {ll01TotalValue != null && (
+                      <span className="text-xs text-muted-foreground">
+                        Total in range:{' '}
+                        <span className="font-semibold text-foreground tabular-nums">
+                          {ll01TotalValue}
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                  {timelineData.length > 0 ? (
                     <div className="h-[320px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={ll01Summary.timeline} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                        <LineChart data={timelineData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                           <XAxis
                             dataKey="bucket"
@@ -506,15 +608,40 @@ export default function ReportsWarehousePage() {
                             }}
                           />
                           <Legend wrapperStyle={{ fontSize: '12px' }} />
-                          <Line
-                            type="monotone"
-                            dataKey="value"
-                            name="LL01 Errors"
-                            stroke="hsl(var(--primary))"
-                            strokeWidth={2}
-                            dot={{ r: 3 }}
-                          />
-                          {ll01Summary.target_value != null && (
+                          {seriesCategoryKeys.length > 0 ? (
+                            <>
+                              {seriesCategoryKeys.map((key, i) => (
+                                <Line
+                                  key={key}
+                                  type="monotone"
+                                  dataKey={key}
+                                  name={key}
+                                  stroke={PIE_COLORS[i % PIE_COLORS.length]}
+                                  strokeWidth={2}
+                                  dot={{ r: 2 }}
+                                />
+                              ))}
+                              <Line
+                                type="monotone"
+                                dataKey="total"
+                                name="Total"
+                                stroke="hsl(var(--foreground))"
+                                strokeWidth={2}
+                                strokeDasharray="4 2"
+                                dot={false}
+                              />
+                            </>
+                          ) : (
+                            <Line
+                              type="monotone"
+                              dataKey="value"
+                              name="LL01 Errors"
+                              stroke="hsl(var(--primary))"
+                              strokeWidth={2}
+                              dot={{ r: 3 }}
+                            />
+                          )}
+                          {ll01Summary?.target_value != null && (
                             <ReferenceLine
                               y={ll01Summary.target_value}
                               stroke="hsl(var(--destructive))"
