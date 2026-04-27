@@ -771,7 +771,7 @@ export async function getAllOpenIssueCounts(): Promise<Record<string, number>> {
 
 export async function createIssue(
   orderId: string,
-  data: { pn: string; issue_type: IssueType; comment: string; assigned_department?: string; assigned_to_user_id?: number },
+  data: { pn: string; issue_type: IssueType; comment: string; assigned_department?: string; assigned_to_user_id?: number; is_critical?: boolean },
 ): Promise<Issue> {
   if (isDemo()) {
     const newIssue: Issue = {
