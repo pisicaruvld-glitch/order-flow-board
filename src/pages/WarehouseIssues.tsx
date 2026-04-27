@@ -175,6 +175,16 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
     }
   };
 
+  const handleToggleCritical = async (issueId: string, next: boolean) => {
+    try {
+      const updated = await patchIssue(issueId, { is_critical: next });
+      setIssues(prev => prev.map(i => i.id === issueId ? { ...i, ...updated, is_critical: next } : i));
+      toast({ title: next ? 'Marked as critical' : 'Criticality removed' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to update criticality', variant: 'destructive' });
+    }
+  };
+
   return (
     <PageContainer>
       <div className="flex items-start justify-between mb-6">
