@@ -41,23 +41,59 @@ function formatDaysOpen(d?: number | null): string {
   return n === 1 ? '1 day' : `${n} days`;
 }
 
+// Production week starts on Friday. Anchor: 30 April 2025 = week 18, 1 May 2025 = week 19.
+// → Friday 2 May 2025 starts week 19. Use this anchor to compute week numbers.
+function productionWeekFromDate(d: Date): number {
+  // Anchor: Friday 2025-05-02 = start of week 19 (UTC)
+  const anchor = Date.UTC(2025, 4, 2); // May 2, 2025
+  const anchorWeek = 19;
+  const utc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const dayMs = 86400000;
+  const diffDays = Math.floor((utc - anchor) / dayMs);
+  // Week boundary: Friday. Shift so the week containing the anchor starts at offset 0.
+  const weekOffset = Math.floor(diffDays / 7);
+  const wk = ((anchorWeek + weekOffset - 1) % 52 + 52) % 52 + 1;
+  return wk;
+}
+
 // Defensive field normalization to handle backend naming variations (snake_case, camelCase, PascalCase)
 function normalizeIssueFields<T extends Record<string, any>>(issue: T): T & { days_open?: number; start_week_num?: number | null; start_work_week?: string | number | null } {
-  const daysOpen = issue.days_open ?? issue.daysOpen ?? issue.age_days ?? issue.ageDays ?? issue.open_days ?? issue.openDays ?? undefined;
-  const startWorkWeek = issue.start_work_week ?? issue.startWeekLabel ?? issue.startWeek ?? issue.start_week ?? undefined;
+  let daysOpen: number | null | undefined =
+    issue.days_open ?? issue.daysOpen ?? issue.age_days ?? issue.ageDays ?? issue.open_days ?? issue.openDays ?? undefined;
 
-  const normalized = {
-    ...issue,
-    days_open: daysOpen,
-    start_work_week: startWorkWeek,
-  };
-
-  // Only warn if daysOpen is undefined or null (0 is valid)
+  // Fallback: calculate from created_at if not provided
   if (daysOpen === undefined || daysOpen === null) {
-    console.warn('Missing days_open for issue:', issue.id ?? issue);
+    const createdRaw = issue.created_at ?? issue.createdAt;
+    if (createdRaw) {
+      const created = new Date(createdRaw);
+      if (!isNaN(created.getTime())) {
+        const diffMs = Date.now() - created.getTime();
+        daysOpen = Math.max(0, Math.floor(diffMs / 86400000));
+      }
+    } else {
+      console.warn('Missing created_at for issue:', issue.id ?? issue);
+    }
   }
 
-  return normalized;
+  let startWorkWeek: string | number | null | undefined =
+    issue.start_work_week ?? issue.startWeekLabel ?? issue.startWeek ?? issue.start_week ?? undefined;
+
+  // Fallback: calculate from order start date
+  if (startWorkWeek === undefined || startWorkWeek === null || startWorkWeek === '') {
+    const startRaw = issue.start_date_sched ?? issue.Start_date_sched ?? issue.startDateSched ?? issue.startDate;
+    if (startRaw) {
+      const sd = new Date(startRaw);
+      if (!isNaN(sd.getTime())) {
+        startWorkWeek = productionWeekFromDate(sd);
+      }
+    }
+  }
+
+  return {
+    ...issue,
+    days_open: daysOpen as number | undefined,
+    start_work_week: startWorkWeek,
+  };
 }
 
 export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps) {
