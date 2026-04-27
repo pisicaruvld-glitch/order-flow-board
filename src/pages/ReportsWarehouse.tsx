@@ -450,6 +450,28 @@ export default function ReportsWarehousePage() {
     [kpis],
   );
 
+  // Timeline data: prefer `series`, fallback to legacy `timeline`
+  const timelineData = useMemo(() => {
+    if (!ll01Summary) return [];
+    if (ll01Summary.series && ll01Summary.series.length > 0) return ll01Summary.series;
+    return ll01Summary.timeline ?? [];
+  }, [ll01Summary]);
+
+  // Detect category keys present in series points (for multi-line chart)
+  const seriesCategoryKeys = useMemo(() => {
+    if (!ll01Summary?.series || ll01Summary.series.length === 0) return [];
+    const keys = new Set<string>();
+    for (const point of ll01Summary.series) {
+      for (const k of Object.keys(point)) {
+        if (k === 'bucket' || k === 'value' || k === 'total') continue;
+        if (typeof point[k] === 'number') keys.add(k);
+      }
+    }
+    return Array.from(keys);
+  }, [ll01Summary]);
+
+  const ll01TotalValue = ll01Summary?.total_value ?? ll01Summary?.total ?? null;
+
   // Aggregate pie across all loaded KPIs (scalable)
   const combinedPie = useMemo(() => {
     const slices: { label: string; value: number }[] = [];
@@ -460,6 +482,8 @@ export default function ReportsWarehousePage() {
         for (const slice of s.pie) {
           slices.push({ label: slice.label || k.label, value: slice.value });
         }
+      } else if (typeof s.total_value === 'number') {
+        slices.push({ label: k.label, value: s.total_value });
       } else if (typeof s.total === 'number') {
         slices.push({ label: k.label, value: s.total });
       }
