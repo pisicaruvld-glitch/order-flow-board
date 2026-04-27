@@ -27,6 +27,7 @@ import WarehouseComplaintsPage from "./pages/WarehouseComplaints";
 import StockCheckRequestsPage from "./pages/StockCheckRequests";
 import WorkCenterPage from "./pages/WorkCenter";
 import ReportsPage from "./pages/Reports";
+import ReportsWarehousePage from "./pages/ReportsWarehouse";
 import RulesPage from "./pages/Rules";
 import GanttPage from "./pages/Gantt";
 import ReceivingIssuesPage from "./pages/ReceivingIssues";
@@ -96,6 +97,7 @@ function AppRoutes() {
               <Route path="/tv" element={<TvDashboardPage />} />
               <Route path="/stock-checks" element={<StockCheckRequestsPage />} />
               <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/reports/warehouse" element={<ReportsWarehousePage />} />
               <Route path="/rules" element={<RulesPage />} />
               <Route path="/gantt" element={<GanttPage />} />
               <Route path="/receiving-issues" element={<ReceivingIssuesPage />} />

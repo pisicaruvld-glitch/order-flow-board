@@ -61,6 +61,7 @@ const otherNavItems = [
   { path: '/history', label: 'History', icon: History },
   { path: '/stock-checks', label: 'Stock Checks', icon: ClipboardList },
   { path: '/reports', label: 'Reports', icon: BarChart3 },
+  { path: '/reports/warehouse', label: 'Reports · Warehouse', icon: BarChart3 },
   { path: '/rules', label: 'Rules', icon: ClipboardList },
   { path: '/gantt', label: 'Gantt', icon: BarChart3 },
   { path: '/receiving-issues', label: 'Receiving Issues', icon: AlertTriangle },
