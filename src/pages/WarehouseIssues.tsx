@@ -283,10 +283,32 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                   </TableCell>
                 </TableRow>
               )}
-              {filtered.map(issue => {
+              {filtered.map(rawIssue => {
+                const issue = normalizeIssueFields(rawIssue);
                 const severity = getSeverity(issue.issue_type);
                 const isOpen = issue.status === 'OPEN';
                 const isExpanded = expandedIssueId === issue.id;
+
+                // Days Open display logic
+                const daysOpenValue =
+                  issue.days_open ??
+                  (rawIssue as any).daysOpen ??
+                  (rawIssue as any).Days_Open ??
+                  (rawIssue as any).age_days ??
+                  null;
+                const daysOpenDisplay = formatDaysOpen(daysOpenValue);
+
+                // Start Week display logic
+                const startWeekRaw =
+                  issue.start_work_week ||
+                  issue.start_week ||
+                  issue.startWeek ||
+                  issue.Start_Week ||
+                  (issue.start_week_num ?? issue.startWeekNum ?? null);
+                const startWeekDisplay =
+                  startWeekRaw != null && startWeekRaw !== ''
+                    ? (typeof startWeekRaw === 'number' ? `KW ${startWeekRaw}` : String(startWeekRaw))
+                    : '—';
                 return (
                   <React.Fragment key={issue.id}>
                     <TableRow
