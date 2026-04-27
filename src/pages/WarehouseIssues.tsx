@@ -101,9 +101,63 @@ function normalizeIssueFields<T extends Record<string, any>>(issue: T): T & { da
   };
 }
 
+type IssueRow = Issue & {
+  has_purchasing_feedback?: boolean;
+  purchasing_feedback_status?: string;
+  last_feedback_at?: string;
+  last_feedback_by?: string;
+  last_feedback_text?: string;
+  issue_category?: string;
+  issue_category_label?: string;
+  days_open?: number;
+  age_days?: number;
+  start_week_num?: number | string;
+  start_work_week?: string | number | null;
+  is_critical?: boolean;
+  criticality?: string;
+  eta_date?: string | null;
+  eta?: string | null;
+  eta_status?: string;
+  is_eta_overdue?: boolean;
+  finish_good_no?: string;
+  finish_good_description?: string;
+  part_number?: string;
+  pn?: string;
+  assigned_department?: string;
+  assigned_to_user_id?: number;
+  assigned_to_username?: string;
+  created_by?: string;
+  created_at?: string;
+};
+
+function getEta(issue: IssueRow): string | null {
+  return (issue.eta_date ?? issue.eta ?? null) as string | null;
+}
+
+function isEtaOverdue(issue: IssueRow): boolean {
+  if (issue.is_eta_overdue) return true;
+  if (issue.eta_status && String(issue.eta_status).toUpperCase() === 'OVERDUE') return true;
+  const eta = getEta(issue);
+  if (!eta) return false;
+  const d = new Date(eta);
+  if (isNaN(d.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return d.getTime() < today.getTime();
+}
+
+function isEtaToday(issue: IssueRow): boolean {
+  const eta = getEta(issue);
+  if (!eta) return false;
+  const d = new Date(eta);
+  if (isNaN(d.getTime())) return false;
+  const today = new Date();
+  return d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
+}
+
 export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps) {
   const navigate = useNavigate();
-  const [issues, setIssues] = useState<(Issue & { has_purchasing_feedback?: boolean; purchasing_feedback_status?: string; last_feedback_at?: string; last_feedback_by?: string; last_feedback_text?: string; issue_category?: string; issue_category_label?: string; days_open?: number; age_days?: number; start_week_num?: number | string; start_work_week?: string; is_critical?: boolean; criticality?: string })[]>([]);
+  const [issues, setIssues] = useState<IssueRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<WarehouseIssueCategory[]>([]);
