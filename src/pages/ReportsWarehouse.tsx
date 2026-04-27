@@ -49,10 +49,12 @@ import {
 import { toast } from '@/hooks/use-toast';
 import {
   GroupBy,
+  KpiCategory,
   KpiDefinition,
   KpiSummary,
   canEditWarehouseKpi,
   exportKpiXlsx,
+  getKpiCategories,
   getKpiSummary,
   getWarehouseKpis,
   saveKpiEntry,
