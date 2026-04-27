@@ -227,7 +227,6 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                 <TableHead className="w-28">Finish Good No</TableHead>
                 <TableHead>Finish Good Desc.</TableHead>
                 <TableHead className="w-28">Part Number</TableHead>
-                <TableHead className="w-28">Issue Type</TableHead>
                 <TableHead className="w-32">Category</TableHead>
                 <TableHead>Comment</TableHead>
                 <TableHead className="w-20">Status</TableHead>
