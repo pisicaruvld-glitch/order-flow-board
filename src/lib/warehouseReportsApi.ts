@@ -117,12 +117,20 @@ export async function getKpiEntries(
 
 export async function saveKpiEntry(
   kpiCode: string,
-  payload: { entry_date: string; value: number; comment?: string },
+  payload:
+    | { entry_date: string; value: number; comment?: string }
+    | { entry_date: string; entries: KpiCategoryEntry[] },
 ): Promise<unknown> {
   return fetchApiJson(`/api/reports/warehouse/kpis/${kpiCode}/entries`, {
     method: 'PUT',
     body: JSON.stringify(payload),
   });
+}
+
+export async function getKpiCategories(kpiCode: string): Promise<KpiCategoriesResponse> {
+  return fetchApiJson<KpiCategoriesResponse>(
+    `/api/reports/warehouse/kpis/${kpiCode}/categories`,
+  );
 }
 
 export async function getKpiSummary(
