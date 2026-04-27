@@ -300,13 +300,13 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
 
                 // Start Week display logic
                 const startWeekRaw =
-                  issue.start_work_week ||
-                  issue.start_week ||
-                  issue.startWeek ||
-                  issue.Start_Week ||
-                  (issue.start_week_num ?? issue.startWeekNum ?? null);
+                  issue.start_work_week ??
+                  (rawIssue as any).start_week ??
+                  (rawIssue as any).startWeek ??
+                  (rawIssue as any).Start_Week ??
+                  (issue.start_week_num ?? (rawIssue as any).startWeekNum ?? null);
                 const startWeekDisplay =
-                  startWeekRaw != null && startWeekRaw !== ''
+                  startWeekRaw != null && String(startWeekRaw) !== ''
                     ? (typeof startWeekRaw === 'number' ? `KW ${startWeekRaw}` : String(startWeekRaw))
                     : '—';
                 return (
