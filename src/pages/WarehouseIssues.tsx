@@ -388,11 +388,7 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                         {formatDaysOpen(issue.days_open ?? issue.age_days)}
                       </TableCell>
                       <TableCell className="text-xs font-mono text-muted-foreground">
-                        {issue.start_work_week
-                          ? issue.start_work_week
-                          : (issue.start_week_num != null && issue.start_week_num !== '')
-                            ? `KW ${issue.start_week_num}`
-                            : '—'}
+                        {startWeekDisplay}
                       </TableCell>
                       <TableCell>
                         <div className="relative">
