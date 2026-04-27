@@ -43,29 +43,17 @@ function formatDaysOpen(d?: number | null): string {
 
 // Defensive field normalization to handle backend naming variations (snake_case, camelCase, PascalCase)
 function normalizeIssueFields<T extends Record<string, any>>(issue: T): T & { days_open?: number; start_week_num?: number | null; start_work_week?: string | number | null } {
+  const daysOpen = issue.days_open ?? issue.daysOpen ?? issue.age_days ?? issue.ageDays ?? issue.open_days ?? issue.openDays ?? undefined;
+  const startWorkWeek = issue.start_work_week ?? issue.startWeekLabel ?? issue.startWeek ?? issue.start_week ?? undefined;
+
   const normalized = {
     ...issue,
-    days_open:
-      issue.days_open ??
-      issue.daysOpen ??
-      issue.Days_Open ??
-      issue.age_days ??
-      null,
-    start_week_num:
-      issue.start_week_num ??
-      issue.startWeekNum ??
-      issue.Start_Week_Num ??
-      null,
-    start_work_week:
-      issue.start_work_week ??
-      issue.start_week ??
-      issue.startWeek ??
-      issue.Start_Week ??
-      null,
+    days_open: daysOpen,
+    start_work_week: startWorkWeek,
   };
 
-  // Optional: warn if critical fields are missing
-  if (normalized.days_open == null) {
+  // Only warn if daysOpen is undefined or null (0 is valid)
+  if (daysOpen === undefined || daysOpen === null) {
     console.warn('Missing days_open for issue:', issue.id ?? issue);
   }
 
@@ -289,22 +277,11 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                 const isOpen = issue.status === 'OPEN';
                 const isExpanded = expandedIssueId === issue.id;
 
-                // Days Open display logic
-                const daysOpenValue =
-                  issue.days_open ??
-                  (rawIssue as any).daysOpen ??
-                  (rawIssue as any).Days_Open ??
-                  (rawIssue as any).age_days ??
-                  null;
-                const daysOpenDisplay = formatDaysOpen(daysOpenValue);
+                // Days Open display uses normalized field
+                const daysOpenDisplay = formatDaysOpen(issue.days_open);
 
-                // Start Week display logic
-                const startWeekRaw =
-                  issue.start_work_week ??
-                  (rawIssue as any).start_week ??
-                  (rawIssue as any).startWeek ??
-                  (rawIssue as any).Start_Week ??
-                  (issue.start_week_num ?? (rawIssue as any).startWeekNum ?? null);
+                // Start Week display uses normalized field (backend-provided, no ISO calculation)
+                const startWeekRaw = issue.start_work_week;
                 const startWeekDisplay =
                   startWeekRaw != null && String(startWeekRaw) !== ''
                     ? (typeof startWeekRaw === 'number' ? `KW ${startWeekRaw}` : String(startWeekRaw))
