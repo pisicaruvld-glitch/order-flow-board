@@ -35,7 +35,7 @@ export default function WarehousePage({ config }: WarehousePageProps) {
   const [history, setHistory] = useState<Record<string, IssueHistoryEntry[]>>({});
   const [showHistoryId, setShowHistoryId] = useState<string | null>(null);
   const [addingIssue, setAddingIssue] = useState(false);
-  const [newIssue, setNewIssue] = useState({ pn: '', issue_type: ISSUE_TYPES[0].value, comment: '' });
+  const [newIssue, setNewIssue] = useState<{ pn: string; issue_type: typeof ISSUE_TYPES[number]['value']; comment: string; is_critical: boolean }>({ pn: '', issue_type: ISSUE_TYPES[0].value, comment: '', is_critical: false });
   const [submitting, setSubmitting] = useState(false);
   const [markingReady, setMarkingReady] = useState(false);
   const [moveDialog, setMoveDialog] = useState<MoveDialogState>(null);
@@ -94,7 +94,7 @@ export default function WarehousePage({ config }: WarehousePageProps) {
     try {
       const created = await createIssue(selectedOrder.Order, newIssue);
       setIssues(prev => [...prev, created]);
-      setNewIssue({ pn: '', issue_type: ISSUE_TYPES[0].value, comment: '' });
+      setNewIssue({ pn: '', issue_type: ISSUE_TYPES[0].value, comment: '', is_critical: false });
       setAddingIssue(false);
     } finally {
       setSubmitting(false);
@@ -322,6 +322,17 @@ export default function WarehousePage({ config }: WarehousePageProps) {
                         className="w-full mt-0.5 px-2 py-1.5 text-xs border border-border rounded bg-card focus:outline-none focus:ring-1 focus:ring-ring resize-none"
                       />
                     </div>
+                    <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={newIssue.is_critical}
+                        onChange={e => setNewIssue(p => ({ ...p, is_critical: e.target.checked }))}
+                        className="h-3.5 w-3.5 rounded border-border text-destructive focus:ring-destructive"
+                      />
+                      <span className={cn('font-medium', newIssue.is_critical ? 'text-destructive' : 'text-muted-foreground')}>
+                        Mark as critical
+                      </span>
+                    </label>
                     <div className="flex gap-2">
                       <button
                         onClick={handleAddIssue}

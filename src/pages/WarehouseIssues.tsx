@@ -1,12 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-// Warehouse Issues week must stay aligned with Dashboard factory week logic
-import { getFactoryWeek } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
-import { Issue, IssueHistoryEntry, ISSUE_TYPES } from '@/lib/types';
+import { Issue, IssueHistoryEntry } from '@/lib/types';
 import { getWarehouseIssues, getIssueHistory, addIssueFeedback, patchIssue, getWarehouseIssueCategories, WarehouseIssueCategory } from '@/lib/api';
 import { getUsersByArea, OperationalUser, UserArea } from '@/lib/usersApi';
 import { PageContainer, LoadingSpinner, ErrorMessage } from '@/components/Layout';
-import { IssueBadge } from '@/components/Badges';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -38,9 +35,15 @@ function getSeverity(issueType: string): 'ERROR' | 'WARNING' {
   return SEVERITY_TYPES[issueType] ?? 'WARNING';
 }
 
+function formatDaysOpen(d?: number | null): string {
+  if (d == null || isNaN(Number(d))) return '—';
+  const n = Math.max(0, Math.floor(Number(d)));
+  return n === 1 ? '1 day' : `${n} days`;
+}
+
 export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps) {
   const navigate = useNavigate();
-  const [issues, setIssues] = useState<(Issue & { has_purchasing_feedback?: boolean; purchasing_feedback_status?: string; last_feedback_at?: string; last_feedback_by?: string; last_feedback_text?: string; issue_category?: string; issue_category_label?: string })[]>([]);
+  const [issues, setIssues] = useState<(Issue & { has_purchasing_feedback?: boolean; purchasing_feedback_status?: string; last_feedback_at?: string; last_feedback_by?: string; last_feedback_text?: string; issue_category?: string; issue_category_label?: string; days_open?: number; age_days?: number; start_week_num?: number | string; start_work_week?: string; is_critical?: boolean; criticality?: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<WarehouseIssueCategory[]>([]);
@@ -172,6 +175,16 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
     }
   };
 
+  const handleToggleCritical = async (issueId: string, next: boolean) => {
+    try {
+      const updated = await patchIssue(issueId, { is_critical: next });
+      setIssues(prev => prev.map(i => i.id === issueId ? { ...i, ...updated, is_critical: next } : i));
+      toast({ title: next ? 'Marked as critical' : 'Criticality removed' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to update criticality', variant: 'destructive' });
+    }
+  };
+
   return (
     <PageContainer>
       <div className="flex items-start justify-between mb-6">
@@ -221,21 +234,20 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                 <TableHead className="w-28">Finish Good No</TableHead>
                 <TableHead>Finish Good Desc.</TableHead>
                 <TableHead className="w-28">Part Number</TableHead>
-                <TableHead className="w-28">Issue Type</TableHead>
                 <TableHead className="w-32">Category</TableHead>
                 <TableHead>Comment</TableHead>
                 <TableHead className="w-20">Status</TableHead>
-                <TableHead className="w-36">Created At</TableHead>
+                <TableHead className="w-24">Days Open</TableHead>
                 <TableHead className="w-24">Start Week</TableHead>
                 <TableHead className="w-28">Department</TableHead>
                 <TableHead className="w-28">Responsible</TableHead>
-                <TableHead className="w-36">Purchasing Feedback</TableHead>
+                <TableHead className="w-24">Purchasing</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={14} className="text-center text-muted-foreground py-12">
+                  <TableCell colSpan={13} className="text-center text-muted-foreground py-12">
                     No issues found
                   </TableCell>
                 </TableRow>
@@ -249,8 +261,9 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                     <TableRow
                       className={cn(
                         'transition-colors',
-                        severity === 'ERROR' && 'bg-destructive/5',
-                        severity === 'WARNING' && 'bg-warning/5',
+                        issue.is_critical && 'bg-destructive/15 border-l-4 border-l-destructive',
+                        !issue.is_critical && severity === 'ERROR' && 'bg-destructive/5',
+                        !issue.is_critical && severity === 'WARNING' && 'bg-warning/5',
                         !isOpen && 'opacity-60',
                         isExpanded && 'border-b-0',
                       )}
@@ -266,12 +279,29 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{issue.finish_good_no || '—'}</TableCell>
                       <TableCell className="text-xs text-muted-foreground truncate max-w-[200px]" title={issue.finish_good_description}>{issue.finish_good_description || '—'}</TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">{issue.part_number || issue.pn || '—'}</TableCell>
-                      <TableCell>
-                        <span className={cn('inline-flex items-center gap-1 text-xs font-medium', severity === 'ERROR' ? 'text-destructive' : 'text-warning')}>
-                          {severity === 'ERROR' ? <AlertOctagon size={12} /> : <AlertTriangle size={12} />}
-                          {ISSUE_TYPES.find(t => t.value === issue.issue_type)?.label ?? issue.issue_type}
-                        </span>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1.5">
+                          <span>{issue.part_number || issue.pn || '—'}</span>
+                          {issue.is_critical ? (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleCritical(issue.id, false)}
+                              className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase text-destructive hover:opacity-80"
+                              title={issue.criticality ? `${issue.criticality} (click to remove)` : 'Critical (click to remove)'}
+                            >
+                              <AlertOctagon size={10} /> Critical
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleCritical(issue.id, true)}
+                              className="inline-flex items-center gap-0.5 text-[9px] font-medium uppercase text-muted-foreground/70 hover:text-destructive"
+                              title="Mark as critical"
+                            >
+                              <AlertOctagon size={10} /> Mark
+                            </button>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <select
@@ -302,12 +332,14 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                         </select>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {new Date(issue.created_at).toLocaleDateString()}{' '}
-                        {new Date(issue.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {formatDaysOpen(issue.days_open ?? issue.age_days)}
                       </TableCell>
                       <TableCell className="text-xs font-mono text-muted-foreground">
-                        {/* Computed from start_date_sched using shared factory week helper (Fri→Thu) */}
-                        {(issue as any).start_date_sched ? `KW ${getFactoryWeek((issue as any).start_date_sched)}` : '—'}
+                        {issue.start_work_week
+                          ? issue.start_work_week
+                          : (issue.start_week_num != null && issue.start_week_num !== '')
+                            ? `KW ${issue.start_week_num}`
+                            : '—'}
                       </TableCell>
                       <TableCell>
                         <div className="relative">
@@ -347,13 +379,19 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                       <TableCell>
                         <div className="flex items-center gap-1.5">
                           {issue.has_purchasing_feedback ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded" title={issue.last_feedback_text ? `${issue.last_feedback_by}: ${issue.last_feedback_text}` : 'Has feedback'}>
-                              <CheckCircle2 size={10} /> Feedback
-                            </span>
+                            <CheckCircle2
+                              size={16}
+                              className="text-primary fill-primary/20"
+                              aria-label="Has purchasing feedback"
+                            >
+                              <title>{issue.last_feedback_text ? `${issue.last_feedback_by}: ${issue.last_feedback_text}` : 'Has purchasing feedback'}</title>
+                            </CheckCircle2>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
-                              No feedback
-                            </span>
+                            <CheckCircle2
+                              size={16}
+                              className="text-muted-foreground/40"
+                              aria-label="No purchasing feedback"
+                            />
                           )}
                           <Button
                             variant={isExpanded ? 'secondary' : 'ghost'}
@@ -369,7 +407,7 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                     </TableRow>
                     {isExpanded && (
                       <TableRow key={`${issue.id}-feedback`} className={cn(severity === 'ERROR' && 'bg-destructive/5', severity === 'WARNING' && 'bg-warning/5')}>
-                        <TableCell colSpan={14} className="p-0">
+                        <TableCell colSpan={13} className="p-0">
                           <FeedbackPanel issueId={issue.id} />
                         </TableCell>
                       </TableRow>
