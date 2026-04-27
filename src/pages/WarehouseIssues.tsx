@@ -254,8 +254,9 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                     <TableRow
                       className={cn(
                         'transition-colors',
-                        severity === 'ERROR' && 'bg-destructive/5',
-                        severity === 'WARNING' && 'bg-warning/5',
+                        issue.is_critical && 'bg-destructive/15 border-l-4 border-l-destructive',
+                        !issue.is_critical && severity === 'ERROR' && 'bg-destructive/5',
+                        !issue.is_critical && severity === 'WARNING' && 'bg-warning/5',
                         !isOpen && 'opacity-60',
                         isExpanded && 'border-b-0',
                       )}
