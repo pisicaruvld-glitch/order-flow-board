@@ -356,13 +356,19 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                       <TableCell>
                         <div className="flex items-center gap-1.5">
                           {issue.has_purchasing_feedback ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded" title={issue.last_feedback_text ? `${issue.last_feedback_by}: ${issue.last_feedback_text}` : 'Has feedback'}>
-                              <CheckCircle2 size={10} /> Feedback
-                            </span>
+                            <CheckCircle2
+                              size={16}
+                              className="text-primary fill-primary/20"
+                              aria-label="Has purchasing feedback"
+                            >
+                              <title>{issue.last_feedback_text ? `${issue.last_feedback_by}: ${issue.last_feedback_text}` : 'Has purchasing feedback'}</title>
+                            </CheckCircle2>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
-                              No feedback
-                            </span>
+                            <CheckCircle2
+                              size={16}
+                              className="text-muted-foreground/40"
+                              aria-label="No purchasing feedback"
+                            />
                           )}
                           <Button
                             variant={isExpanded ? 'secondary' : 'ghost'}
