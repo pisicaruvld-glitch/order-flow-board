@@ -46,15 +46,43 @@ export interface KpiPieSlice {
   value: number;
 }
 
+export interface KpiSeriesPoint {
+  bucket: string;
+  // Either { value } for single-series, or category-keyed values for multi-series
+  value?: number;
+  total?: number;
+  [categoryCode: string]: string | number | undefined;
+}
+
 export interface KpiSummary {
   kpi_code: string;
   kpi_label?: string;
   target_value?: number | null;
   target_direction?: TargetDirection | null;
   total?: number;
+  total_value?: number;
   average?: number;
-  timeline: KpiTimelinePoint[];
+  timeline?: KpiTimelinePoint[];
+  series?: KpiSeriesPoint[];
   pie: KpiPieSlice[];
+}
+
+export interface KpiCategory {
+  code: string;
+  label: string;
+  description?: string | null;
+  unit?: string | null;
+  default_value?: number | null;
+}
+
+export interface KpiCategoriesResponse {
+  categories: KpiCategory[];
+}
+
+export interface KpiCategoryEntry {
+  category_code: string;
+  value: number;
+  comment?: string;
 }
 
 // ────────────────────────────────────────────────────────────
