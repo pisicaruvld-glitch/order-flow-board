@@ -808,7 +808,7 @@ export async function createIssue(
 
 export async function patchIssue(
   issueId: string,
-  data: { status?: "OPEN" | "CLOSED"; comment?: string; issue_category?: string; assigned_department?: string; assigned_to_user_id?: number; is_critical?: boolean },
+  data: { status?: "OPEN" | "CLOSED"; comment?: string; issue_category?: string; assigned_department?: string; assigned_to_user_id?: number | null; is_critical?: boolean; eta_date?: string | null },
 ): Promise<Issue> {
   if (isDemo()) {
     const idx = _issues.findIndex((i) => i.id === issueId);
