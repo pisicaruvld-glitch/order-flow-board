@@ -385,7 +385,7 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                         </select>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {formatDaysOpen(issue.days_open ?? issue.age_days)}
+                        {daysOpenDisplay}
                       </TableCell>
                       <TableCell className="text-xs font-mono text-muted-foreground">
                         {startWeekDisplay}
