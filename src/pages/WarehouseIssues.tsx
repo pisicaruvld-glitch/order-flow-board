@@ -277,22 +277,11 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                 const isOpen = issue.status === 'OPEN';
                 const isExpanded = expandedIssueId === issue.id;
 
-                // Days Open display logic
-                const daysOpenValue =
-                  issue.days_open ??
-                  (rawIssue as any).daysOpen ??
-                  (rawIssue as any).Days_Open ??
-                  (rawIssue as any).age_days ??
-                  null;
-                const daysOpenDisplay = formatDaysOpen(daysOpenValue);
+                // Days Open display uses normalized field
+                const daysOpenDisplay = formatDaysOpen(issue.days_open);
 
-                // Start Week display logic
-                const startWeekRaw =
-                  issue.start_work_week ??
-                  (rawIssue as any).start_week ??
-                  (rawIssue as any).startWeek ??
-                  (rawIssue as any).Start_Week ??
-                  (issue.start_week_num ?? (rawIssue as any).startWeekNum ?? null);
+                // Start Week display uses normalized field (backend-provided, no ISO calculation)
+                const startWeekRaw = issue.start_work_week;
                 const startWeekDisplay =
                   startWeekRaw != null && String(startWeekRaw) !== ''
                     ? (typeof startWeekRaw === 'number' ? `KW ${startWeekRaw}` : String(startWeekRaw))
