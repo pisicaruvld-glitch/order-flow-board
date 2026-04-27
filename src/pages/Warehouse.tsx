@@ -94,7 +94,7 @@ export default function WarehousePage({ config }: WarehousePageProps) {
     try {
       const created = await createIssue(selectedOrder.Order, newIssue);
       setIssues(prev => [...prev, created]);
-      setNewIssue({ pn: '', issue_type: ISSUE_TYPES[0].value, comment: '' });
+      setNewIssue({ pn: '', issue_type: ISSUE_TYPES[0].value, comment: '', is_critical: false });
       setAddingIssue(false);
     } finally {
       setSubmitting(false);
