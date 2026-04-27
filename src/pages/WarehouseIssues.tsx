@@ -309,12 +309,14 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                         </select>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {new Date(issue.created_at).toLocaleDateString()}{' '}
-                        {new Date(issue.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {formatDaysOpen(issue.days_open ?? issue.age_days)}
                       </TableCell>
                       <TableCell className="text-xs font-mono text-muted-foreground">
-                        {/* Computed from start_date_sched using shared factory week helper (Fri→Thu) */}
-                        {(issue as any).start_date_sched ? `KW ${getFactoryWeek((issue as any).start_date_sched)}` : '—'}
+                        {issue.start_work_week
+                          ? issue.start_work_week
+                          : (issue.start_week_num != null && issue.start_week_num !== '')
+                            ? `KW ${issue.start_week_num}`
+                            : '—'}
                       </TableCell>
                       <TableCell>
                         <div className="relative">
