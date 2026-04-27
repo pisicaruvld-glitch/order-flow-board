@@ -280,12 +280,28 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                       <TableCell className="font-mono text-xs text-muted-foreground">{issue.finish_good_no || '—'}</TableCell>
                       <TableCell className="text-xs text-muted-foreground truncate max-w-[200px]" title={issue.finish_good_description}>{issue.finish_good_description || '—'}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
-                        {issue.part_number || issue.pn || '—'}
-                        {issue.is_critical && (
-                          <span className="ml-2 inline-flex items-center gap-0.5 text-[9px] font-bold uppercase text-destructive" title={issue.criticality || 'Critical'}>
-                            <AlertOctagon size={10} /> Critical
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          <span>{issue.part_number || issue.pn || '—'}</span>
+                          {issue.is_critical ? (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleCritical(issue.id, false)}
+                              className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase text-destructive hover:opacity-80"
+                              title={issue.criticality ? `${issue.criticality} (click to remove)` : 'Critical (click to remove)'}
+                            >
+                              <AlertOctagon size={10} /> Critical
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleCritical(issue.id, true)}
+                              className="inline-flex items-center gap-0.5 text-[9px] font-medium uppercase text-muted-foreground/70 hover:text-destructive"
+                              title="Mark as critical"
+                            >
+                              <AlertOctagon size={10} /> Mark
+                            </button>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <select
