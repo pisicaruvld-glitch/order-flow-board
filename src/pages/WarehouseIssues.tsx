@@ -41,6 +41,37 @@ function formatDaysOpen(d?: number | null): string {
   return n === 1 ? '1 day' : `${n} days`;
 }
 
+// Defensive field normalization to handle backend naming variations (snake_case, camelCase, PascalCase)
+function normalizeIssueFields<T extends Record<string, any>>(issue: T): T & { days_open?: number; start_week_num?: number | null; start_work_week?: string | number | null } {
+  const normalized = {
+    ...issue,
+    days_open:
+      issue.days_open ??
+      issue.daysOpen ??
+      issue.Days_Open ??
+      issue.age_days ??
+      null,
+    start_week_num:
+      issue.start_week_num ??
+      issue.startWeekNum ??
+      issue.Start_Week_Num ??
+      null,
+    start_work_week:
+      issue.start_work_week ??
+      issue.start_week ??
+      issue.startWeek ??
+      issue.Start_Week ??
+      null,
+  };
+
+  // Optional: warn if critical fields are missing
+  if (normalized.days_open == null) {
+    console.warn('Missing days_open for issue:', issue.id ?? issue);
+  }
+
+  return normalized;
+}
+
 export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps) {
   const navigate = useNavigate();
   const [issues, setIssues] = useState<(Issue & { has_purchasing_feedback?: boolean; purchasing_feedback_status?: string; last_feedback_at?: string; last_feedback_by?: string; last_feedback_text?: string; issue_category?: string; issue_category_label?: string; days_open?: number; age_days?: number; start_week_num?: number | string; start_work_week?: string; is_critical?: boolean; criticality?: string })[]>([]);
@@ -252,10 +283,32 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                   </TableCell>
                 </TableRow>
               )}
-              {filtered.map(issue => {
+              {filtered.map(rawIssue => {
+                const issue = normalizeIssueFields(rawIssue);
                 const severity = getSeverity(issue.issue_type);
                 const isOpen = issue.status === 'OPEN';
                 const isExpanded = expandedIssueId === issue.id;
+
+                // Days Open display logic
+                const daysOpenValue =
+                  issue.days_open ??
+                  (rawIssue as any).daysOpen ??
+                  (rawIssue as any).Days_Open ??
+                  (rawIssue as any).age_days ??
+                  null;
+                const daysOpenDisplay = formatDaysOpen(daysOpenValue);
+
+                // Start Week display logic
+                const startWeekRaw =
+                  issue.start_work_week ??
+                  (rawIssue as any).start_week ??
+                  (rawIssue as any).startWeek ??
+                  (rawIssue as any).Start_Week ??
+                  (issue.start_week_num ?? (rawIssue as any).startWeekNum ?? null);
+                const startWeekDisplay =
+                  startWeekRaw != null && String(startWeekRaw) !== ''
+                    ? (typeof startWeekRaw === 'number' ? `KW ${startWeekRaw}` : String(startWeekRaw))
+                    : '—';
                 return (
                   <React.Fragment key={issue.id}>
                     <TableRow
@@ -332,14 +385,10 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
                         </select>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {formatDaysOpen(issue.days_open ?? issue.age_days)}
+                        {daysOpenDisplay}
                       </TableCell>
                       <TableCell className="text-xs font-mono text-muted-foreground">
-                        {issue.start_work_week
-                          ? issue.start_work_week
-                          : (issue.start_week_num != null && issue.start_week_num !== '')
-                            ? `KW ${issue.start_week_num}`
-                            : '—'}
+                        {startWeekDisplay}
                       </TableCell>
                       <TableCell>
                         <div className="relative">
