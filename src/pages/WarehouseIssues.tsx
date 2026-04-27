@@ -495,6 +495,228 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
 }
 
 // ============================================================
+// Issue Detail Panel (Sheet) — full details, editable assignment / ETA / criticality
+// ============================================================
+interface IssueDetailPanelProps {
+  issue: IssueRow | null;
+  open: boolean;
+  onClose: () => void;
+  categories: WarehouseIssueCategory[];
+  areaUsers: Record<string, OperationalUser[]>;
+  loadingArea: string | null;
+  assigning: boolean;
+  fetchUsersForArea: (area: string) => void;
+  onDepartmentChange: (issueId: string, dept: string) => void;
+  onResponsibleChange: (issueId: string, userId: string, dept: string) => void;
+  onCategoryChange: (issueId: string, cat: string) => void;
+  onStatusChange: (issueId: string, status: 'OPEN' | 'CLOSED') => void;
+  onToggleCritical: (issueId: string, next: boolean) => void;
+  onEtaChange: (issueId: string, eta: string | null) => void;
+}
+
+function IssueDetailPanel({
+  issue, open, onClose, categories, areaUsers, loadingArea, assigning,
+  fetchUsersForArea, onDepartmentChange, onResponsibleChange, onCategoryChange,
+  onStatusChange, onToggleCritical, onEtaChange,
+}: IssueDetailPanelProps) {
+  const [etaDraft, setEtaDraft] = useState<string>('');
+
+  useEffect(() => {
+    if (issue) {
+      const e = (issue.eta_date ?? issue.eta ?? '') as string;
+      // Normalize to YYYY-MM-DD if a full timestamp was returned
+      setEtaDraft(e ? e.slice(0, 10) : '');
+    }
+  }, [issue?.id, issue?.eta_date, issue?.eta]);
+
+  useEffect(() => {
+    if (issue?.assigned_department) fetchUsersForArea(issue.assigned_department);
+  }, [issue?.assigned_department, fetchUsersForArea]);
+
+  if (!issue) return null;
+
+  const eta = getEta(issue);
+  const overdue = isEtaOverdue(issue);
+  const dueToday = !overdue && isEtaToday(issue);
+  const startWeekRaw = issue.start_work_week;
+  const startWeekDisplay =
+    startWeekRaw != null && String(startWeekRaw) !== ''
+      ? (typeof startWeekRaw === 'number' ? `KW ${startWeekRaw}` : String(startWeekRaw))
+      : '—';
+
+  const handleSaveEta = () => {
+    onEtaChange(issue.id, etaDraft || null);
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2">
+            Issue {issue.id.slice(0, 8)}
+            {issue.is_critical && (
+              <Badge variant="destructive" className="text-[10px]"><AlertOctagon size={10} className="mr-1" />Critical</Badge>
+            )}
+            {overdue && <Badge variant="destructive" className="text-[10px]">Overdue</Badge>}
+            {dueToday && <Badge variant="secondary" className="text-[10px]">Due today</Badge>}
+          </SheetTitle>
+          <SheetDescription>Order {issue.order_id}</SheetDescription>
+        </SheetHeader>
+
+        <div className="mt-6 space-y-5 text-sm">
+          {/* Read-only details grid */}
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+            <DetailField label="Order" value={issue.order_id} mono />
+            <DetailField label="Part Number" value={issue.part_number || issue.pn} mono />
+            <DetailField label="Finish Good No" value={issue.finish_good_no} mono />
+            <DetailField label="Finish Good Desc." value={issue.finish_good_description} />
+            <DetailField label="Created By" value={issue.created_by} />
+            <DetailField
+              label="Created At"
+              value={issue.created_at ? new Date(issue.created_at).toLocaleString() : undefined}
+            />
+            <DetailField label="Days Open" value={formatDaysOpen(issue.days_open)} />
+            <DetailField label="Start Week" value={startWeekDisplay} />
+            <DetailField label="Purchasing Feedback" value={issue.has_purchasing_feedback ? 'Yes' : 'No'} />
+            <DetailField label="Criticality" value={issue.criticality || (issue.is_critical ? 'CRITICAL' : 'NORMAL')} />
+          </div>
+
+          {/* Comment */}
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Comment</label>
+            <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">{issue.comment || '—'}</p>
+          </div>
+
+          {/* Status & Category */}
+          <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Status</label>
+              <select
+                value={issue.status}
+                onChange={(e) => onStatusChange(issue.id, e.target.value as 'OPEN' | 'CLOSED')}
+                className="mt-1 w-full text-sm border border-border rounded px-2 py-1.5 bg-background"
+              >
+                <option value="OPEN">OPEN</option>
+                <option value="CLOSED">CLOSED</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Category</label>
+              <select
+                value={issue.issue_category || ''}
+                onChange={(e) => onCategoryChange(issue.id, e.target.value)}
+                className="mt-1 w-full text-sm border border-border rounded px-2 py-1.5 bg-background"
+              >
+                <option value="">— None —</option>
+                {categories.filter(c => c.is_active).map(c => (
+                  <option key={c.category_code} value={c.category_code}>{c.category_label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Assignment */}
+          <div className="pt-2 border-t border-border">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-2">
+              Assignment {assigning && <Loader2 size={12} className="animate-spin" />}
+            </h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Department</label>
+                <select
+                  value={issue.assigned_department || ''}
+                  onChange={(e) => onDepartmentChange(issue.id, e.target.value)}
+                  className="mt-1 w-full text-sm border border-border rounded px-2 py-1.5 bg-background"
+                >
+                  <option value="">— None —</option>
+                  {(['Orders', 'Warehouse', 'Production', 'Logistics'] as const).map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Responsible</label>
+                <select
+                  value={issue.assigned_to_user_id?.toString() || ''}
+                  disabled={!issue.assigned_department || loadingArea === issue.assigned_department}
+                  onChange={(e) => onResponsibleChange(issue.id, e.target.value, issue.assigned_department || '')}
+                  className="mt-1 w-full text-sm border border-border rounded px-2 py-1.5 bg-background disabled:opacity-50"
+                >
+                  <option value="">— None —</option>
+                  {(areaUsers[issue.assigned_department || ''] || []).map((u) => (
+                    <option key={u.id} value={u.id.toString()}>{u.username}</option>
+                  ))}
+                  {issue.assigned_to_user_id && !(areaUsers[issue.assigned_department || ''] || []).some(u => u.id === issue.assigned_to_user_id) && (
+                    <option value={issue.assigned_to_user_id.toString()}>
+                      {issue.assigned_to_username || `User #${issue.assigned_to_user_id}`}
+                    </option>
+                  )}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* ETA */}
+          <div className="pt-2 border-t border-border">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">ETA</h4>
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground">ETA Date</label>
+                <Input
+                  type="date"
+                  value={etaDraft}
+                  onChange={(e) => setEtaDraft(e.target.value)}
+                  className="mt-1 h-9"
+                />
+              </div>
+              <Button size="sm" onClick={handleSaveEta} disabled={(etaDraft || '') === (eta ? eta.slice(0, 10) : '')}>
+                Save ETA
+              </Button>
+              {eta && (
+                <Button size="sm" variant="ghost" onClick={() => { setEtaDraft(''); onEtaChange(issue.id, null); }}>
+                  Clear
+                </Button>
+              )}
+            </div>
+            {overdue && <p className="text-xs text-destructive mt-1">ETA is overdue.</p>}
+            {dueToday && <p className="text-xs text-muted-foreground mt-1">ETA is today.</p>}
+          </div>
+
+          {/* Criticality */}
+          <div className="pt-2 border-t border-border">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Checkbox
+                checked={!!issue.is_critical}
+                onCheckedChange={(v) => onToggleCritical(issue.id, !!v)}
+              />
+              <span className="text-sm">Mark as critical</span>
+            </label>
+          </div>
+
+          {/* History & Feedback */}
+          <div className="pt-2 border-t border-border">
+            <FeedbackPanel issueId={issue.id} />
+          </div>
+        </div>
+
+        <SheetFooter className="mt-6">
+          <Button variant="outline" onClick={onClose}>Close</Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function DetailField({ label, value, mono }: { label: string; value?: string | number | null; mono?: boolean }) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className={cn('text-sm text-foreground', mono && 'font-mono')}>{value != null && value !== '' ? value : '—'}</p>
+    </div>
+  );
+}
+
+// ============================================================
 // Feedback Panel (loads history + submit form)
 // ============================================================
 function FeedbackPanel({ issueId }: { issueId: string }) {
