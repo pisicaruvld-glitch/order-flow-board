@@ -322,6 +322,17 @@ export default function WarehousePage({ config }: WarehousePageProps) {
                         className="w-full mt-0.5 px-2 py-1.5 text-xs border border-border rounded bg-card focus:outline-none focus:ring-1 focus:ring-ring resize-none"
                       />
                     </div>
+                    <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={newIssue.is_critical}
+                        onChange={e => setNewIssue(p => ({ ...p, is_critical: e.target.checked }))}
+                        className="h-3.5 w-3.5 rounded border-border text-destructive focus:ring-destructive"
+                      />
+                      <span className={cn('font-medium', newIssue.is_critical ? 'text-destructive' : 'text-muted-foreground')}>
+                        Mark as critical
+                      </span>
+                    </label>
                     <div className="flex gap-2">
                       <button
                         onClick={handleAddIssue}
