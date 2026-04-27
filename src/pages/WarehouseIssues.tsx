@@ -172,8 +172,8 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Expanded row for feedback
-  const [expandedIssueId, setExpandedIssueId] = useState<string | null>(null);
+  // Selected issue id for detail panel
+  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
   // Inline assignment state: keyed by issue id
   const [assigningIds, setAssigningIds] = useState<Set<string>>(new Set());
   const [areaUsers, setAreaUsers] = useState<Record<string, OperationalUser[]>>({});
@@ -264,8 +264,14 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
   const openIssues = issues.filter(i => i.status === 'OPEN').length;
   const errorCount = issues.filter(i => getSeverity(i.issue_type) === 'ERROR').length;
 
-  const toggleExpand = (issueId: string) => {
-    setExpandedIssueId(prev => prev === issueId ? null : issueId);
+  const handleEtaChange = async (issueId: string, eta: string | null) => {
+    try {
+      const updated = await patchIssue(issueId, { eta_date: eta } as any);
+      setIssues(prev => prev.map(i => i.id === issueId ? { ...i, ...updated, eta_date: eta ?? undefined } : i));
+      toast({ title: eta ? 'ETA updated' : 'ETA cleared' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to update ETA', variant: 'destructive' });
+    }
   };
 
   const handleInlineStatusChange = async (issueId: string, newStatus: 'OPEN' | 'CLOSED') => {
