@@ -163,7 +163,7 @@ function KpiCard({
 
   const totalEntered = useMemo(() => {
     return categories.reduce((sum, c) => {
-      const n = Number(values[c.code]);
+      const n = Number(values[c.category_code]);
       return Number.isFinite(n) ? sum + n : sum;
     }, 0);
   }, [values, categories]);
@@ -171,12 +171,12 @@ function KpiCard({
   const handleSaveEntries = async () => {
     if (categories.length === 0) return;
     const entries = categories.map((c) => {
-      const raw = values[c.code];
+      const raw = values[c.category_code];
       const num = raw === '' || raw == null ? 0 : Number(raw);
       return {
-        category_code: c.code,
+        category_code: c.category_code,
         value: Number.isFinite(num) ? num : 0,
-        comment: (comments[c.code] ?? '').trim(),
+        comment: (comments[c.category_code] ?? '').trim(),
       };
     });
     setSaving(true);
@@ -271,20 +271,20 @@ function KpiCard({
           <div className="border border-border rounded-md divide-y divide-border">
             {categories.map((c) => (
               <div
-                key={c.code}
+                key={c.category_code}
                 className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center p-2.5"
               >
                 <div className="md:col-span-5">
-                  <div className="text-sm font-medium text-foreground">{c.label}</div>
-                  <code className="text-[10px] font-mono text-muted-foreground">{c.code}</code>
+                  <div className="text-sm font-medium text-foreground">{c.category_label}</div>
+                  <code className="text-[10px] font-mono text-muted-foreground">{c.category_code}</code>
                 </div>
                 <div className="md:col-span-2">
                   <Input
                     type="number"
                     inputMode="numeric"
-                    value={values[c.code] ?? ''}
+                    value={values[c.category_code] ?? ''}
                     onChange={(e) =>
-                      setValues((p) => ({ ...p, [c.code]: e.target.value }))
+                      setValues((p) => ({ ...p, [c.category_code]: e.target.value }))
                     }
                     placeholder="0"
                     disabled={!canEdit}
@@ -293,9 +293,9 @@ function KpiCard({
                 </div>
                 <div className="md:col-span-5">
                   <Input
-                    value={comments[c.code] ?? ''}
+                    value={comments[c.category_code] ?? ''}
                     onChange={(e) =>
-                      setComments((p) => ({ ...p, [c.code]: e.target.value }))
+                      setComments((p) => ({ ...p, [c.category_code]: e.target.value }))
                     }
                     placeholder="Comment (optional)"
                     disabled={!canEdit}
