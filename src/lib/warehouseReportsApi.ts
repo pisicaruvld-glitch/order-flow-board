@@ -145,21 +145,13 @@ export async function getKpiSummary(
   );
 }
 
-export async function exportKpiXlsx(
-  kpiCode: string,
-  params: { date_from: string; date_to: string },
-): Promise<void> {
-  const qs = new URLSearchParams({
-    date_from: params.date_from,
-    date_to: params.date_to,
-  });
-  const url = buildApiUrl(
-    `/api/reports/warehouse/kpis/${kpiCode}/export?${qs.toString()}`,
-  );
-  const token = getStoredToken();
-  const res = await fetch(url, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
+async function downloadXlsx(path: string, filename: string): Promise<void> {
+  const res = await fetchApi(path);
+  if (res.status === 401) {
+    try { localStorage.removeItem('vsro_auth_token'); } catch { /* ignore */ }
+    if (typeof window !== 'undefined') window.location.replace('/login?session=expired');
+    throw new Error('Session expired');
+  }
   if (!res.ok) {
     throw new Error(`Export failed: ${res.status}`);
   }
@@ -167,11 +159,22 @@ export async function exportKpiXlsx(
   const blobUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = blobUrl;
-  a.download = `${kpiCode}_${params.date_from}_${params.date_to}.xlsx`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
   URL.revokeObjectURL(blobUrl);
+}
+
+export async function exportKpiXlsx(
+  kpiCode: string,
+  params: { date_from: string; date_to: string },
+): Promise<void> {
+  const qs = new URLSearchParams(params);
+  await downloadXlsx(
+    `/api/reports/warehouse/kpis/${kpiCode}/export?${qs.toString()}`,
+    `${kpiCode}_${params.date_from}_${params.date_to}.xlsx`,
+  );
 }
 
 // ────────────────────────────────────────────────────────────
