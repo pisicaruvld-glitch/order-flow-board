@@ -188,20 +188,28 @@ export default function ReportsPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center gap-6">
-                <div className="bg-muted rounded-lg px-5 py-3">
-                  <p className="text-2xl font-bold text-foreground">{summary.total_issues}</p>
-                  <p className="text-xs text-muted-foreground">Total Issues</p>
-                </div>
-                <div className="bg-muted rounded-lg px-5 py-3">
-                  <p className="text-2xl font-bold text-destructive">{summary.by_category.reduce((s, c) => s + c.open_issues, 0)}</p>
-                  <p className="text-xs text-muted-foreground">Open Issues</p>
-                </div>
-                <div className="bg-muted rounded-lg px-5 py-3">
-                  <p className="text-2xl font-bold" style={{ color: 'hsl(142 71% 45%)' }}>{summary.by_category.reduce((s, c) => s + c.closed_issues, 0)}</p>
-                  <p className="text-xs text-muted-foreground">Closed Issues</p>
-                </div>
-              </div>
+              {(() => {
+                const s: any = summary as any;
+                const totalIssues = s.total_issues ?? s.totalIssues ?? s.total ?? 0;
+                const openIssues = s.open_issues ?? s.openIssues ?? s.open ?? 0;
+                const closedIssues = s.closed_issues ?? s.closedIssues ?? s.closed ?? (totalIssues - openIssues);
+                return (
+                  <div className="flex items-center gap-6">
+                    <div className="bg-muted rounded-lg px-5 py-3">
+                      <p className="text-2xl font-bold text-foreground">{totalIssues}</p>
+                      <p className="text-xs text-muted-foreground">Total Issues</p>
+                    </div>
+                    <div className="bg-muted rounded-lg px-5 py-3">
+                      <p className="text-2xl font-bold text-destructive">{openIssues}</p>
+                      <p className="text-xs text-muted-foreground">Open Issues</p>
+                    </div>
+                    <div className="bg-muted rounded-lg px-5 py-3">
+                      <p className="text-2xl font-bold" style={{ color: 'hsl(142 71% 45%)' }}>{closedIssues}</p>
+                      <p className="text-xs text-muted-foreground">Closed Issues</p>
+                    </div>
+                  </div>
+                );
+              })()}
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={summaryChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
