@@ -468,8 +468,7 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
         loadingArea={loadingArea}
         assigning={selectedIssueId ? assigningIds.has(selectedIssueId) : false}
         fetchUsersForArea={fetchUsersForArea}
-        onDepartmentChange={handleDepartmentChange}
-        onResponsibleChange={handleResponsibleChange}
+        onSaveAssignment={handleSaveAssignment}
         onCategoryChange={handleCategoryChange}
         onStatusChange={handleInlineStatusChange}
         onToggleCritical={handleToggleCritical}
