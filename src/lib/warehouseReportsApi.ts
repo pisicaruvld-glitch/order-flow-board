@@ -1,5 +1,4 @@
-import { fetchApi, fetchApiJson, buildApiUrl } from './http';
-import { getStoredToken } from './authApi';
+import { fetchApi, fetchApiJson } from './http';
 
 // ============================================================
 // Warehouse Reports API – KPI-scoped, scalable for additional KPIs
@@ -145,21 +144,13 @@ export async function getKpiSummary(
   );
 }
 
-export async function exportKpiXlsx(
-  kpiCode: string,
-  params: { date_from: string; date_to: string },
-): Promise<void> {
-  const qs = new URLSearchParams({
-    date_from: params.date_from,
-    date_to: params.date_to,
-  });
-  const url = buildApiUrl(
-    `/api/reports/warehouse/kpis/${kpiCode}/export?${qs.toString()}`,
-  );
-  const token = getStoredToken();
-  const res = await fetch(url, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
+async function downloadXlsx(path: string, filename: string): Promise<void> {
+  const res = await fetchApi(path);
+  if (res.status === 401) {
+    try { localStorage.removeItem('vsro_auth_token'); } catch { /* ignore */ }
+    if (typeof window !== 'undefined') window.location.replace('/login?session=expired');
+    throw new Error('Session expired');
+  }
   if (!res.ok) {
     throw new Error(`Export failed: ${res.status}`);
   }
@@ -167,11 +158,22 @@ export async function exportKpiXlsx(
   const blobUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = blobUrl;
-  a.download = `${kpiCode}_${params.date_from}_${params.date_to}.xlsx`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
   URL.revokeObjectURL(blobUrl);
+}
+
+export async function exportKpiXlsx(
+  kpiCode: string,
+  params: { date_from: string; date_to: string },
+): Promise<void> {
+  const qs = new URLSearchParams(params);
+  await downloadXlsx(
+    `/api/reports/warehouse/kpis/${kpiCode}/export?${qs.toString()}`,
+    `${kpiCode}_${params.date_from}_${params.date_to}.xlsx`,
+  );
 }
 
 // ────────────────────────────────────────────────────────────
@@ -230,32 +232,10 @@ export async function exportLl01Xlsx(params: {
   date_to: string;
 }): Promise<void> {
   const qs = new URLSearchParams(params);
-  const url = buildApiUrl(
+  await downloadXlsx(
     `/api/reports/warehouse/ll01-errors/export?${qs.toString()}`,
+    `LL01_ERRORS_${params.date_from}_${params.date_to}.xlsx`,
   );
-  const token = getStoredToken();
-  if (!token) {
-    if (typeof window !== 'undefined') window.location.replace('/login?session=expired');
-    throw new Error('Authentication required');
-  }
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (res.status === 401) {
-    try { localStorage.removeItem('vsro_auth_token'); } catch { /* ignore */ }
-    if (typeof window !== 'undefined') window.location.replace('/login?session=expired');
-    throw new Error('Authentication required');
-  }
-  if (!res.ok) throw new Error(`Export failed: ${res.status}`);
-  const blob = await res.blob();
-  const blobUrl = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = blobUrl;
-  a.download = `LL01_ERRORS_${params.date_from}_${params.date_to}.xlsx`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(blobUrl);
 }
 
 // ────────────────────────────────────────────────────────────
