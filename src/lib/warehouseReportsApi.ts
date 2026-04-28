@@ -233,32 +233,10 @@ export async function exportLl01Xlsx(params: {
   date_to: string;
 }): Promise<void> {
   const qs = new URLSearchParams(params);
-  const url = buildApiUrl(
+  await downloadXlsx(
     `/api/reports/warehouse/ll01-errors/export?${qs.toString()}`,
+    `LL01_ERRORS_${params.date_from}_${params.date_to}.xlsx`,
   );
-  const token = getStoredToken();
-  if (!token) {
-    if (typeof window !== 'undefined') window.location.replace('/login?session=expired');
-    throw new Error('Authentication required');
-  }
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (res.status === 401) {
-    try { localStorage.removeItem('vsro_auth_token'); } catch { /* ignore */ }
-    if (typeof window !== 'undefined') window.location.replace('/login?session=expired');
-    throw new Error('Authentication required');
-  }
-  if (!res.ok) throw new Error(`Export failed: ${res.status}`);
-  const blob = await res.blob();
-  const blobUrl = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = blobUrl;
-  a.download = `LL01_ERRORS_${params.date_from}_${params.date_to}.xlsx`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(blobUrl);
 }
 
 // ────────────────────────────────────────────────────────────
