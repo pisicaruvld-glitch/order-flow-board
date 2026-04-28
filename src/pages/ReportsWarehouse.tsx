@@ -720,12 +720,12 @@ export default function ReportsWarehousePage() {
                 {/* Pie chart */}
                 <div>
                   <h3 className="text-sm font-medium text-foreground mb-2">KPI Distribution</h3>
-                  {combinedPie.length > 0 ? (
+                  {pieData.length > 0 ? (
                     <div className="h-[320px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
-                            data={combinedPie}
+                            data={pieData}
                             dataKey="value"
                             nameKey="label"
                             cx="50%"
@@ -733,7 +733,7 @@ export default function ReportsWarehousePage() {
                             outerRadius={90}
                             label={(entry) => `${entry.label}: ${entry.value}`}
                           >
-                            {combinedPie.map((_, i) => (
+                            {pieData.map((_, i) => (
                               <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                             ))}
                           </Pie>
