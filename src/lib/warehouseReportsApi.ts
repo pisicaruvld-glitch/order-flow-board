@@ -40,7 +40,9 @@ export interface KpiTimelinePoint {
 }
 
 export interface KpiPieSlice {
-  label: string;
+  label?: string;
+  category_label?: string;
+  category_code?: string;
   code?: string;
   value: number;
 }
