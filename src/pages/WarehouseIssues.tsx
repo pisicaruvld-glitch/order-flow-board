@@ -195,33 +195,18 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
     }
   }, []);
 
-  const handleDepartmentChange = useCallback(async (issueId: string, dept: string) => {
-    // Update local state immediately for responsiveness
-    setIssues(prev => prev.map(i => i.id === issueId ? { ...i, assigned_department: dept || undefined, assigned_to_user_id: undefined, assigned_to_username: undefined } as any : i));
-    if (dept) {
-      fetchUsersForArea(dept);
-      // Save department (clear user)
-      setAssigningIds(prev => new Set(prev).add(issueId));
-      try {
-        const updated = await patchIssue(issueId, { assigned_department: dept, assigned_to_user_id: null } as any);
-        setIssues(prev => prev.map(i => i.id === issueId ? { ...i, ...updated } : i));
-      } catch {
-        toast({ title: 'Error', description: 'Failed to update department', variant: 'destructive' });
-      } finally {
-        setAssigningIds(prev => { const n = new Set(prev); n.delete(issueId); return n; });
-      }
-    }
-  }, [fetchUsersForArea]);
-
-  const handleResponsibleChange = useCallback(async (issueId: string, userId: string, dept: string) => {
+  const handleSaveAssignment = useCallback(async (issueId: string, dept: string, userId: string) => {
     setAssigningIds(prev => new Set(prev).add(issueId));
     try {
-      const payload: any = { assigned_department: dept, assigned_to_user_id: userId ? Number(userId) : null };
+      const payload: any = {
+        assigned_department: dept || null,
+        assigned_to_user_id: userId ? Number(userId) : null,
+      };
       const updated = await patchIssue(issueId, payload);
       setIssues(prev => prev.map(i => i.id === issueId ? { ...i, ...updated } : i));
       toast({ title: 'Assignment saved' });
     } catch {
-      toast({ title: 'Error', description: 'Failed to assign user', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Failed to save assignment', variant: 'destructive' });
     } finally {
       setAssigningIds(prev => { const n = new Set(prev); n.delete(issueId); return n; });
     }
@@ -483,8 +468,7 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
         loadingArea={loadingArea}
         assigning={selectedIssueId ? assigningIds.has(selectedIssueId) : false}
         fetchUsersForArea={fetchUsersForArea}
-        onDepartmentChange={handleDepartmentChange}
-        onResponsibleChange={handleResponsibleChange}
+        onSaveAssignment={handleSaveAssignment}
         onCategoryChange={handleCategoryChange}
         onStatusChange={handleInlineStatusChange}
         onToggleCritical={handleToggleCritical}
@@ -506,8 +490,7 @@ interface IssueDetailPanelProps {
   loadingArea: string | null;
   assigning: boolean;
   fetchUsersForArea: (area: string) => void;
-  onDepartmentChange: (issueId: string, dept: string) => void;
-  onResponsibleChange: (issueId: string, userId: string, dept: string) => void;
+  onSaveAssignment: (issueId: string, dept: string, userId: string) => void;
   onCategoryChange: (issueId: string, cat: string) => void;
   onStatusChange: (issueId: string, status: 'OPEN' | 'CLOSED') => void;
   onToggleCritical: (issueId: string, next: boolean) => void;
@@ -516,22 +499,28 @@ interface IssueDetailPanelProps {
 
 function IssueDetailPanel({
   issue, open, onClose, categories, areaUsers, loadingArea, assigning,
-  fetchUsersForArea, onDepartmentChange, onResponsibleChange, onCategoryChange,
+  fetchUsersForArea, onSaveAssignment, onCategoryChange,
   onStatusChange, onToggleCritical, onEtaChange,
 }: IssueDetailPanelProps) {
   const [etaDraft, setEtaDraft] = useState<string>('');
+  // Local draft state for assignment — independent of issue object so users
+  // can change selections without backend reset wiping the dropdown.
+  const [draftDept, setDraftDept] = useState<string>('');
+  const [draftUserId, setDraftUserId] = useState<string>('');
 
   useEffect(() => {
     if (issue) {
       const e = (issue.eta_date ?? issue.eta ?? '') as string;
-      // Normalize to YYYY-MM-DD if a full timestamp was returned
       setEtaDraft(e ? e.slice(0, 10) : '');
+      setDraftDept(issue.assigned_department || '');
+      setDraftUserId(issue.assigned_to_user_id ? String(issue.assigned_to_user_id) : '');
     }
-  }, [issue?.id, issue?.eta_date, issue?.eta]);
+  }, [issue?.id]);
 
+  // Whenever a department is selected (initial or user-changed), make sure users for it are loaded.
   useEffect(() => {
-    if (issue?.assigned_department) fetchUsersForArea(issue.assigned_department);
-  }, [issue?.assigned_department, fetchUsersForArea]);
+    if (draftDept) fetchUsersForArea(draftDept);
+  }, [draftDept, fetchUsersForArea]);
 
   if (!issue) return null;
 
@@ -624,8 +613,11 @@ function IssueDetailPanel({
               <div>
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Department</label>
                 <select
-                  value={issue.assigned_department || ''}
-                  onChange={(e) => onDepartmentChange(issue.id, e.target.value)}
+                  value={draftDept}
+                  onChange={(e) => {
+                    setDraftDept(e.target.value);
+                    setDraftUserId('');
+                  }}
                   className="mt-1 w-full text-sm border border-border rounded px-2 py-1.5 bg-background"
                 >
                   <option value="">— None —</option>
@@ -637,22 +629,37 @@ function IssueDetailPanel({
               <div>
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Responsible</label>
                 <select
-                  value={issue.assigned_to_user_id?.toString() || ''}
-                  disabled={!issue.assigned_department || loadingArea === issue.assigned_department}
-                  onChange={(e) => onResponsibleChange(issue.id, e.target.value, issue.assigned_department || '')}
+                  value={draftUserId}
+                  disabled={!draftDept || loadingArea === draftDept}
+                  onChange={(e) => setDraftUserId(e.target.value)}
                   className="mt-1 w-full text-sm border border-border rounded px-2 py-1.5 bg-background disabled:opacity-50"
                 >
                   <option value="">— None —</option>
-                  {(areaUsers[issue.assigned_department || ''] || []).map((u) => (
+                  {(areaUsers[draftDept] || []).map((u) => (
                     <option key={u.id} value={u.id.toString()}>{u.username}</option>
                   ))}
-                  {issue.assigned_to_user_id && !(areaUsers[issue.assigned_department || ''] || []).some(u => u.id === issue.assigned_to_user_id) && (
-                    <option value={issue.assigned_to_user_id.toString()}>
-                      {issue.assigned_to_username || `User #${issue.assigned_to_user_id}`}
+                  {draftUserId && !(areaUsers[draftDept] || []).some(u => String(u.id) === draftUserId) && (
+                    <option value={draftUserId}>
+                      {issue.assigned_to_username || `User #${draftUserId}`}
                     </option>
                   )}
                 </select>
               </div>
+            </div>
+            <div className="mt-3 flex justify-end">
+              <Button
+                size="sm"
+                onClick={() => onSaveAssignment(issue.id, draftDept, draftUserId)}
+                disabled={
+                  assigning ||
+                  (
+                    (draftDept || '') === (issue.assigned_department || '') &&
+                    (draftUserId || '') === (issue.assigned_to_user_id ? String(issue.assigned_to_user_id) : '')
+                  )
+                }
+              >
+                Save assignment
+              </Button>
             </div>
           </div>
 
