@@ -536,7 +536,7 @@ export default function ReportsWarehousePage() {
       return { timelineData: data, seriesCategories: cats };
     }
 
-    return { timelineData: (ll01Summary.timeline ?? []) as Record<string, string | number>[], seriesCategories: [] };
+    return { timelineData: (ll01Summary.timeline ?? []) as unknown as Record<string, string | number>[], seriesCategories: [] };
   }, [ll01Summary]);
 
   const ll01TotalValue = ll01Summary?.total_value ?? ll01Summary?.total ?? null;
