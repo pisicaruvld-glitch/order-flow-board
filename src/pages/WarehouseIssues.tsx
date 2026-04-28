@@ -490,8 +490,7 @@ interface IssueDetailPanelProps {
   loadingArea: string | null;
   assigning: boolean;
   fetchUsersForArea: (area: string) => void;
-  onDepartmentChange: (issueId: string, dept: string) => void;
-  onResponsibleChange: (issueId: string, userId: string, dept: string) => void;
+  onSaveAssignment: (issueId: string, dept: string, userId: string) => void;
   onCategoryChange: (issueId: string, cat: string) => void;
   onStatusChange: (issueId: string, status: 'OPEN' | 'CLOSED') => void;
   onToggleCritical: (issueId: string, next: boolean) => void;
