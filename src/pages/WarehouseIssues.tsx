@@ -195,33 +195,18 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
     }
   }, []);
 
-  const handleDepartmentChange = useCallback(async (issueId: string, dept: string) => {
-    // Update local state immediately for responsiveness
-    setIssues(prev => prev.map(i => i.id === issueId ? { ...i, assigned_department: dept || undefined, assigned_to_user_id: undefined, assigned_to_username: undefined } as any : i));
-    if (dept) {
-      fetchUsersForArea(dept);
-      // Save department (clear user)
-      setAssigningIds(prev => new Set(prev).add(issueId));
-      try {
-        const updated = await patchIssue(issueId, { assigned_department: dept, assigned_to_user_id: null } as any);
-        setIssues(prev => prev.map(i => i.id === issueId ? { ...i, ...updated } : i));
-      } catch {
-        toast({ title: 'Error', description: 'Failed to update department', variant: 'destructive' });
-      } finally {
-        setAssigningIds(prev => { const n = new Set(prev); n.delete(issueId); return n; });
-      }
-    }
-  }, [fetchUsersForArea]);
-
-  const handleResponsibleChange = useCallback(async (issueId: string, userId: string, dept: string) => {
+  const handleSaveAssignment = useCallback(async (issueId: string, dept: string, userId: string) => {
     setAssigningIds(prev => new Set(prev).add(issueId));
     try {
-      const payload: any = { assigned_department: dept, assigned_to_user_id: userId ? Number(userId) : null };
+      const payload: any = {
+        assigned_department: dept || null,
+        assigned_to_user_id: userId ? Number(userId) : null,
+      };
       const updated = await patchIssue(issueId, payload);
       setIssues(prev => prev.map(i => i.id === issueId ? { ...i, ...updated } : i));
       toast({ title: 'Assignment saved' });
     } catch {
-      toast({ title: 'Error', description: 'Failed to assign user', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Failed to save assignment', variant: 'destructive' });
     } finally {
       setAssigningIds(prev => { const n = new Set(prev); n.delete(issueId); return n; });
     }
