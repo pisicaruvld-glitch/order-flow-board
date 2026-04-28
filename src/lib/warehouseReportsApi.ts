@@ -175,6 +175,81 @@ export async function exportKpiXlsx(
 }
 
 // ────────────────────────────────────────────────────────────
+// LL01 Errors – dedicated endpoints
+// ────────────────────────────────────────────────────────────
+export interface Ll01CategoryEntry {
+  category_code: string;
+  value: number;
+  comment?: string;
+}
+
+export interface Ll01EntryRow {
+  entry_date: string;
+  category_code: string;
+  value: number;
+  comment?: string | null;
+}
+
+export async function getLl01Categories(): Promise<KpiCategoriesResponse> {
+  return fetchApiJson<KpiCategoriesResponse>(
+    '/api/reports/warehouse/ll01-errors/categories',
+  );
+}
+
+export async function getLl01Entries(params: {
+  date_from: string;
+  date_to: string;
+}): Promise<{ entries: Ll01EntryRow[] }> {
+  const qs = new URLSearchParams(params);
+  return fetchApiJson(`/api/reports/warehouse/ll01-errors/entries?${qs.toString()}`);
+}
+
+export async function saveLl01Entries(payload: {
+  entry_date: string;
+  entries: Ll01CategoryEntry[];
+}): Promise<unknown> {
+  return fetchApiJson('/api/reports/warehouse/ll01-errors/entries', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getLl01Summary(params: {
+  date_from: string;
+  date_to: string;
+  group_by: GroupBy;
+}): Promise<KpiSummary> {
+  const qs = new URLSearchParams(params);
+  return fetchApiJson<KpiSummary>(
+    `/api/reports/warehouse/ll01-errors/summary?${qs.toString()}`,
+  );
+}
+
+export async function exportLl01Xlsx(params: {
+  date_from: string;
+  date_to: string;
+}): Promise<void> {
+  const qs = new URLSearchParams(params);
+  const url = buildApiUrl(
+    `/api/reports/warehouse/ll01-errors/export?${qs.toString()}`,
+  );
+  const token = getStoredToken();
+  const res = await fetch(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+  const blob = await res.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = `LL01_ERRORS_${params.date_from}_${params.date_to}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(blobUrl);
+}
+
+// ────────────────────────────────────────────────────────────
 // Permissions helper
 // ────────────────────────────────────────────────────────────
 export function canEditWarehouseKpi(user: {
