@@ -669,28 +669,20 @@ export default function ReportsWarehousePage() {
                             }}
                           />
                           <Legend wrapperStyle={{ fontSize: '12px' }} />
-                          {seriesCategoryKeys.length > 0 ? (
+                          {seriesCategories.length > 0 ? (
                             <>
-                              {seriesCategoryKeys.map((key, i) => (
+                              {seriesCategories.map((cat, i) => (
                                 <Line
-                                  key={key}
+                                  key={cat.code}
                                   type="monotone"
-                                  dataKey={key}
-                                  name={key}
+                                  dataKey={cat.code}
+                                  name={cat.label}
                                   stroke={PIE_COLORS[i % PIE_COLORS.length]}
                                   strokeWidth={2}
                                   dot={{ r: 2 }}
+                                  connectNulls
                                 />
                               ))}
-                              <Line
-                                type="monotone"
-                                dataKey="total"
-                                name="Total"
-                                stroke="hsl(var(--foreground))"
-                                strokeWidth={2}
-                                strokeDasharray="4 2"
-                                dot={false}
-                              />
                             </>
                           ) : (
                             <Line
