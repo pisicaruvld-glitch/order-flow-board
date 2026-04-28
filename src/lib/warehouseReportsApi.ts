@@ -1,5 +1,4 @@
-import { fetchApi, fetchApiJson, buildApiUrl } from './http';
-import { getStoredToken } from './authApi';
+import { fetchApi, fetchApiJson } from './http';
 
 // ============================================================
 // Warehouse Reports API – KPI-scoped, scalable for additional KPIs
