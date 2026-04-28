@@ -485,46 +485,72 @@ export default function ReportsWarehousePage() {
     [kpis],
   );
 
-  // Timeline data: prefer `series`, fallback to legacy `timeline`
-  const timelineData = useMemo(() => {
-    if (!ll01Summary) return [];
-    if (ll01Summary.series && ll01Summary.series.length > 0) return ll01Summary.series;
-    return ll01Summary.timeline ?? [];
-  }, [ll01Summary]);
+  // Build multi-series timeline data:
+  // Backend may return either:
+  //   - line_series / series: [{ category_code, category_label, points: [{bucket, value}] }]
+  //   - legacy series: [{ bucket, value, [cat]: n }]
+  //   - legacy timeline: [{ bucket, value }]
+  const { timelineData, seriesCategories } = useMemo(() => {
+    if (!ll01Summary) return { timelineData: [] as Record<string, string | number>[], seriesCategories: [] as { code: string; label: string }[] };
 
-  // Detect category keys present in series points (for multi-line chart)
-  const seriesCategoryKeys = useMemo(() => {
-    if (!ll01Summary?.series || ll01Summary.series.length === 0) return [];
-    const keys = new Set<string>();
-    for (const point of ll01Summary.series) {
-      for (const k of Object.keys(point)) {
-        if (k === 'bucket' || k === 'value' || k === 'total') continue;
-        if (typeof point[k] === 'number') keys.add(k);
+    const rawSeries = ll01Summary.line_series ?? ll01Summary.series;
+    const isCategorySeries =
+      Array.isArray(rawSeries) &&
+      rawSeries.length > 0 &&
+      typeof (rawSeries[0] as { category_code?: unknown }).category_code === 'string' &&
+      Array.isArray((rawSeries[0] as { points?: unknown }).points);
+
+    if (isCategorySeries) {
+      const catSeries = rawSeries as { category_code: string; category_label?: string; points: { bucket: string; value: number }[] }[];
+      const buckets = new Map<string, Record<string, string | number>>();
+      const cats: { code: string; label: string }[] = [];
+      for (const s of catSeries) {
+        cats.push({ code: s.category_code, label: s.category_label || s.category_code });
+        for (const p of s.points ?? []) {
+          let row = buckets.get(p.bucket);
+          if (!row) {
+            row = { bucket: p.bucket };
+            buckets.set(p.bucket, row);
+          }
+          row[s.category_code] = p.value;
+        }
       }
+      const data = Array.from(buckets.values()).sort((a, b) => String(a.bucket).localeCompare(String(b.bucket)));
+      return { timelineData: data, seriesCategories: cats };
     }
-    return Array.from(keys);
+
+    // Legacy fallbacks
+    if (Array.isArray(rawSeries) && rawSeries.length > 0) {
+      const data = rawSeries as Record<string, string | number>[];
+      const cats: { code: string; label: string }[] = [];
+      const seen = new Set<string>();
+      for (const point of data) {
+        for (const k of Object.keys(point)) {
+          if (k === 'bucket' || k === 'value' || k === 'total') continue;
+          if (typeof point[k] === 'number' && !seen.has(k)) {
+            seen.add(k);
+            cats.push({ code: k, label: k });
+          }
+        }
+      }
+      return { timelineData: data, seriesCategories: cats };
+    }
+
+    return { timelineData: (ll01Summary.timeline ?? []) as Record<string, string | number>[], seriesCategories: [] };
   }, [ll01Summary]);
 
   const ll01TotalValue = ll01Summary?.total_value ?? ll01Summary?.total ?? null;
 
-  // Aggregate pie across all loaded KPIs (scalable)
-  const combinedPie = useMemo(() => {
-    const slices: { label: string; value: number }[] = [];
-    for (const k of KPI_REGISTRY) {
-      const s = summaries[k.code];
-      if (!s) continue;
-      if (s.pie && s.pie.length > 0) {
-        for (const slice of s.pie) {
-          slices.push({ label: slice.label || k.label, value: slice.value });
-        }
-      } else if (typeof s.total_value === 'number') {
-        slices.push({ label: k.label, value: s.total_value });
-      } else if (typeof s.total === 'number') {
-        slices.push({ label: k.label, value: s.total });
-      }
-    }
-    return slices;
-  }, [summaries]);
+  // Pie data: prefer `distribution`, fallback to `pie`. Drop zero-value entries.
+  const pieData = useMemo(() => {
+    const raw = ll01Summary?.distribution ?? ll01Summary?.pie ?? [];
+    return raw
+      .map((slice) => ({
+        label: slice.category_label || slice.label || slice.category_code || slice.code || '',
+        value: Number(slice.value) || 0,
+      }))
+      .filter((s) => s.value > 0);
+  }, [ll01Summary]);
 
   return (
     <PageContainer>
