@@ -234,9 +234,18 @@ export async function exportLl01Xlsx(params: {
     `/api/reports/warehouse/ll01-errors/export?${qs.toString()}`,
   );
   const token = getStoredToken();
+  if (!token) {
+    if (typeof window !== 'undefined') window.location.replace('/login?session=expired');
+    throw new Error('Authentication required');
+  }
   const res = await fetch(url, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: { Authorization: `Bearer ${token}` },
   });
+  if (res.status === 401) {
+    try { localStorage.removeItem('vsro_auth_token'); } catch { /* ignore */ }
+    if (typeof window !== 'undefined') window.location.replace('/login?session=expired');
+    throw new Error('Authentication required');
+  }
   if (!res.ok) throw new Error(`Export failed: ${res.status}`);
   const blob = await res.blob();
   const blobUrl = URL.createObjectURL(blob);
