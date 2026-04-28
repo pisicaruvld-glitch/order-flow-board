@@ -96,8 +96,33 @@ export async function fetchApi(path: string, options: RequestInit = {}): Promise
   }
 }
 
+export class AuthRequiredError extends Error {
+  status = 401;
+  constructor(message = 'Authentication required') {
+    super(message);
+    this.name = 'AuthRequiredError';
+  }
+}
+
+function handleUnauthorized(): void {
+  try {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+  } catch { /* ignore */ }
+  if (typeof window !== 'undefined') {
+    const here = window.location.pathname + window.location.search;
+    if (!window.location.pathname.startsWith('/login')) {
+      window.location.replace(`/login?session=expired&redirect=${encodeURIComponent(here)}`);
+    }
+  }
+}
+
 export async function fetchApiJson<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetchApi(path, options);
+
+  if (response.status === 401) {
+    handleUnauthorized();
+    throw new AuthRequiredError();
+  }
 
   if (!response.ok) {
     throw new Error(await getErrorMessage(response));
