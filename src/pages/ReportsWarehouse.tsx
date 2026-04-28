@@ -462,7 +462,7 @@ export default function ReportsWarehousePage() {
   const handleExport = async (kpiCode: string) => {
     setExporting(true);
     try {
-      await exportKpiXlsx(kpiCode, {
+      await exportLl01Xlsx({
         date_from: format(dateFrom, 'yyyy-MM-dd'),
         date_to: format(dateTo, 'yyyy-MM-dd'),
       });
