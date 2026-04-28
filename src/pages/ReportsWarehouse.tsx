@@ -145,10 +145,13 @@ function KpiCard({
     let cancelled = false;
     setCategoriesLoading(true);
     setCategoriesError(null);
-    getKpiCategories(kpiCode)
+    getLl01Categories()
       .then((resp) => {
         if (cancelled) return;
-        setCategories(resp.categories ?? []);
+        const list = (resp.categories ?? []).slice().sort(
+          (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
+        );
+        setCategories(list);
       })
       .catch((e: unknown) => {
         if (cancelled) return;
@@ -161,6 +164,35 @@ function KpiCard({
       cancelled = true;
     };
   }, [kpiCode]);
+
+  // Load existing entries for the selected date so values are editable
+  useEffect(() => {
+    let cancelled = false;
+    const dateStr = format(entryDate, 'yyyy-MM-dd');
+    getLl01Entries({ date_from: dateStr, date_to: dateStr })
+      .then((resp) => {
+        if (cancelled) return;
+        const v: Record<string, string> = {};
+        const c: Record<string, string> = {};
+        for (const row of resp.entries ?? []) {
+          if (row.entry_date && row.entry_date.slice(0, 10) !== dateStr) continue;
+          v[row.category_code] = String(row.value ?? '');
+          if (row.comment) c[row.category_code] = row.comment;
+        }
+        setValues(v);
+        setComments(c);
+      })
+      .catch((e) => {
+        console.warn('[LL01] load entries failed', e);
+        if (!cancelled) {
+          setValues({});
+          setComments({});
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [entryDate, kpiCode]);
 
   const totalEntered = useMemo(() => {
     return categories.reduce((sum, c) => {
@@ -182,13 +214,11 @@ function KpiCard({
     });
     setSaving(true);
     try {
-      await saveKpiEntry(kpiCode, {
+      await saveLl01Entries({
         entry_date: format(entryDate, 'yyyy-MM-dd'),
         entries,
       });
       toast({ title: 'Saved', description: `${kpiLabel} entries saved` });
-      setValues({});
-      setComments({});
       onChanged();
     } catch (e: unknown) {
       toast({
