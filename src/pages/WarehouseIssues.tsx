@@ -182,11 +182,15 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
   areaUsersRef.current = areaUsers;
 
   const fetchUsersForArea = useCallback(async (area: string) => {
+    if (!area) return;
     if (areaUsersRef.current[area]) return;
     setLoadingArea(area);
     try {
       const users = await getUsersByArea(area as UserArea);
-      setAreaUsers(prev => ({ ...prev, [area]: users.filter(u => !!u.is_active) }));
+      // Use returned users directly. Only filter out explicit is_active === 0,
+      // so users that don't carry the flag are still kept.
+      const kept = (users || []).filter((u: any) => u?.is_active !== 0 && u?.is_active !== false);
+      setAreaUsers(prev => ({ ...prev, [area]: kept }));
     } catch {
       toast({ title: 'Error', description: `Failed to load users for ${area}`, variant: 'destructive' });
       setAreaUsers(prev => ({ ...prev, [area]: [] }));
