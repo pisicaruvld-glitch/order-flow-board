@@ -433,7 +433,9 @@ export default function ReportsWarehousePage() {
       const results = await Promise.all(
         KPI_REGISTRY.map(async (k) => {
           try {
-            const s = await getKpiSummary(k.code, params);
+            const s = k.code === 'LL01_ERRORS'
+              ? await getLl01Summary(params)
+              : await getLl01Summary(params);
             return [k.code, s] as const;
           } catch (e) {
             console.error(`[ReportsWarehouse] summary ${k.code} failed`, e);
