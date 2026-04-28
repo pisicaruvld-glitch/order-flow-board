@@ -182,11 +182,15 @@ export default function WarehouseIssuesPage({ config }: WarehouseIssuesPageProps
   areaUsersRef.current = areaUsers;
 
   const fetchUsersForArea = useCallback(async (area: string) => {
+    if (!area) return;
     if (areaUsersRef.current[area]) return;
     setLoadingArea(area);
     try {
       const users = await getUsersByArea(area as UserArea);
-      setAreaUsers(prev => ({ ...prev, [area]: users.filter(u => !!u.is_active) }));
+      // Use returned users directly. Only filter out explicit is_active === 0,
+      // so users that don't carry the flag are still kept.
+      const kept = (users || []).filter((u: any) => u?.is_active !== 0 && u?.is_active !== false);
+      setAreaUsers(prev => ({ ...prev, [area]: kept }));
     } catch {
       toast({ title: 'Error', description: `Failed to load users for ${area}`, variant: 'destructive' });
       setAreaUsers(prev => ({ ...prev, [area]: [] }));
@@ -628,22 +632,32 @@ function IssueDetailPanel({
               </div>
               <div>
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Responsible</label>
-                <select
-                  value={draftUserId}
-                  disabled={!draftDept || loadingArea === draftDept}
-                  onChange={(e) => setDraftUserId(e.target.value)}
-                  className="mt-1 w-full text-sm border border-border rounded px-2 py-1.5 bg-background disabled:opacity-50"
-                >
-                  <option value="">— None —</option>
-                  {(areaUsers[draftDept] || []).map((u) => (
-                    <option key={u.id} value={u.id.toString()}>{u.username}</option>
-                  ))}
-                  {draftUserId && !(areaUsers[draftDept] || []).some(u => String(u.id) === draftUserId) && (
-                    <option value={draftUserId}>
-                      {issue.assigned_to_username || `User #${draftUserId}`}
-                    </option>
-                  )}
-                </select>
+                {(() => {
+                  const usersForDept = areaUsers[draftDept] || [];
+                  const enabled = !!draftDept && usersForDept.length > 0 && loadingArea !== draftDept;
+                  const getVal = (u: any) => String(u?.user_id ?? u?.id ?? u?.value ?? '');
+                  const getLabel = (u: any) =>
+                    u?.username || u?.label || u?.name || u?.display_name || `User #${getVal(u)}`;
+                  return (
+                    <select
+                      value={draftUserId}
+                      disabled={!enabled}
+                      onChange={(e) => setDraftUserId(e.target.value)}
+                      className="mt-1 w-full text-sm border border-border rounded px-2 py-1.5 bg-background disabled:opacity-50"
+                    >
+                      <option value="">— None —</option>
+                      {usersForDept.map((u: any) => {
+                        const v = getVal(u);
+                        return <option key={v} value={v}>{getLabel(u)}</option>;
+                      })}
+                      {draftUserId && !usersForDept.some((u: any) => getVal(u) === draftUserId) && (
+                        <option value={draftUserId}>
+                          {issue.assigned_to_username || `User #${draftUserId}`}
+                        </option>
+                      )}
+                    </select>
+                  );
+                })()}
               </div>
             </div>
             <div className="mt-3 flex justify-end">
