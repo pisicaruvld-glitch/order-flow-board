@@ -613,8 +613,11 @@ function IssueDetailPanel({
               <div>
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Department</label>
                 <select
-                  value={issue.assigned_department || ''}
-                  onChange={(e) => onDepartmentChange(issue.id, e.target.value)}
+                  value={draftDept}
+                  onChange={(e) => {
+                    setDraftDept(e.target.value);
+                    setDraftUserId('');
+                  }}
                   className="mt-1 w-full text-sm border border-border rounded px-2 py-1.5 bg-background"
                 >
                   <option value="">— None —</option>
@@ -626,22 +629,37 @@ function IssueDetailPanel({
               <div>
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Responsible</label>
                 <select
-                  value={issue.assigned_to_user_id?.toString() || ''}
-                  disabled={!issue.assigned_department || loadingArea === issue.assigned_department}
-                  onChange={(e) => onResponsibleChange(issue.id, e.target.value, issue.assigned_department || '')}
+                  value={draftUserId}
+                  disabled={!draftDept || loadingArea === draftDept}
+                  onChange={(e) => setDraftUserId(e.target.value)}
                   className="mt-1 w-full text-sm border border-border rounded px-2 py-1.5 bg-background disabled:opacity-50"
                 >
                   <option value="">— None —</option>
-                  {(areaUsers[issue.assigned_department || ''] || []).map((u) => (
+                  {(areaUsers[draftDept] || []).map((u) => (
                     <option key={u.id} value={u.id.toString()}>{u.username}</option>
                   ))}
-                  {issue.assigned_to_user_id && !(areaUsers[issue.assigned_department || ''] || []).some(u => u.id === issue.assigned_to_user_id) && (
-                    <option value={issue.assigned_to_user_id.toString()}>
-                      {issue.assigned_to_username || `User #${issue.assigned_to_user_id}`}
+                  {draftUserId && !(areaUsers[draftDept] || []).some(u => String(u.id) === draftUserId) && (
+                    <option value={draftUserId}>
+                      {issue.assigned_to_username || `User #${draftUserId}`}
                     </option>
                   )}
                 </select>
               </div>
+            </div>
+            <div className="mt-3 flex justify-end">
+              <Button
+                size="sm"
+                onClick={() => onSaveAssignment(issue.id, draftDept, draftUserId)}
+                disabled={
+                  assigning ||
+                  (
+                    (draftDept || '') === (issue.assigned_department || '') &&
+                    (draftUserId || '') === (issue.assigned_to_user_id ? String(issue.assigned_to_user_id) : '')
+                  )
+                }
+              >
+                Save assignment
+              </Button>
             </div>
           </div>
 
