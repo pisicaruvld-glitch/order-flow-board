@@ -296,7 +296,9 @@ function KpiCard({
           <p className="text-xs text-destructive">{categoriesError}</p>
         )}
         {!categoriesLoading && !categoriesError && categories.length === 0 && (
-          <p className="text-xs text-muted-foreground">No categories defined for this KPI.</p>
+          <p className="text-xs text-muted-foreground">
+            No categories returned by the server for this KPI. Please verify your session and try again.
+          </p>
         )}
         {!categoriesLoading && categories.length > 0 && (
           <div className="border border-border rounded-md divide-y divide-border">
