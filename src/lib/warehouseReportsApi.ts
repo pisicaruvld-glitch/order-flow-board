@@ -53,6 +53,12 @@ export interface KpiSeriesPoint {
   [categoryCode: string]: string | number | undefined;
 }
 
+export interface KpiCategorySeries {
+  category_code: string;
+  category_label?: string;
+  points: KpiTimelinePoint[];
+}
+
 export interface KpiSummary {
   kpi_code: string;
   kpi_label?: string;
@@ -62,8 +68,10 @@ export interface KpiSummary {
   total_value?: number;
   average?: number;
   timeline?: KpiTimelinePoint[];
-  series?: KpiSeriesPoint[];
-  pie: KpiPieSlice[];
+  series?: KpiSeriesPoint[] | KpiCategorySeries[];
+  line_series?: KpiCategorySeries[];
+  pie?: KpiPieSlice[];
+  distribution?: KpiPieSlice[];
 }
 
 export interface KpiCategory {
