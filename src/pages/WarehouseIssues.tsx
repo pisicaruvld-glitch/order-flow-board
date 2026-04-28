@@ -499,22 +499,28 @@ interface IssueDetailPanelProps {
 
 function IssueDetailPanel({
   issue, open, onClose, categories, areaUsers, loadingArea, assigning,
-  fetchUsersForArea, onDepartmentChange, onResponsibleChange, onCategoryChange,
+  fetchUsersForArea, onSaveAssignment, onCategoryChange,
   onStatusChange, onToggleCritical, onEtaChange,
 }: IssueDetailPanelProps) {
   const [etaDraft, setEtaDraft] = useState<string>('');
+  // Local draft state for assignment — independent of issue object so users
+  // can change selections without backend reset wiping the dropdown.
+  const [draftDept, setDraftDept] = useState<string>('');
+  const [draftUserId, setDraftUserId] = useState<string>('');
 
   useEffect(() => {
     if (issue) {
       const e = (issue.eta_date ?? issue.eta ?? '') as string;
-      // Normalize to YYYY-MM-DD if a full timestamp was returned
       setEtaDraft(e ? e.slice(0, 10) : '');
+      setDraftDept(issue.assigned_department || '');
+      setDraftUserId(issue.assigned_to_user_id ? String(issue.assigned_to_user_id) : '');
     }
-  }, [issue?.id, issue?.eta_date, issue?.eta]);
+  }, [issue?.id]);
 
+  // Whenever a department is selected (initial or user-changed), make sure users for it are loaded.
   useEffect(() => {
-    if (issue?.assigned_department) fetchUsersForArea(issue.assigned_department);
-  }, [issue?.assigned_department, fetchUsersForArea]);
+    if (draftDept) fetchUsersForArea(draftDept);
+  }, [draftDept, fetchUsersForArea]);
 
   if (!issue) return null;
 
