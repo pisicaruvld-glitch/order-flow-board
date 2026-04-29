@@ -416,6 +416,10 @@ export default function ReportsWarehousePage() {
 
   const [exporting, setExporting] = useState(false);
 
+  const [closedSummary, setClosedSummary] = useState<PreparedOrdersSummary | null>(null);
+  const [closedLoading, setClosedLoading] = useState(false);
+  const [closedError, setClosedError] = useState<string | null>(null);
+
   const loadKpis = useCallback(async () => {
     setKpisLoading(true);
     setKpisError(null);
