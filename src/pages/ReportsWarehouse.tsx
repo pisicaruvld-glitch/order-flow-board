@@ -563,8 +563,8 @@ export default function ReportsWarehousePage() {
     () => seriesCategories.filter((c) => visibleCats[c.code] !== false),
     [seriesCategories, visibleCats],
   );
-  const allVisible = seriesCategories.length > 0 && seriesCategories.every((c) => visibleCats[c.code] !== false);
-  const noneVisible = seriesCategories.length > 0 && seriesCategories.every((c) => visibleCats[c.code] === false);
+
+
 
   // Pie data: prefer `distribution`, fallback to `pie`. Drop zero-value entries.
   const pieData = useMemo(() => {
