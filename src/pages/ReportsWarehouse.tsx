@@ -56,6 +56,7 @@ import {
   KpiCategory,
   KpiDefinition,
   KpiSummary,
+  PreparedOrdersSummary,
   canEditWarehouseKpi,
   getWarehouseKpis,
   setKpiTarget,
@@ -64,6 +65,7 @@ import {
   saveLl01Entries,
   getLl01Summary,
   exportLl01Xlsx,
+  getPreparedOrdersSummary,
 } from '@/lib/warehouseReportsApi';
 
 const PIE_COLORS = [
