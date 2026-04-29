@@ -663,14 +663,75 @@ export default function ReportsWarehousePage() {
                     <h3 className="text-sm font-medium text-foreground">
                       LL01 Errors over time
                     </h3>
-                    {ll01TotalValue != null && (
-                      <span className="text-xs text-muted-foreground">
-                        Total in range:{' '}
-                        <span className="font-semibold text-foreground tabular-nums">
-                          {ll01TotalValue}
+                    <div className="flex items-center gap-3">
+                      {seriesCategories.length > 0 && (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-8 text-xs">
+                              Visible categories ({visibleSeriesCategories.length}/{seriesCategories.length})
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="w-64 p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-medium">Visible categories</span>
+                              <div className="flex gap-1">
+                                <button
+                                  type="button"
+                                  className="text-[11px] text-primary hover:underline"
+                                  onClick={() => {
+                                    const next: Record<string, boolean> = {};
+                                    seriesCategories.forEach((c) => { next[c.code] = true; });
+                                    setVisibleCats(next);
+                                  }}
+                                >All</button>
+                                <span className="text-[11px] text-muted-foreground">·</span>
+                                <button
+                                  type="button"
+                                  className="text-[11px] text-primary hover:underline"
+                                  onClick={() => {
+                                    const next: Record<string, boolean> = {};
+                                    seriesCategories.forEach((c) => { next[c.code] = false; });
+                                    setVisibleCats(next);
+                                  }}
+                                >None</button>
+                              </div>
+                            </div>
+                            <div className="max-h-64 overflow-y-auto space-y-1.5">
+                              {seriesCategories.map((cat, i) => {
+                                const checked = visibleCats[cat.code] !== false;
+                                const id = `vis-${cat.code}`;
+                                return (
+                                  <div key={cat.code} className="flex items-center gap-2">
+                                    <Checkbox
+                                      id={id}
+                                      checked={checked}
+                                      onCheckedChange={(v) =>
+                                        setVisibleCats((prev) => ({ ...prev, [cat.code]: v === true }))
+                                      }
+                                    />
+                                    <span
+                                      className="inline-block h-2.5 w-2.5 rounded-sm shrink-0"
+                                      style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }}
+                                    />
+                                    <Label htmlFor={id} className="text-xs font-normal cursor-pointer truncate">
+                                      {cat.label}
+                                    </Label>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      )}
+                      {ll01TotalValue != null && (
+                        <span className="text-xs text-muted-foreground">
+                          Total in range:{' '}
+                          <span className="font-semibold text-foreground tabular-nums">
+                            {ll01TotalValue}
+                          </span>
                         </span>
-                      </span>
-                    )}
+                      )}
+                    </div>
                   </div>
                   {timelineData.length > 0 ? (
                     <div className="h-[320px] w-full">
