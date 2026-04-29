@@ -829,9 +829,12 @@ export default function ReportsWarehousePage() {
                             dataKey="value"
                             nameKey="label"
                             cx="50%"
-                            cy="50%"
+                            cy="45%"
                             outerRadius={90}
-                            label={(entry) => `${entry.label}: ${entry.value}`}
+                            innerRadius={40}
+                            isAnimationActive={false}
+                            label={false}
+                            labelLine={false}
                           >
                             {pieData.map((_, i) => (
                               <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
@@ -843,6 +846,21 @@ export default function ReportsWarehousePage() {
                               border: '1px solid hsl(var(--border))',
                               borderRadius: '8px',
                               fontSize: '12px',
+                            }}
+                            formatter={(value: number, name: string, item: { payload?: { percent?: number } }) => {
+                              const pct = item?.payload?.percent ?? (pieTotal > 0 ? (Number(value) / pieTotal) * 100 : 0);
+                              return [`${value} (${pct.toFixed(1)}%)`, name];
+                            }}
+                          />
+                          <Legend
+                            verticalAlign="bottom"
+                            align="center"
+                            iconType="square"
+                            wrapperStyle={{ fontSize: '11px', maxHeight: 90, overflowY: 'auto' }}
+                            formatter={(value: string, _entry, index: number) => {
+                              const slice = pieData[index];
+                              if (!slice) return value;
+                              return `${slice.label} — ${slice.value} (${slice.percent.toFixed(1)}%)`;
                             }}
                           />
                         </PieChart>
