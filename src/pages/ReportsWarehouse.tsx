@@ -29,6 +29,8 @@ import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import {
   LineChart,
   Line,
+  BarChart,
+  Bar,
   PieChart,
   Pie,
   Cell,
