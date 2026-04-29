@@ -757,21 +757,32 @@ export default function ReportsWarehousePage() {
                               fontSize: '12px',
                             }}
                           />
-                          <Legend wrapperStyle={{ fontSize: '12px' }} />
+                          <Legend
+                            wrapperStyle={{ fontSize: '12px', cursor: 'pointer' }}
+                            onClick={(e: { dataKey?: string | number }) => {
+                              const key = typeof e?.dataKey === 'string' ? e.dataKey : undefined;
+                              if (!key) return;
+                              setVisibleCats((prev) => ({ ...prev, [key]: prev[key] === false }));
+                            }}
+                          />
                           {seriesCategories.length > 0 ? (
                             <>
-                              {seriesCategories.map((cat, i) => (
-                                <Line
-                                  key={cat.code}
-                                  type="monotone"
-                                  dataKey={cat.code}
-                                  name={cat.label}
-                                  stroke={PIE_COLORS[i % PIE_COLORS.length]}
-                                  strokeWidth={2}
-                                  dot={{ r: 2 }}
-                                  connectNulls
-                                />
-                              ))}
+                              {seriesCategories.map((cat, i) => {
+                                const visible = visibleCats[cat.code] !== false;
+                                return (
+                                  <Line
+                                    key={cat.code}
+                                    type="monotone"
+                                    dataKey={cat.code}
+                                    name={cat.label}
+                                    stroke={PIE_COLORS[i % PIE_COLORS.length]}
+                                    strokeWidth={2}
+                                    dot={{ r: 2 }}
+                                    connectNulls
+                                    hide={!visible}
+                                  />
+                                );
+                              })}
                             </>
                           ) : (
                             <Line
