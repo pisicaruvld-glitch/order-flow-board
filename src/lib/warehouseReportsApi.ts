@@ -249,6 +249,36 @@ export async function exportLl01Xlsx(params: {
 }
 
 // ────────────────────────────────────────────────────────────
+// Prepared / Closed Orders summary
+// ────────────────────────────────────────────────────────────
+export interface ClosedOrdersTimelinePoint {
+  bucket: string;
+  closed_orders: number;
+}
+
+export interface PreparedByDistribution {
+  prepared_by_username: string;
+  closed_orders: number;
+}
+
+export interface PreparedOrdersSummary {
+  total_closed_orders: number;
+  closed_orders_timeline: ClosedOrdersTimelinePoint[];
+  prepared_by_distribution: PreparedByDistribution[];
+}
+
+export async function getPreparedOrdersSummary(params: {
+  date_from: string;
+  date_to: string;
+  group_by: GroupBy;
+}): Promise<PreparedOrdersSummary> {
+  const qs = new URLSearchParams(params);
+  return fetchApiJson<PreparedOrdersSummary>(
+    `/api/reports/warehouse/prepared-orders-summary?${qs.toString()}`,
+  );
+}
+
+// ────────────────────────────────────────────────────────────
 // Permissions helper
 // ────────────────────────────────────────────────────────────
 export function canEditWarehouseKpi(user: {

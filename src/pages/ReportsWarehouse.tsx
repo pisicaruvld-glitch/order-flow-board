@@ -29,6 +29,8 @@ import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import {
   LineChart,
   Line,
+  BarChart,
+  Bar,
   PieChart,
   Pie,
   Cell,
@@ -54,6 +56,7 @@ import {
   KpiCategory,
   KpiDefinition,
   KpiSummary,
+  PreparedOrdersSummary,
   canEditWarehouseKpi,
   getWarehouseKpis,
   setKpiTarget,
@@ -62,6 +65,7 @@ import {
   saveLl01Entries,
   getLl01Summary,
   exportLl01Xlsx,
+  getPreparedOrdersSummary,
 } from '@/lib/warehouseReportsApi';
 
 const PIE_COLORS = [
@@ -412,6 +416,10 @@ export default function ReportsWarehousePage() {
 
   const [exporting, setExporting] = useState(false);
 
+  const [closedSummary, setClosedSummary] = useState<PreparedOrdersSummary | null>(null);
+  const [closedLoading, setClosedLoading] = useState(false);
+  const [closedError, setClosedError] = useState<string | null>(null);
+
   const loadKpis = useCallback(async () => {
     setKpisLoading(true);
     setKpisError(null);
@@ -458,10 +466,31 @@ export default function ReportsWarehousePage() {
   useEffect(() => { loadKpis(); }, [loadKpis]);
   useEffect(() => { loadSummaries(); }, [loadSummaries]);
 
+  const loadClosedSummary = useCallback(async () => {
+    setClosedLoading(true);
+    setClosedError(null);
+    try {
+      const data = await getPreparedOrdersSummary({
+        date_from: format(dateFrom, 'yyyy-MM-dd'),
+        date_to: format(dateTo, 'yyyy-MM-dd'),
+        group_by: groupBy,
+      });
+      setClosedSummary(data);
+    } catch (e: unknown) {
+      setClosedError(e instanceof Error ? e.message : 'Failed to load closed orders');
+      setClosedSummary(null);
+    } finally {
+      setClosedLoading(false);
+    }
+  }, [dateFrom, dateTo, groupBy]);
+
+  useEffect(() => { loadClosedSummary(); }, [loadClosedSummary]);
+
   const refreshAll = useCallback(() => {
     loadKpis();
     loadSummaries();
-  }, [loadKpis, loadSummaries]);
+    loadClosedSummary();
+  }, [loadKpis, loadSummaries, loadClosedSummary]);
 
   const handleExport = async (kpiCode: string) => {
     setExporting(true);
@@ -874,6 +903,129 @@ export default function ReportsWarehousePage() {
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* ───────── Warehouse Closed Orders ───────── */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Warehouse Closed Orders</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {closedError && <ErrorMessage message={closedError} />}
+
+            {/* KPI card */}
+            <div className="rounded-lg border border-border bg-muted/30 p-4 flex items-center justify-between">
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Total closed orders
+                </div>
+                <div className="text-3xl font-semibold text-foreground mt-1">
+                  {closedLoading ? '…' : (closedSummary?.total_closed_orders ?? 0).toLocaleString()}
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {format(dateFrom, 'yyyy-MM-dd')} → {format(dateTo, 'yyyy-MM-dd')} · {groupBy}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Closed orders timeline */}
+              <div>
+                <h3 className="text-sm font-medium text-foreground mb-2">Closed orders per period</h3>
+                {closedLoading ? (
+                  <Skeleton className="h-[320px] w-full" />
+                ) : (closedSummary?.closed_orders_timeline?.length ?? 0) > 0 ? (
+                  <div className="h-[320px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={closedSummary!.closed_orders_timeline}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="bucket" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                        <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--background))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                          }}
+                        />
+                        <Bar dataKey="closed_orders" name="Closed orders" fill="hsl(var(--primary))" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-[320px] flex items-center justify-center text-sm text-muted-foreground border border-dashed border-border rounded-lg">
+                    No closed orders in range.
+                  </div>
+                )}
+              </div>
+
+              {/* Prepared by distribution */}
+              <div>
+                <h3 className="text-sm font-medium text-foreground mb-2">Split by prepared by</h3>
+                {(() => {
+                  const dist = (closedSummary?.prepared_by_distribution ?? []).filter((d) => d.closed_orders > 0);
+                  const total = dist.reduce((a, d) => a + d.closed_orders, 0);
+                  if (closedLoading) return <Skeleton className="h-[320px] w-full" />;
+                  if (dist.length === 0) {
+                    return (
+                      <div className="h-[320px] flex items-center justify-center text-sm text-muted-foreground border border-dashed border-border rounded-lg">
+                        No distribution data.
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="h-[320px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={dist}
+                            dataKey="closed_orders"
+                            nameKey="prepared_by_username"
+                            cx="50%"
+                            cy="45%"
+                            outerRadius={90}
+                            innerRadius={40}
+                            isAnimationActive={false}
+                            label={false}
+                            labelLine={false}
+                          >
+                            {dist.map((_, i) => (
+                              <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: 'hsl(var(--background))',
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '8px',
+                              fontSize: '12px',
+                            }}
+                            formatter={(value: number, name: string) => {
+                              const pct = total > 0 ? (Number(value) / total) * 100 : 0;
+                              return [`${value} (${pct.toFixed(1)}%)`, name];
+                            }}
+                          />
+                          <Legend
+                            verticalAlign="bottom"
+                            align="center"
+                            iconType="square"
+                            wrapperStyle={{ fontSize: '11px', maxHeight: 90, overflowY: 'auto' }}
+                            formatter={(value: string, _entry, index: number) => {
+                              const slice = dist[index];
+                              if (!slice) return value;
+                              const pct = total > 0 ? (slice.closed_orders / total) * 100 : 0;
+                              return `${slice.prepared_by_username} — ${slice.closed_orders} (${pct.toFixed(1)}%)`;
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
