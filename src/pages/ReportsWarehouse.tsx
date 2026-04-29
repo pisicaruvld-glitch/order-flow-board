@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -541,16 +543,42 @@ export default function ReportsWarehousePage() {
 
   const ll01TotalValue = ll01Summary?.total_value ?? ll01Summary?.total ?? null;
 
+  // Visible categories filter for the timeline chart
+  const [visibleCats, setVisibleCats] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    setVisibleCats((prev) => {
+      const next: Record<string, boolean> = {};
+      let changed = false;
+      for (const c of seriesCategories) {
+        next[c.code] = prev[c.code] ?? true;
+        if (prev[c.code] === undefined) changed = true;
+      }
+      // Drop stale keys
+      if (Object.keys(prev).length !== Object.keys(next).length) changed = true;
+      return changed ? next : prev;
+    });
+  }, [seriesCategories]);
+
+  const visibleSeriesCategories = useMemo(
+    () => seriesCategories.filter((c) => visibleCats[c.code] !== false),
+    [seriesCategories, visibleCats],
+  );
+
+
+
   // Pie data: prefer `distribution`, fallback to `pie`. Drop zero-value entries.
   const pieData = useMemo(() => {
     const raw = ll01Summary?.distribution ?? ll01Summary?.pie ?? [];
-    return raw
+    const slices = raw
       .map((slice) => ({
         label: slice.category_label || slice.label || slice.category_code || slice.code || '',
         value: Number(slice.value) || 0,
       }))
       .filter((s) => s.value > 0);
+    const total = slices.reduce((a, s) => a + s.value, 0);
+    return slices.map((s) => ({ ...s, percent: total > 0 ? (s.value / total) * 100 : 0 }));
   }, [ll01Summary]);
+  const pieTotal = useMemo(() => pieData.reduce((a, s) => a + s.value, 0), [pieData]);
 
   return (
     <PageContainer>
@@ -635,14 +663,75 @@ export default function ReportsWarehousePage() {
                     <h3 className="text-sm font-medium text-foreground">
                       LL01 Errors over time
                     </h3>
-                    {ll01TotalValue != null && (
-                      <span className="text-xs text-muted-foreground">
-                        Total in range:{' '}
-                        <span className="font-semibold text-foreground tabular-nums">
-                          {ll01TotalValue}
+                    <div className="flex items-center gap-3">
+                      {seriesCategories.length > 0 && (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-8 text-xs">
+                              Visible categories ({visibleSeriesCategories.length}/{seriesCategories.length})
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="w-64 p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-medium">Visible categories</span>
+                              <div className="flex gap-1">
+                                <button
+                                  type="button"
+                                  className="text-[11px] text-primary hover:underline"
+                                  onClick={() => {
+                                    const next: Record<string, boolean> = {};
+                                    seriesCategories.forEach((c) => { next[c.code] = true; });
+                                    setVisibleCats(next);
+                                  }}
+                                >All</button>
+                                <span className="text-[11px] text-muted-foreground">·</span>
+                                <button
+                                  type="button"
+                                  className="text-[11px] text-primary hover:underline"
+                                  onClick={() => {
+                                    const next: Record<string, boolean> = {};
+                                    seriesCategories.forEach((c) => { next[c.code] = false; });
+                                    setVisibleCats(next);
+                                  }}
+                                >None</button>
+                              </div>
+                            </div>
+                            <div className="max-h-64 overflow-y-auto space-y-1.5">
+                              {seriesCategories.map((cat, i) => {
+                                const checked = visibleCats[cat.code] !== false;
+                                const id = `vis-${cat.code}`;
+                                return (
+                                  <div key={cat.code} className="flex items-center gap-2">
+                                    <Checkbox
+                                      id={id}
+                                      checked={checked}
+                                      onCheckedChange={(v) =>
+                                        setVisibleCats((prev) => ({ ...prev, [cat.code]: v === true }))
+                                      }
+                                    />
+                                    <span
+                                      className="inline-block h-2.5 w-2.5 rounded-sm shrink-0"
+                                      style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }}
+                                    />
+                                    <Label htmlFor={id} className="text-xs font-normal cursor-pointer truncate">
+                                      {cat.label}
+                                    </Label>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      )}
+                      {ll01TotalValue != null && (
+                        <span className="text-xs text-muted-foreground">
+                          Total in range:{' '}
+                          <span className="font-semibold text-foreground tabular-nums">
+                            {ll01TotalValue}
+                          </span>
                         </span>
-                      </span>
-                    )}
+                      )}
+                    </div>
                   </div>
                   {timelineData.length > 0 ? (
                     <div className="h-[320px] w-full">
@@ -668,21 +757,32 @@ export default function ReportsWarehousePage() {
                               fontSize: '12px',
                             }}
                           />
-                          <Legend wrapperStyle={{ fontSize: '12px' }} />
+                          <Legend
+                            wrapperStyle={{ fontSize: '12px', cursor: 'pointer' }}
+                            onClick={(payload) => {
+                              const key = (payload as { dataKey?: unknown })?.dataKey;
+                              if (typeof key !== 'string') return;
+                              setVisibleCats((prev) => ({ ...prev, [key]: prev[key] === false }));
+                            }}
+                          />
                           {seriesCategories.length > 0 ? (
                             <>
-                              {seriesCategories.map((cat, i) => (
-                                <Line
-                                  key={cat.code}
-                                  type="monotone"
-                                  dataKey={cat.code}
-                                  name={cat.label}
-                                  stroke={PIE_COLORS[i % PIE_COLORS.length]}
-                                  strokeWidth={2}
-                                  dot={{ r: 2 }}
-                                  connectNulls
-                                />
-                              ))}
+                              {seriesCategories.map((cat, i) => {
+                                const visible = visibleCats[cat.code] !== false;
+                                return (
+                                  <Line
+                                    key={cat.code}
+                                    type="monotone"
+                                    dataKey={cat.code}
+                                    name={cat.label}
+                                    stroke={PIE_COLORS[i % PIE_COLORS.length]}
+                                    strokeWidth={2}
+                                    dot={{ r: 2 }}
+                                    connectNulls
+                                    hide={!visible}
+                                  />
+                                );
+                              })}
                             </>
                           ) : (
                             <Line
@@ -729,9 +829,12 @@ export default function ReportsWarehousePage() {
                             dataKey="value"
                             nameKey="label"
                             cx="50%"
-                            cy="50%"
+                            cy="45%"
                             outerRadius={90}
-                            label={(entry) => `${entry.label}: ${entry.value}`}
+                            innerRadius={40}
+                            isAnimationActive={false}
+                            label={false}
+                            labelLine={false}
                           >
                             {pieData.map((_, i) => (
                               <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
@@ -743,6 +846,21 @@ export default function ReportsWarehousePage() {
                               border: '1px solid hsl(var(--border))',
                               borderRadius: '8px',
                               fontSize: '12px',
+                            }}
+                            formatter={(value: number, name: string, item: { payload?: { percent?: number } }) => {
+                              const pct = item?.payload?.percent ?? (pieTotal > 0 ? (Number(value) / pieTotal) * 100 : 0);
+                              return [`${value} (${pct.toFixed(1)}%)`, name];
+                            }}
+                          />
+                          <Legend
+                            verticalAlign="bottom"
+                            align="center"
+                            iconType="square"
+                            wrapperStyle={{ fontSize: '11px', maxHeight: 90, overflowY: 'auto' }}
+                            formatter={(value: string, _entry, index: number) => {
+                              const slice = pieData[index];
+                              if (!slice) return value;
+                              return `${slice.label} — ${slice.value} (${slice.percent.toFixed(1)}%)`;
                             }}
                           />
                         </PieChart>
