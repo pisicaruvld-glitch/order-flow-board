@@ -759,9 +759,9 @@ export default function ReportsWarehousePage() {
                           />
                           <Legend
                             wrapperStyle={{ fontSize: '12px', cursor: 'pointer' }}
-                            onClick={(e: { dataKey?: string | number }) => {
-                              const key = typeof e?.dataKey === 'string' ? e.dataKey : undefined;
-                              if (!key) return;
+                            onClick={(payload) => {
+                              const key = (payload as { dataKey?: unknown })?.dataKey;
+                              if (typeof key !== 'string') return;
                               setVisibleCats((prev) => ({ ...prev, [key]: prev[key] === false }));
                             }}
                           />
