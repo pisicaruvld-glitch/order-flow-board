@@ -466,6 +466,26 @@ export default function ReportsWarehousePage() {
   useEffect(() => { loadKpis(); }, [loadKpis]);
   useEffect(() => { loadSummaries(); }, [loadSummaries]);
 
+  const loadClosedSummary = useCallback(async () => {
+    setClosedLoading(true);
+    setClosedError(null);
+    try {
+      const data = await getPreparedOrdersSummary({
+        date_from: format(dateFrom, 'yyyy-MM-dd'),
+        date_to: format(dateTo, 'yyyy-MM-dd'),
+        group_by: groupBy,
+      });
+      setClosedSummary(data);
+    } catch (e: unknown) {
+      setClosedError(e instanceof Error ? e.message : 'Failed to load closed orders');
+      setClosedSummary(null);
+    } finally {
+      setClosedLoading(false);
+    }
+  }, [dateFrom, dateTo, groupBy]);
+
+  useEffect(() => { loadClosedSummary(); }, [loadClosedSummary]);
+
   const refreshAll = useCallback(() => {
     loadKpis();
     loadSummaries();
