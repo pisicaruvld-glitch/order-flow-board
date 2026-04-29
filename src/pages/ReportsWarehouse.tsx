@@ -543,16 +543,42 @@ export default function ReportsWarehousePage() {
 
   const ll01TotalValue = ll01Summary?.total_value ?? ll01Summary?.total ?? null;
 
+  // Visible categories filter for the timeline chart
+  const [visibleCats, setVisibleCats] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    setVisibleCats((prev) => {
+      const next: Record<string, boolean> = {};
+      let changed = false;
+      for (const c of seriesCategories) {
+        next[c.code] = prev[c.code] ?? true;
+        if (prev[c.code] === undefined) changed = true;
+      }
+      // Drop stale keys
+      if (Object.keys(prev).length !== Object.keys(next).length) changed = true;
+      return changed ? next : prev;
+    });
+  }, [seriesCategories]);
+
+  const visibleSeriesCategories = useMemo(
+    () => seriesCategories.filter((c) => visibleCats[c.code] !== false),
+    [seriesCategories, visibleCats],
+  );
+  const allVisible = seriesCategories.length > 0 && seriesCategories.every((c) => visibleCats[c.code] !== false);
+  const noneVisible = seriesCategories.length > 0 && seriesCategories.every((c) => visibleCats[c.code] === false);
+
   // Pie data: prefer `distribution`, fallback to `pie`. Drop zero-value entries.
   const pieData = useMemo(() => {
     const raw = ll01Summary?.distribution ?? ll01Summary?.pie ?? [];
-    return raw
+    const slices = raw
       .map((slice) => ({
         label: slice.category_label || slice.label || slice.category_code || slice.code || '',
         value: Number(slice.value) || 0,
       }))
       .filter((s) => s.value > 0);
+    const total = slices.reduce((a, s) => a + s.value, 0);
+    return slices.map((s) => ({ ...s, percent: total > 0 ? (s.value / total) * 100 : 0 }));
   }, [ll01Summary]);
+  const pieTotal = useMemo(() => pieData.reduce((a, s) => a + s.value, 0), [pieData]);
 
   return (
     <PageContainer>
