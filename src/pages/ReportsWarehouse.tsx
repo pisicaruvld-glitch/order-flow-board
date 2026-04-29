@@ -489,7 +489,8 @@ export default function ReportsWarehousePage() {
   const refreshAll = useCallback(() => {
     loadKpis();
     loadSummaries();
-  }, [loadKpis, loadSummaries]);
+    loadClosedSummary();
+  }, [loadKpis, loadSummaries, loadClosedSummary]);
 
   const handleExport = async (kpiCode: string) => {
     setExporting(true);
