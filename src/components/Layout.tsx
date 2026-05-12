@@ -27,6 +27,7 @@ import {
   User,
   Briefcase,
   BarChart3,
+  ListChecks,
 } from 'lucide-react';
 import { useInboxSummary } from '@/hooks/useInboxSummary';
 import { cn } from '@/lib/utils';
@@ -65,6 +66,7 @@ const otherNavItems = [
   { path: '/rules', label: 'Rules', icon: ClipboardList },
   { path: '/gantt', label: 'Gantt', icon: BarChart3 },
   { path: '/receiving-issues', label: 'Receiving Issues', icon: AlertTriangle },
+  { path: '/action-plan', label: 'Action Plan', icon: ListChecks },
 ];
 
 export function Layout({ children, config }: LayoutProps) {
